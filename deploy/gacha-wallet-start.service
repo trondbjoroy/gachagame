@@ -1,0 +1,13 @@
+[Unit]
+Description=Hathor Gacha - start the shared player wallet in wallet-headless
+After=gacha-wallet.service
+Requires=gacha-wallet.service
+
+[Service]
+Type=oneshot
+User=gacha
+ExecStart=/opt/gacha/deploy/start-wallet.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

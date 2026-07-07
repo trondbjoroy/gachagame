@@ -1,0 +1,16 @@
+[Unit]
+Description=Hathor Gacha - hardened frontend proxy (:8090, localhost only)
+After=network-online.target gacha-wallet-start.service
+Wants=network-online.target
+
+[Service]
+User=gacha
+WorkingDirectory=/opt/gacha
+Environment=HOST=127.0.0.1
+Environment=PORT=8090
+ExecStart=/usr/bin/node /opt/gacha/frontend/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

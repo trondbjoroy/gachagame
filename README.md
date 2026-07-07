@@ -119,6 +119,33 @@ Nano contract transactions execute when the next block confirms them (typically 
 a minute on the playground). Query state any time via the node's
 `/v1a/nano_contract/state` endpoint; per-tx execution logs via `/v1a/nano_contract/logs?id=<tx>`.
 
+## Deploying to a public domain
+
+The frontend proxy is hardened for public exposure: it only forwards
+`GET /wallet/address?index=0`, `GET /wallet/balance[?token=…]`, and
+`POST /wallet/nano-contracts/execute` restricted to `pull`/`claim` on this contract,
+with the caller and withdrawal addresses pinned to the shared wallet and per-IP rate
+limits (6 tx/min, 90 reads/min). Node reads are limited to state/logs/transaction, GET only.
+Everything else returns 403 — wallet-headless itself must never be exposed directly.
+
+On a fresh Ubuntu 22.04/24.04 VPS:
+
+```bash
+git clone https://github.com/trondbjoroy/gachagame /opt/gacha
+cd /opt/gacha && sudo bash deploy/setup.sh
+# point your domain's A record at the VPS, then:
+sudo nano /etc/caddy/Caddyfile   # replace gacha.example.com
+sudo systemctl reload caddy
+```
+
+`deploy/` contains the setup script, four systemd units (miner, wallet-headless,
+wallet-start oneshot, frontend) and the Caddyfile (automatic Let's Encrypt TLS).
+Everything binds to localhost except Caddy on 80/443.
+
+**This is a custodial shared-wallet demo:** every visitor plays with the same wallet.
+Fine for a testnet showcase; for a real game, move to per-user wallets
+(WalletConnect / create-hathor-dapp) so players sign their own transactions.
+
 ## Notes / caveats
 
 - Testnet seeds are committed in `config.js` on purpose (throwaway, playground-only).
