@@ -1,0 +1,7 @@
+# third-party clone of hathor-wallet-headless — our config is kept at
+# ./wallet-headless.config.js; clone the service yourself:
+#   git clone https://github.com/HathorNetwork/hathor-wallet-headless
+wallet-headless/
+
+__pycache__/
+node_modules/
