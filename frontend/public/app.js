@@ -201,7 +201,7 @@ function render() {
     </div>`, true)).join('');
   $('collectionEmpty').hidden = mine.length > 0;
 
-  const pend = [...S.cards.values()].filter(c => c.pending === S.addr);
+  const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.pending === S.addr);
   $('pendingCards').innerHTML = pend.map(c =>
     cardBox(c, `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
   $('pendingEmpty').hidden = pend.length > 0;
@@ -212,7 +212,7 @@ function render() {
   $('fuseBtn').disabled = !(selCount === 2 && sameTierSelected());
 
   // farm
-  const staked = [...S.cards.values()].filter(c => c.staker === S.addr);
+  const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
   $('farmSummary').innerHTML = `
     <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}</div>
       <div class="row-btns">
@@ -277,7 +277,7 @@ function render() {
       </div>`;
     }).join('');
     $('swapEmpty').hidden = S.swaps.length > 0;
-    const mpend = [...S.cards.values()].filter(c => c.marketPending === S.addr);
+    const mpend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.marketPending === S.addr);
     $('marketPendingCards').innerHTML = mpend.map(c =>
       cardBox(c, `<button class="claim-mini" data-mclaim="${c.uid}">CLAIM</button>`)).join('');
   }

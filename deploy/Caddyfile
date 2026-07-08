@@ -1,6 +1,10 @@
-# Replace gacha.example.com with your domain (DNS A record -> this VPS).
+# Replace emberfall.fun with your domain (DNS A record -> this VPS).
 # Caddy provisions Let's Encrypt TLS automatically.
-gacha.example.com {
+emberfall.fun {
 	reverse_proxy 127.0.0.1:8090
 	encode gzip
+}
+
+www.emberfall.fun {
+	redir https://emberfall.fun{uri} permanent
 }

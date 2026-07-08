@@ -164,7 +164,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .card .tier { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--rc); margin-top: 3px; font-weight: 700; }
 .card .uid { font-family: 'Fragment Mono', monospace; font-size: 10px; color: var(--ink-dim); margin: 10px 0 12px; word-break: break-all; }
 .card .claim-mini {
-  margin-top: 13px; width: 100%; cursor: pointer;
+  margin-top: auto; width: 100%; cursor: pointer;
   font-family: 'Cinzel', serif; letter-spacing: .1em; font-size: 13px;
   color: #241703; background: linear-gradient(135deg, #caa03f, #e6bd5e);
   border: none; border-radius: 9px; padding: 9px 0;
