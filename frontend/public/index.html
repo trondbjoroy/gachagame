@@ -70,6 +70,7 @@
     <button data-tab="collection" class="tab active">Collection</button>
     <button data-tab="farm" class="tab">GEM Farm</button>
     <button data-tab="arena" class="tab">Arena</button>
+    <button data-tab="market" class="tab">Market</button>
   </nav>
 
   <section class="shelf tabpane" id="pane-collection">
@@ -101,6 +102,21 @@
     </div>
     <div class="duels" id="duelList"></div>
     <div class="empty" id="duelEmpty" hidden>No duels yet. Create one!</div>
+  </section>
+
+  <section class="shelf tabpane" id="pane-market" hidden>
+    <div class="pane-head">
+      <h2>Card listings</h2>
+      <div class="fuse-bar"><span id="marketFunds"></span>
+        <button class="mini-btn" id="wdFundsBtn" hidden>WITHDRAW</button></div>
+    </div>
+    <div class="duels" id="listingList"></div>
+    <div class="empty" id="listingEmpty" hidden>No listings. Use SELL on a card in your collection.</div>
+    <h2 class="mt">Swap offers</h2>
+    <div class="duels" id="swapList"></div>
+    <div class="empty" id="swapEmpty" hidden>No swap offers. Use TRADE on a card in your collection.</div>
+    <h2 class="mt">Escrow — claim your cards</h2>
+    <div class="cards" id="marketPendingCards"></div>
   </section>
 
   <footer><span id="contractLink" class="mono"></span></footer>

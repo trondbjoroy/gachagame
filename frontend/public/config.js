@@ -6,5 +6,9 @@ window.GAME = {
   gems: '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2',
   // Get a free project id at https://cloud.reown.com and paste it here to
   // enable WalletConnect pairing with the Hathor mobile/desktop wallet.
+  market: {
+    blueprint: '00c4494c84a8e74393a491f39aca4f49efa3ec022e4336e780dcb55c3f4341fc',
+    nc: '00c059067c19717c856364913d2b3950be4379c8762c13c2b5b91d0ed4ab7620',
+  },
   wcProjectId: '',
 };

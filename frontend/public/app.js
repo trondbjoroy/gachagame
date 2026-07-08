@@ -2,6 +2,7 @@
    selected wallet adapter (demo proxy, MetaMask Snap, or WalletConnect). */
 
 const NC = window.GAME.nc;
+const MKT = window.GAME.market; // {nc, blueprint} or null
 const GEMS = window.GAME.gems;
 const HTR = '00';
 const CARD_AMT = 100; // one card = 100 base units ('1.00')
@@ -29,6 +30,7 @@ const S = {
   cards: new Map(),      // uid -> {name,tier,power,pending,staker,mine,pendingGems}
   gemsLedger: 0, wins: 0,
   duels: [], selected: new Set(), busy: false,
+  listings: [], swaps: [], marketFunds: 0,
 };
 
 /* ---------------- chain reads ---------------- */
@@ -98,19 +100,51 @@ async function loadContract() {
   } else S.duels = [];
 }
 
+async function loadMarket() {
+  if (!MKT) return;
+  const mkState = qs => node(`/nano_contract/state?id=${MKT.nc}&` + qs);
+  const mCalls = async cs => {
+    const out = {};
+    for (let i = 0; i < cs.length; i += 30) {
+      const d = await mkState(callQs(cs.slice(i, i + 30)));
+      for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
+    }
+    return out;
+  };
+  const base = await mCalls(['get_listing_count()', 'get_swap_count()']
+    .concat(S.addr ? [`get_funds("${S.addr}")`] : []));
+  S.marketFunds = S.addr ? (base[`get_funds("${S.addr}")`] || 0) : 0;
+  const ln = base['get_listing_count()'] || 0, sn = base['get_swap_count()'] || 0;
+  const cs = [];
+  for (let i = 0; i < ln; i++) cs.push(`get_listing(${i})`, `get_listing_seller(${i})`);
+  for (let i = 0; i < sn; i++) cs.push(`get_swap(${i})`, `get_swap_maker(${i})`);
+  for (const c of S.cards.values()) cs.push(`get_pending_owner("${c.uid}")`);
+  const d = await mCalls(cs);
+  S.listings = [...Array(ln).keys()].map(i => {
+    const [status, card, price] = (d[`get_listing(${i})`] || '||').split('|');
+    return { id: i, status, card, price: Number(price || 0), seller: d[`get_listing_seller(${i})`] };
+  }).reverse();
+  S.swaps = [...Array(sn).keys()].map(i => {
+    const [status, give, want] = (d[`get_swap(${i})`] || '||').split('|');
+    return { id: i, status, give, want, maker: d[`get_swap_maker(${i})`] };
+  }).reverse();
+  for (const c of S.cards.values()) c.marketPending = d[`get_pending_owner("${c.uid}")`] ?? null;
+}
+
 async function loadMine() {
   if (!S.wallet) return;
   S.htr = await S.wallet.htrBalance().catch(() => 0);
   S.gemsWallet = await S.wallet.tokenBalance(GEMS).catch(() => 0);
   for (const c of S.cards.values()) {
     if (c.tier < 0) { c.mine = false; continue; }
-    if (c.pending || c.staker) { c.mine = false; continue; } // in contract custody
+    if (c.pending || c.staker || c.marketPending) { c.mine = false; continue; } // in custody
     c.mine = (await S.wallet.tokenBalance(c.uid).catch(() => 0)) > 0;
   }
 }
 
 async function refresh() {
   await loadContract();
+  await loadMarket().catch(() => {});
   await loadMine();
   render();
 }
@@ -158,6 +192,8 @@ function render() {
     <div class="row-btns">
       <button class="mini-btn" data-stake="${c.uid}">STAKE</button>
       <button class="mini-btn alt" data-duel="${c.uid}">DUEL</button>
+      ${MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>
+      <button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : ''}
     </div>`, true)).join('');
   $('collectionEmpty').hidden = mine.length > 0;
 
@@ -208,6 +244,40 @@ function render() {
   }).join('');
   $('duelEmpty').hidden = S.duels.length > 0;
 
+  if (MKT) {
+    $('marketFunds').textContent = `Sale proceeds: ${fmtHtr(S.marketFunds)}`;
+    $('wdFundsBtn').hidden = S.marketFunds < 1;
+    const cardBit = uid => {
+      const c = S.cards.get(uid);
+      const t = TIERS[c?.tier ?? 0];
+      return `<span class="duel-emoji">${c ? emojiFor(c) : '\u2754'}</span>
+        <div class="duel-info"><b>${c?.name ?? '?'}</b> <span style="color:${t.color}">\u26a1${c?.power ?? '?'}</span>`;
+    };
+    $('listingList').innerHTML = S.listings.map(l => `
+      <div class="duel ${l.status}">${cardBit(l.card)}
+        <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${l.seller === S.addr ? 'you' : short(l.seller || '?')}</div></div>
+        ${l.status === 'open' ? (l.seller === S.addr
+          ? `<button class="mini-btn alt" data-cancellisting="${l.id}">CANCEL</button>`
+          : `<button class="mini-btn" data-buy="${l.id}" data-price="${l.price}">BUY</button>`)
+          : '<span class="duel-done">sold</span>'}
+      </div>`).join('');
+    $('listingEmpty').hidden = S.listings.length > 0;
+    $('swapList').innerHTML = S.swaps.map(w => {
+      const wantMine = S.cards.get(w.want)?.mine;
+      return `<div class="duel ${w.status}">${cardBit(w.give)}
+        <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${w.maker === S.addr ? 'you' : short(w.maker || '?')}</div></div>
+        ${w.status === 'open' ? (w.maker === S.addr
+          ? `<button class="mini-btn alt" data-cancelswap="${w.id}">CANCEL</button>`
+          : (wantMine ? `<button class="mini-btn" data-acceptswap="${w.id}" data-want="${w.want}">SWAP</button>` : '<span class="duel-done">need the wanted card</span>'))
+          : '<span class="duel-done">done</span>'}
+      </div>`;
+    }).join('');
+    $('swapEmpty').hidden = S.swaps.length > 0;
+    const mpend = [...S.cards.values()].filter(c => c.marketPending === S.addr);
+    $('marketPendingCards').innerHTML = mpend.map(c =>
+      cardBox(c, `<button class="claim-mini" data-mclaim="${c.uid}">CLAIM</button>`)).join('');
+  }
+
   bindListActions();
 }
 
@@ -233,6 +303,22 @@ function bindListActions() {
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
+  bind('[data-sell]', u => {
+    const p = Math.floor(Number(prompt('Ask price in HTR cents (e.g. 5 = 0.05 HTR):', '5')));
+    if (p > 0) doTx('Listing card', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
+  });
+  bind('[data-trade]', u => {
+    const want = (prompt('Token UID of the card you want in return:') || '').trim().toLowerCase();
+    if (/^[0-9a-f]{64}$/.test(want)) doTx('Offering swap', 'offer_swap', [want], [depAct(u, CARD_AMT)], { target: MKT });
+    else if (want) alert('That is not a valid 64-hex token UID.');
+  });
+  bind('[data-cancellisting]', id => doTx('Cancelling listing', 'cancel_listing', [Number(id)], [], { target: MKT }));
+  bind('[data-cancelswap]', id => doTx('Cancelling swap', 'cancel_swap', [Number(id)], [], { target: MKT }));
+  bind('[data-mclaim]', u => doTx('Claiming card', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT }));
+  document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () =>
+    doTx('Buying card', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
+  document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () =>
+    doTx('Swapping', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
 }
 
 const depAct = (token, amount) => ({ type: 'deposit', token, amount });
@@ -257,12 +343,12 @@ async function waitForExecution(hash, onTick) {
   }
 }
 
-async function doTx(label, method, args, actions, { silent } = {}) {
+async function doTx(label, method, args, actions, { silent, target } = {}) {
   if (S.busy || !S.wallet) return null;
   S.busy = true; render();
   if (!silent) { $('waitTitle').textContent = label + '…'; $('waitStatus').textContent = 'confirm in your wallet, then wait for a block'; showStage('stageWait'); }
   try {
-    const { hash } = await S.wallet.executeNano(method, args, actions);
+    const { hash } = await S.wallet.executeNano(method, args, actions, target);
     if (!silent) $('waitStatus').textContent = `tx ${hash.slice(0, 16)}… waiting for confirmation`;
     await waitForExecution(hash, s => { $('waitTimer').textContent = s + 's'; });
     await refresh();
@@ -404,12 +490,13 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
   $(id).onclick = () => { $('overlay').hidden = true; };
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
-  for (const p of ['collection', 'farm', 'arena']) $('pane-' + p).hidden = p !== el.dataset.tab;
+  for (const p of ['collection', 'farm', 'arena', 'market']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
 $('wdGemsBtn')?.addEventListener('click', () => {});
 document.addEventListener('click', e => {
   if (e.target.id === 'wdGemsBtn') doTx('Withdrawing GEMS', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)]);
   if (e.target.id === 'depGemsBtn') doTx('Depositing GEMS', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
+  if (e.target.id === 'wdFundsBtn') doTx('Withdrawing funds', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT });
 });
 $('contractLink').innerHTML =
   `contract <a href="https://explorer.playground.testnet.hathor.network/transaction/${NC}" target="_blank">${NC}</a> · GachaArena · Hathor testnet-playground`;

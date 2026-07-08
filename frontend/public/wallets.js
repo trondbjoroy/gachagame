@@ -27,12 +27,12 @@ class DemoWallet {
     return this.address;
   }
 
-  async executeNano(method, args, actions) {
+  async executeNano(method, args, actions, target) {
     const r = await fetch('/api/wallet/nano-contracts/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-wallet-id': 'player' },
       body: JSON.stringify({
-        nc_id: window.GAME.nc, method, address: this.address,
+        nc_id: (target || window.GAME).nc, method, address: this.address,
         data: { args, actions },
       }),
     });
@@ -78,11 +78,11 @@ class SnapWallet {
     return this.address;
   }
 
-  async executeNano(method, args, actions) {
+  async executeNano(method, args, actions, target) {
     const res = await this.invoke('htr_sendNanoContractTx', {
       method,
-      blueprint_id: window.GAME.blueprint,
-      nc_id: window.GAME.nc,
+      blueprint_id: (target || window.GAME).blueprint,
+      nc_id: (target || window.GAME).nc,
       actions: rpcActions(actions),
       args,
       push_tx: true,
@@ -150,11 +150,11 @@ class WcWallet {
     });
   }
 
-  async executeNano(method, args, actions) {
+  async executeNano(method, args, actions, target) {
     const res = await this.request('htr_sendNanoContractTx', {
       method,
-      blueprint_id: window.GAME.blueprint,
-      nc_id: window.GAME.nc,
+      blueprint_id: (target || window.GAME).blueprint,
+      nc_id: (target || window.GAME).nc,
       actions: rpcActions(actions),
       args,
       push_tx: true,

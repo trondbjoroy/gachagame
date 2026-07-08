@@ -21,6 +21,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
 const NC = '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8';
+const MKT_NC = process.env.MARKET_NC || '00c059067c19717c856364913d2b3950be4379c8762c13c2b5b91d0ed4ab7620';
 const GEMS = '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_GEMS = 100_000;   // gems-cents per single ledger move
@@ -73,6 +74,17 @@ const gemsWd = a => a.type === 'withdrawal' && a.token === GEMS && gemsAmt(a) &&
 const isHex64 = v => typeof v === 'string' && HEX64.test(v);
 const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_GEMS;
 
+const MKT_METHODS = {
+  list_card:      { actions: [cardDep],  args: [v => Number.isInteger(v) && v > 0 && v <= MAX_DEPOSIT] },
+  buy:            { actions: [htrDep],   args: [isSmallInt] },
+  cancel_listing: { actions: [],         args: [isSmallInt] },
+  offer_swap:     { actions: [cardDep],  args: [isHex64] },
+  accept_swap:    { actions: [cardDep],  args: [isSmallInt] },
+  cancel_swap:    { actions: [],         args: [isSmallInt] },
+  claim_card:     { actions: [cardWd],   args: [] },
+  withdraw_funds: { actions: [a => a.type === 'withdrawal' && a.token === '00' && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_DEPOSIT && a.address === playerAddress], args: [] },
+};
+
 const METHODS = {
   pull:          { actions: [htrDep],          args: [] },
   claim_card:    { actions: [cardWd],          args: [] },
@@ -89,10 +101,11 @@ const METHODS = {
 
 function validExecute(body) {
   if (!body || typeof body !== 'object') return 'bad body';
-  if (body.nc_id !== NC) return 'unknown contract';
+  const table = body.nc_id === NC ? METHODS : (body.nc_id === MKT_NC ? MKT_METHODS : null);
+  if (!table) return 'unknown contract';
   if (!playerAddress) return 'wallet not ready, try again shortly';
   if (body.address !== playerAddress) return 'caller address not allowed';
-  const spec = METHODS[body.method];
+  const spec = table[body.method];
   if (!spec) return 'method not allowed';
   const data = body.data || {};
   const args = data.args || [];
