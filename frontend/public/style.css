@@ -47,10 +47,8 @@ main { position: relative; z-index: 1; max-width: 1020px; margin: 0 auto; paddin
 header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 13px; }
 .brand .mark {
-  width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
-  background: linear-gradient(135deg, #caa03f, #e6bd5e);
-  color: #241703; font-family: 'Cinzel', serif; font-size: 24px; font-weight: 700;
-  box-shadow: 0 8px 30px -8px rgba(212, 168, 67, .55);
+  width: 42px; height: 42px; display: grid; place-items: center;
+  filter: drop-shadow(0 6px 18px rgba(212, 168, 67, .35));
 }
 .wordmark { font-family: 'Cinzel', serif; font-size: 21px; letter-spacing: .12em; }
 .netline { font-size: 11.5px; color: var(--ink-dim); letter-spacing: .04em; margin-top: 2px; }
@@ -70,7 +68,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 @media (max-width: 760px) { .machine-panel { grid-template-columns: 1fr; text-align: center; } .machine { margin: 0 auto; } }
 .machine { width: 100%; max-width: 300px; position: relative; }
 .machine img {
-  display: block; width: 100%; height: 440px; object-fit: cover; object-position: center 58%;
+  display: block; width: 100%; height: 440px; object-fit: cover; object-position: center 74%;
   border-radius: var(--r-md);
   border: 1px solid rgba(212, 168, 67, .22);
 }
