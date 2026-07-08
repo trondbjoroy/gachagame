@@ -68,7 +68,18 @@ header.top { display: flex; align-items: center; justify-content: space-between;
   border: 1px solid var(--line); background: var(--panel); border-radius: var(--r-lg); padding: 40px 36px 44px;
 }
 @media (max-width: 760px) { .machine-panel { grid-template-columns: 1fr; text-align: center; } .machine { margin: 0 auto; } }
-.machine { width: 220px; }
+.machine { width: 100%; max-width: 300px; position: relative; }
+.machine img {
+  display: block; width: 100%; height: 320px; object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(212, 168, 67, .22);
+}
+.machine::after {
+  content: ''; position: absolute; inset: 0; border-radius: var(--r-md);
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 62% 40%, transparent 45%, rgba(11, 10, 8, .55) 100%);
+  box-shadow: inset 0 0 0 1px rgba(212, 168, 67, .12), inset 0 -40px 60px -30px rgba(11, 10, 8, .8);
+}
 .machine.shaking { animation: shake .5s ease-in-out infinite; }
 @keyframes shake {
   0%, 100% { transform: rotate(0deg); }
