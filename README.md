@@ -1,59 +1,73 @@
-# Hathor Gacha — onchain gacha game on Hathor Network
+# Hathor Gacha Arena — a complete onchain game on Hathor Network
 
-A fully onchain gacha machine (Collector Crypt-style, minus physical items) running on
-Hathor's **testnet-playground** as a nano contract. Prizes are 1-of-1 NFT tokens held by
-the contract; draws use Hathor's consensus-safe onchain RNG (`syscall.rng`, ChaCha20).
+Gacha pulls, NFT staking ("GEM farming", MOBOX-style), card fusion (Illuvium-style)
+and power-weighted PvP duels (Gods Unchained-lite) — implemented as a single Hathor
+nano contract with the consensus-safe onchain RNG. No oracle, no backend game server.
 
-## Deployed on testnet-playground (2026-07-07)
+## Game design
+
+- **Pull (0.05 HTR)** — the contract rolls a rarity tier (60/30/9/1% in basis points),
+  picks a card template, and **mints a fresh 1-of-1 card token** (100 base units =
+  "1.00") with an RNG-rolled **power stat** (base per tier + roll). Claim it to your wallet.
+- **GEM Farm** — stake cards into the contract; they accrue **GEMS** (a
+  contract-created token) per minute by tier: 0.01 / 0.03 / 0.10 / 0.40. Rewards
+  live in an in-contract ledger; withdraw them as real GEMS tokens any time (pull
+  proceeds provide the HTR collateral that GEMS minting requires — the economy is
+  self-funding).
+- **Fusion (0.05 GEMS)** — burn (melt) two same-tier cards and receive a next-tier
+  card that inherits 10% of the parents' combined power.
+- **Arena** — open a duel by depositing a card + a GEMS wager; an opponent accepts
+  with their card; the contract rolls `randbelow(powerA + powerB)` — winner takes
+  the pot minus a 5% house rake. Cards always return to their owners; win counts
+  are tracked onchain.
+
+## Deployed on testnet-playground (2026-07-08, v2)
 
 | Thing | ID |
 |---|---|
-| Blueprint (`GachaMachine`) | `006f4431bcfeea625e5e062913c73a29f5da3ee59548b5ce26ec87725ae5f535` |
-| Gacha contract instance | `00afd03115df73ad6aee7c168284144702a70e5d8e2acd820591d36fb76e05fb` |
+| Blueprint (`GachaArena`) | `00d087732f8c308833fb49cd5ed177384e49666a6fc40f0676cf5e1980d2c588` |
+| Game contract | `00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8` |
+| GEMS token | `3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2` |
 | Operator wallet | `Wer2yUudABEUzKbM8Q2qQFvLgW2s5kFkzG` (seed in `wallet-headless.config.js`, testnet-only) |
-| Player wallet | `WSAici31LzwhrgKaRiXHFjWx3XF4eGTiUE` |
+| Demo player wallet | `WSAici31LzwhrgKaRiXHFjWx3XF4eGTiUE` |
 
-Explorer: https://explorer.playground.testnet.hathor.network/
+All mechanics verified live onchain: pulls with power rolls, claims, staking + GEMS
+accrual, ledger withdrawals (with mint-collateral path), fusion (two Pixel Slimes
+melted -> rare Crystal Golem, power bonus applied), and a duel resolved by the RNG.
 
-Config at deploy: pull price **5** (0.05 HTR), tier weights **6000/3000/900/100** bps
-(common/rare/epic/legendary).
+The v1 pre-stocked `GachaMachine` (blueprint
+`006f4431bcfeea625e5e062913c73a29f5da3ee59548b5ce26ec87725ae5f535`, contract
+`00afd03115df73ad6aee7c168284144702a70e5d8e2acd820591d36fb76e05fb`) remains onchain;
+its source is kept at `blueprint/gacha_machine.py`.
 
-### Prize tokens minted inside the contract
+## Wallet connection
 
-| Prize | Tier | Token UID |
-|---|---|---|
-| Pixel Slime | 0 common | `a7e5c998087b724593385db9bcc6bcf62f1324321be3859c29d90c8c09497f23` |
-| Rusty Dagger | 0 common | `52d170e7aca0c78d8862a7adb127410101412c2274b1793f04093dbbe2601781` |
-| Storm Falcon | 1 rare | `d5be17e3d131bf8a97d1c9075e02bddf3f7d4370615812e7a635742dd3c05e45` |
-| Crystal Golem | 1 rare | `4bdc8bdcd274a968a9a0e28cc7dd751cc41d424a566f2c88956b78302b2f6cde` |
-| Shadow Dragon | 2 epic | `f761a271af407c32bd2bd8dc4ef68edcbdf2c02db703091ebdd3447be82061a3` |
-| Genesis Phoenix | 3 legendary | `1c06c1fa6354f13c8f7a70f3bf74621cd53251e8c0553db3d057f23e6394940f` |
+The frontend has three interchangeable wallet adapters (`frontend/public/wallets.js`),
+all speaking Hathor's wallet-dapp JSON-RPC (`htr_sendNanoContractTx` etc.):
 
-Live demo result: 5 pulls by the player wallet won both commons, both rares and the epic;
-all 5 claimed to the player wallet. The legendary is still inside the machine.
+1. **MetaMask (Hathor Snap)** — connects via `wallet_requestSnaps` to `npm:@hathor/snap`.
+2. **WalletConnect / Reown** — pairs the official Hathor mobile/desktop wallet by QR.
+   Needs a free project id from https://cloud.reown.com in `frontend/public/config.js`.
+3. **Demo wallet** — the shared custodial wallet through the hardened server proxy;
+   zero-setup instant play.
 
-## How the game works
+Caveat: the Snap and WalletConnect paths are implemented to spec but could not be
+end-to-end tested here — user wallets don't serve the playground network's
+tx-mining, so they become fully usable when the contract is redeployed to a network
+the official wallets serve (testnet/mainnet). The demo adapter is fully tested.
 
-1. **Operator** instantiates `GachaMachine` with a pull price and 4 tier weights (basis points).
-2. **Operator stocks prizes** either way:
-   - `mint_prize(name, symbol, tier)` + 1-cent HTR deposit — the contract mints a fresh
-     1-of-1 token (no mint/melt authorities, so the supply is frozen at 1 forever).
-   - `deposit_prize(name, tier)` + deposit action of exactly 1 unit of an existing NFT.
-3. **Player calls `pull()`** with a deposit of exactly `pull_price` HTR. The contract:
-   - rolls a rarity tier weighted by the configured basis points (`rng.randbelow`),
-   - falls back to the nearest non-empty tier if the rolled one is empty,
-   - picks a uniformly random prize inside the tier (swap-and-pop removal),
-   - reserves the prize for the caller in `pending` and emits a `pull` event.
-4. **Player calls `claim()`** with a withdrawal action of 1 unit of the won token.
-5. **Operator calls `withdraw_proceeds()`** to collect accumulated pull fees.
+## Card tokenomics note
 
-Randomness: `self.syscall.rng` is Hathor's deterministic per-contract ChaCha20 RNG,
-seeded by consensus — every node computes the same draw, no oracle needed. (Good for
-games; not for secrets.)
+Cards are minted with 100 base units (displayed "1.00") rather than the classic
+1-unit NFT because the node rejects melting a single unit (the melt fee rounds to
+zero). 100 units keep the same 1-cent mint collateral, make melts legal, and the
+whole supply always moves as one indivisible chunk enforced by the contract.
 
 ## Repo layout
 
-- `blueprint/gacha_machine.py` — the nano contract (published on-chain verbatim).
+- `blueprint/gacha_arena.py` — the game contract (published on-chain verbatim);
+  `blueprint/gacha_machine.py` is the simpler v1.
+- `scripts/arena_test.py` — phased on-chain test driver used to verify every mechanic.
 - `frontend/` — web UI (vanilla JS, no build step). `server.js` is a zero-dependency
   Node server on **http://localhost:8090** that serves `public/` and proxies
   `/api/*` → wallet-headless and `/node/*` → the playground fullnode (avoids CORS).

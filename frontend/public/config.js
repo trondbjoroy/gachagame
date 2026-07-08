@@ -1,0 +1,10 @@
+// GachaArena deployment + wallet-connect configuration
+window.GAME = {
+  network: 'testnet', // hathor network name used by snap/walletconnect
+  blueprint: '00d087732f8c308833fb49cd5ed177384e49666a6fc40f0676cf5e1980d2c588',
+  nc: '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8',
+  gems: '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2',
+  // Get a free project id at https://cloud.reown.com and paste it here to
+  // enable WalletConnect pairing with the Hathor mobile/desktop wallet.
+  wcProjectId: '',
+};

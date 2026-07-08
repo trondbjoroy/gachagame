@@ -20,8 +20,10 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-const NC = '00afd03115df73ad6aee7c168284144702a70e5d8e2acd820591d36fb76e05fb';
-const MAX_DEPOSIT = 100; // cents; the contract enforces the exact pull price
+const NC = '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8';
+const GEMS = '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2';
+const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
+const MAX_GEMS = 100_000;   // gems-cents per single ledger move
 const HEX64 = /^[0-9a-f]{64}$/;
 
 const MIME = {
@@ -60,29 +62,50 @@ function deny(res, code, msg) {
 }
 
 // ---- execute-body validation ----
+// per-method spec: expected actions and arg validators
+const cardDep = a => a.type === 'deposit' && HEX64.test(a.token || '') && a.token !== GEMS && a.amount === 100;
+const cardWd = a => a.type === 'withdrawal' && HEX64.test(a.token || '') && a.token !== GEMS && a.amount === 100 && a.address === playerAddress;
+const htrDep = a => a.type === 'deposit' && a.token === '00'
+  && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_DEPOSIT;
+const gemsAmt = a => Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_GEMS;
+const gemsDep = a => a.type === 'deposit' && a.token === GEMS && gemsAmt(a);
+const gemsWd = a => a.type === 'withdrawal' && a.token === GEMS && gemsAmt(a) && a.address === playerAddress;
+const isHex64 = v => typeof v === 'string' && HEX64.test(v);
+const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_GEMS;
+
+const METHODS = {
+  pull:          { actions: [htrDep],          args: [] },
+  claim_card:    { actions: [cardWd],          args: [] },
+  stake:         { actions: [cardDep],         args: [] },
+  unstake:       { actions: [cardWd],          args: [] },
+  claim_gems:    { actions: [],                args: [isHex64] },
+  withdraw_gems: { actions: [gemsWd],          args: [] },
+  deposit_gems:  { actions: [gemsDep],         args: [] },
+  fuse:          { actions: [cardDep, cardDep], args: [] },
+  create_duel:   { actions: [cardDep],         args: [isSmallInt] },
+  accept_duel:   { actions: [cardDep],         args: [isSmallInt] },
+  cancel_duel:   { actions: [],                args: [isSmallInt] },
+};
+
 function validExecute(body) {
   if (!body || typeof body !== 'object') return 'bad body';
   if (body.nc_id !== NC) return 'unknown contract';
   if (!playerAddress) return 'wallet not ready, try again shortly';
   if (body.address !== playerAddress) return 'caller address not allowed';
+  const spec = METHODS[body.method];
+  if (!spec) return 'method not allowed';
   const data = body.data || {};
   const args = data.args || [];
   const actions = data.actions || [];
-  if (args.length !== 0) return 'args not allowed';
-  if (actions.length !== 1) return 'exactly one action required';
-  const a = actions[0];
-  if (body.method === 'pull') {
-    if (a.type !== 'deposit' || a.token !== '00') return 'pull needs an HTR deposit';
-    if (!Number.isInteger(a.amount) || a.amount <= 0 || a.amount > MAX_DEPOSIT) return 'bad amount';
-    return null;
+  if (args.length !== spec.args.length) return 'bad args';
+  for (let i = 0; i < args.length; i++) {
+    if (!spec.args[i](args[i])) return 'bad args';
   }
-  if (body.method === 'claim') {
-    if (a.type !== 'withdrawal' || !HEX64.test(a.token || '')) return 'claim needs a token withdrawal';
-    if (a.amount !== 1) return 'bad amount';
-    if (a.address !== playerAddress) return 'withdrawal address not allowed';
-    return null;
+  if (actions.length !== spec.actions.length) return 'bad actions';
+  for (let i = 0; i < actions.length; i++) {
+    if (typeof actions[i] !== 'object' || !spec.actions[i](actions[i])) return 'bad actions';
   }
-  return 'method not allowed';
+  return null;
 }
 
 async function forward(res, target, opts) {

@@ -1,152 +1,244 @@
-/* Hathor Gacha frontend — talks to local wallet-headless via /api proxy
-   and to the playground fullnode via /node proxy. */
+/* GachaArena frontend. Reads chain state via /node proxy; writes via the
+   selected wallet adapter (demo proxy, MetaMask Snap, or WalletConnect). */
 
-const NC = '00afd03115df73ad6aee7c168284144702a70e5d8e2acd820591d36fb76e05fb';
-const WALLET_ID = 'player';
+const NC = window.GAME.nc;
+const GEMS = window.GAME.gems;
 const HTR = '00';
+const CARD_AMT = 100; // one card = 100 base units ('1.00')
 
 const TIERS = [
-  { name: 'Common', color: 'var(--common)', key: 0 },
-  { name: 'Rare', color: 'var(--rare)', key: 1 },
-  { name: 'Epic', color: 'var(--epic)', key: 2 },
-  { name: 'Legendary', color: 'var(--legendary)', key: 3 },
+  { name: 'Common', color: 'var(--common)', pct: '60%', fallback: '🪙' },
+  { name: 'Rare', color: 'var(--rare)', pct: '30%', fallback: '💠' },
+  { name: 'Epic', color: 'var(--epic)', pct: '9%', fallback: '🔮' },
+  { name: 'Legendary', color: 'var(--legendary)', pct: '1%', fallback: '🌟' },
 ];
 const EMOJI = {
   'Pixel Slime': '🟢', 'Rusty Dagger': '🗡️', 'Storm Falcon': '🦅',
   'Crystal Golem': '🗿', 'Shadow Dragon': '🐉', 'Genesis Phoenix': '🔥',
   'Moss Snail': '🐌', 'Tin Knight': '🛡️', 'Ember Fox': '🦊', 'Void Kraken': '🐙',
 };
-const emojiFor = name => EMOJI[name] || '🎁';
-const fmtHtr = cents => (cents / 100).toFixed(2) + ' HTR';
+const emojiFor = c => EMOJI[c.name] || TIERS[c.tier]?.fallback || '🎁';
+const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
+const fmtGems = c => (c / 100).toFixed(2) + ' GEMS';
+const short = u => u.slice(0, 10) + '…';
 const $ = id => document.getElementById(id);
 
-const state = {
-  address: null,
-  htr: 0,
-  pullPrice: null,
-  weights: [6000, 3000, 900, 100],
-  poolSizes: [0, 0, 0, 0],
-  totalPulls: 0,
-  prizes: [],        // {uid, name, tier, pendingFor, ownedByMe}
-  busy: false,
+const S = {
+  wallet: null, addr: null, htr: 0, gemsWallet: 0,
+  pullPrice: null, totalPulls: 0,
+  cards: new Map(),      // uid -> {name,tier,power,pending,staker,mine,pendingGems}
+  gemsLedger: 0, wins: 0,
+  duels: [], selected: new Set(), busy: false,
 };
 
-async function api(path, opts = {}) {
-  const r = await fetch('/api' + path, {
-    ...opts,
-    headers: { 'x-wallet-id': WALLET_ID, 'Content-Type': 'application/json', ...(opts.headers || {}) },
-  });
-  return r.json();
-}
-async function node(path) {
-  const r = await fetch('/node' + path);
-  return r.json();
-}
-const ncState = qs => node(`/nano_contract/state?id=${NC}&` + qs);
+/* ---------------- chain reads ---------------- */
 
-/* ---------------- data loading ---------------- */
+async function node(path) { return (await fetch('/node' + path)).json(); }
+const ncState = qs => node(`/nano_contract/state?id=${NC}&` + qs);
+const callQs = cs => cs.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
+
+async function batchCalls(cs) {
+  const out = {};
+  for (let i = 0; i < cs.length; i += 30) {
+    const d = await ncState(callQs(cs.slice(i, i + 30)));
+    for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
+  }
+  return out;
+}
 
 async function loadContract() {
-  const base = await ncState(
-    'balances[]=__all__&fields[]=total_pulls&fields[]=pull_price' +
-    '&calls[]=' + encodeURIComponent('get_pool_size(0)') +
-    '&calls[]=' + encodeURIComponent('get_pool_size(1)') +
-    '&calls[]=' + encodeURIComponent('get_pool_size(2)') +
-    '&calls[]=' + encodeURIComponent('get_pool_size(3)')
-  );
-  state.pullPrice = base.fields.pull_price.value;
-  state.totalPulls = base.fields.total_pulls.value;
-  state.poolSizes = [0, 1, 2, 3].map(i => base.calls[`get_pool_size(${i})`].value);
+  const base = await ncState('balances[]=__all__&fields[]=total_pulls' + '&' +
+    callQs(['get_pull_price()', 'get_duel_count()']));
+  S.totalPulls = base.fields.total_pulls.value;
+  S.pullPrice = base.calls['get_pull_price()'].value;
+  const duelCount = base.calls['get_duel_count()'].value;
+  const uids = Object.keys(base.balances).filter(u => u !== HTR && u !== GEMS);
 
-  const uids = Object.keys(base.balances).filter(u => u !== HTR);
-  if (uids.length) {
-    const calls = uids.flatMap(u => [
-      `get_prize_name("${u}")`, `get_prize_tier("${u}")`, `get_pending_winner("${u}")`,
-    ]);
-    const qs = calls.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
-    const info = await ncState(qs);
-    state.prizes = uids.map(u => ({
-      uid: u,
-      name: info.calls[`get_prize_name("${u}")`].value,
-      tier: info.calls[`get_prize_tier("${u}")`].value,
-      pendingFor: info.calls[`get_pending_winner("${u}")`].value,
-      ownedByMe: false,
-    }));
+  // static card info is immutable — fetch once
+  const fresh = uids.filter(u => !S.cards.has(u));
+  if (fresh.length) {
+    const info = await batchCalls(fresh.flatMap(u =>
+      [`get_card_name("${u}")`, `get_card_tier("${u}")`, `get_card_power("${u}")`]));
+    for (const u of fresh) {
+      S.cards.set(u, {
+        uid: u, name: info[`get_card_name("${u}")`],
+        tier: info[`get_card_tier("${u}")`], power: info[`get_card_power("${u}")`],
+        pending: null, staker: null, mine: false, pendingGems: 0,
+      });
+    }
   }
+  const live = uids.filter(u => (S.cards.get(u)?.tier ?? -1) >= 0);
+  const dyn = await batchCalls(live.flatMap(u =>
+    [`get_pending_owner("${u}")`, `get_staker("${u}")`]));
+  const now = Math.floor(Date.now() / 1000);
+  for (const u of live) {
+    const c = S.cards.get(u);
+    c.pending = dyn[`get_pending_owner("${u}")`] ?? null;
+    c.staker = dyn[`get_staker("${u}")`] ?? null;
+  }
+  const stakedMine = live.filter(u => S.cards.get(u).staker === S.addr);
+  if (stakedMine.length) {
+    const pg = await batchCalls(stakedMine.map(u => `get_pending_gems("${u}", ${now})`));
+    for (const u of stakedMine) S.cards.get(u).pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
+  }
+
+  if (S.addr) {
+    const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`]);
+    S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
+    S.wins = me[`get_wins("${S.addr}")`] || 0;
+  }
+
+  if (duelCount > 0) {
+    const ids = [...Array(duelCount).keys()];
+    const dd = await batchCalls(ids.flatMap(i => [`get_duel(${i})`, `get_duel_challenger(${i})`]));
+    S.duels = ids.map(i => {
+      const [status, card, wager] = (dd[`get_duel(${i})`] || '||').split('|');
+      return { id: i, status, card, wager: Number(wager || 0), challenger: dd[`get_duel_challenger(${i})`] };
+    }).reverse();
+  } else S.duels = [];
 }
 
-async function loadWallet() {
-  const [addr, bal] = await Promise.all([api('/wallet/address?index=0'), api('/wallet/balance')]);
-  state.address = addr.address;
-  state.htr = bal.available;
-  await Promise.all(state.prizes.map(async p => {
-    const b = await api(`/wallet/balance?token=${p.uid}`);
-    p.ownedByMe = (b.available || 0) > 0;
-  }));
+async function loadMine() {
+  if (!S.wallet) return;
+  S.htr = await S.wallet.htrBalance().catch(() => 0);
+  S.gemsWallet = await S.wallet.tokenBalance(GEMS).catch(() => 0);
+  for (const c of S.cards.values()) {
+    if (c.tier < 0) { c.mine = false; continue; }
+    if (c.pending || c.staker) { c.mine = false; continue; } // in contract custody
+    c.mine = (await S.wallet.tokenBalance(c.uid).catch(() => 0)) > 0;
+  }
 }
 
 async function refresh() {
   await loadContract();
-  await loadWallet();
+  await loadMine();
   render();
 }
 
 /* ---------------- rendering ---------------- */
 
-function render() {
-  $('walletAddr').textContent = state.address ? state.address.slice(0, 10) + '…' + state.address.slice(-6) : '…';
-  $('walletHtr').textContent = fmtHtr(state.htr);
-
-  const wsum = state.weights.reduce((a, b) => a + b, 0);
-  $('odds').innerHTML = TIERS.map((t, i) =>
-    `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
-     <b style="color:${t.color}">${t.name}</b>
-     <span class="pct">${(state.weights[i] / wsum * 100).toFixed(1)}%</span>
-     <span class="left">${state.poolSizes[i]} left</span></div>`).join('');
-
-  const prizesLeft = state.poolSizes.reduce((a, b) => a + b, 0);
-  const canAfford = state.pullPrice != null && state.htr >= state.pullPrice;
-  const btn = $('pullBtn');
-  btn.disabled = state.busy || !canAfford || prizesLeft === 0 || state.pullPrice == null;
-  $('pullCost').textContent = state.pullPrice != null ? fmtHtr(state.pullPrice) : '…';
-  $('pullNote').innerHTML =
-    prizesLeft === 0 ? 'The machine is empty — the operator needs to restock.' :
-    !canAfford && state.pullPrice != null
-      ? `Not enough HTR — grab a drip from the <a href="https://faucet.hathor.dev" target="_blank">playground faucet</a> and send it to <span class="mono">${state.address || ''}</span>`
-      : `${prizesLeft} prize${prizesLeft === 1 ? '' : 's'} inside · draws settle on the next block (~30–90s)`;
-
-  $('statsRow').innerHTML = [
-    ['Total pulls', state.totalPulls],
-    ['Prizes inside', prizesLeft],
-    ['Pull price', state.pullPrice != null ? fmtHtr(state.pullPrice) : '…'],
-    ['Your balance', fmtHtr(state.htr)],
-  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-
-  const mine = p => p.pendingFor === state.address;
-  const pending = state.prizes.filter(mine);
-  $('pendingSection').hidden = pending.length === 0;
-  $('pendingCards').innerHTML = pending.map(p => prizeCard(p, true)).join('');
-
-  const owned = state.prizes.filter(p => p.ownedByMe);
-  $('collectionCards').innerHTML = owned.map(p => prizeCard(p, false)).join('');
-  $('collectionEmpty').hidden = owned.length > 0;
-
-  document.querySelectorAll('[data-claim]').forEach(b =>
-    b.addEventListener('click', () => claim(b.dataset.claim, b)));
-}
-
-function prizeCard(p, claimable) {
-  const t = TIERS[p.tier] || TIERS[0];
-  return `<div class="card" style="--rc:${t.color}">
-    <div class="emoji">${emojiFor(p.name)}</div>
-    <div class="name">${p.name}</div>
-    <div class="tier">${t.name}</div>
-    <div class="uid">${p.uid.slice(0, 24)}…</div>
-    ${claimable ? `<button class="claim-mini" data-claim="${p.uid}">CLAIM</button>` : ''}
+function cardBox(c, buttonsHtml, selectable) {
+  const t = TIERS[c.tier] || TIERS[0];
+  const sel = S.selected.has(c.uid) ? ' selected' : '';
+  return `<div class="card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+    <div class="emoji">${emojiFor(c)}</div>
+    <div class="name">${c.name}</div>
+    <div class="tier">${t.name} · ⚡${c.power}</div>
+    <div class="uid">${c.uid.slice(0, 18)}…</div>
+    ${buttonsHtml || ''}
   </div>`;
 }
 
-/* ---------------- tx helpers ---------------- */
+function render() {
+  $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
+  $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
+  $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
+
+  $('odds').innerHTML = TIERS.map(t =>
+    `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
+     <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
+
+  const canPull = S.addr && S.pullPrice != null && S.htr >= S.pullPrice && !S.busy;
+  $('pullBtn').disabled = !canPull;
+  $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
+  $('pullNote').innerHTML = !S.addr ? 'Connect a wallet to play.' :
+    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.hathor.dev" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
+    'Cards are minted onchain the moment your pull confirms (~30–90s).';
+
+  $('statsRow').innerHTML = [
+    ['Total pulls', S.totalPulls],
+    ['GEMS ledger', fmtGems(S.gemsLedger)],
+    ['GEMS in wallet', fmtGems(S.gemsWallet)],
+    ['Duel wins', S.wins],
+  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // collection
+  const mine = [...S.cards.values()].filter(c => c.mine);
+  $('collectionCards').innerHTML = mine.map(c => cardBox(c, `
+    <div class="row-btns">
+      <button class="mini-btn" data-stake="${c.uid}">STAKE</button>
+      <button class="mini-btn alt" data-duel="${c.uid}">DUEL</button>
+    </div>`, true)).join('');
+  $('collectionEmpty').hidden = mine.length > 0;
+
+  const pend = [...S.cards.values()].filter(c => c.pending === S.addr);
+  $('pendingCards').innerHTML = pend.map(c =>
+    cardBox(c, `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
+  $('pendingEmpty').hidden = pend.length > 0;
+
+  const selCount = S.selected.size;
+  $('fuseBar').hidden = mine.length < 2;
+  $('fuseHint').textContent = selCount === 2 ? 'Fuse into next tier:' : 'Select two cards of the same tier —';
+  $('fuseBtn').disabled = !(selCount === 2 && sameTierSelected() && !S.busy);
+
+  // farm
+  const staked = [...S.cards.values()].filter(c => c.staker === S.addr);
+  $('farmSummary').innerHTML = `
+    <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}</div>
+      <div class="row-btns">
+        <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 || S.busy ? 'disabled' : ''}>WITHDRAW ALL</button>
+        <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 || S.busy ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
+      </div></div>
+    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 0.01 · R 0.03 · E 0.10 · L 0.40</small></div></div>`;
+  $('stakedCards').innerHTML = staked.map(c => cardBox(c, `
+    <div class="pending-gems">⛏️ ${fmtGems(c.pendingGems)} pending</div>
+    <div class="row-btns">
+      <button class="mini-btn" data-claimgems="${c.uid}" ${c.pendingGems < 1 ? 'disabled' : ''}>CLAIM</button>
+      <button class="mini-btn alt" data-unstake="${c.uid}">UNSTAKE</button>
+    </div>`)).join('');
+  $('stakedEmpty').hidden = staked.length > 0;
+
+  // arena
+  $('duelList').innerHTML = S.duels.map(d => {
+    const c = S.cards.get(d.card);
+    const t = TIERS[c?.tier ?? 0];
+    const mineD = d.challenger === S.addr;
+    return `<div class="duel ${d.status}">
+      <span class="duel-emoji">${c ? emojiFor(c) : '❔'}</span>
+      <div class="duel-info">
+        <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
+        <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : short(d.challenger || '?')}</div>
+      </div>
+      ${d.status === 'open'
+        ? (mineD
+          ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
+          : `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`)
+        : '<span class="duel-done">settled</span>'}
+    </div>`;
+  }).join('');
+  $('duelEmpty').hidden = S.duels.length > 0;
+
+  bindListActions();
+}
+
+function sameTierSelected() {
+  const sel = [...S.selected].map(u => S.cards.get(u));
+  return sel.length === 2 && sel[0].tier === sel[1].tier && sel[0].tier < 3;
+}
+
+function bindListActions() {
+  document.querySelectorAll('[data-select]').forEach(el => el.onclick = e => {
+    if (e.target.closest('button')) return;
+    const u = el.dataset.select;
+    if (S.selected.has(u)) S.selected.delete(u);
+    else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(u); }
+    render();
+  });
+  const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el =>
+    el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
+  bind('[data-claim]', u => doTx('Claiming card', 'claim_card', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-stake]', u => doTx('Staking card', 'stake', [], [depAct(u, CARD_AMT)]));
+  bind('[data-unstake]', u => doTx('Unstaking card', 'unstake', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-claimgems]', u => doTx('Claiming GEMS', 'claim_gems', [u], []));
+  bind('[data-duel]', u => openPick('create', u));
+  bind('[data-acceptduel]', id => openPick('accept', Number(id)));
+  bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
+}
+
+const depAct = (token, amount) => ({ type: 'deposit', token, amount });
+const wdAct = (token, amount) => ({ type: 'withdrawal', token, amount, address: S.addr });
+
+/* ---------------- tx pipeline ---------------- */
 
 async function waitForExecution(hash, onTick) {
   const start = Date.now();
@@ -160,94 +252,171 @@ async function waitForExecution(hash, onTick) {
     const logs = await node(`/nano_contract/logs?id=${hash}`);
     if (logs.nc_execution === 'success') return;
     if (logs.nc_execution && logs.nc_execution !== 'pending') {
-      throw new Error('contract rejected the call (' + logs.nc_execution + ')');
+      throw new Error(`contract rejected the call (${logs.nc_execution})`);
     }
   }
 }
 
-/* ---------------- pull flow ---------------- */
-
-async function pull() {
-  if (state.busy) return;
-  state.busy = true;
-  render();
-  $('machine').classList.add('shaking');
-
-  const before = new Set(state.prizes.filter(p => p.pendingFor === state.address).map(p => p.uid));
-  showStage('stageWait');
-  $('overlay').hidden = false;
-
+async function doTx(label, method, args, actions, { silent } = {}) {
+  if (S.busy || !S.wallet) return null;
+  S.busy = true; render();
+  if (!silent) { $('waitTitle').textContent = label + '…'; $('waitStatus').textContent = 'confirm in your wallet, then wait for a block'; showStage('stageWait'); }
   try {
-    const resp = await api('/wallet/nano-contracts/execute', {
-      method: 'POST',
-      body: JSON.stringify({
-        nc_id: NC, method: 'pull', address: state.address,
-        data: { actions: [{ type: 'deposit', token: HTR, amount: state.pullPrice }] },
-      }),
-    });
-    if (!resp.success) throw new Error(resp.error || 'wallet rejected the transaction');
-    $('waitStatus').textContent = 'tx ' + resp.hash.slice(0, 18) + '… waiting for block confirmation';
-    await waitForExecution(resp.hash, s => { $('waitTimer').textContent = s + 's'; });
-
-    await loadContract();
-    const won = state.prizes.find(p => p.pendingFor === state.address && !before.has(p.uid));
-    await loadWallet();
-    if (!won) throw new Error('could not locate the won prize (refresh and check "waiting to be claimed")');
-
-    const t = TIERS[won.tier] || TIERS[0];
-    const card = $('prizeCard');
-    card.style.setProperty('--rc', t.color);
-    $('prizeEmoji').textContent = emojiFor(won.name);
-    $('prizeTier').textContent = t.name;
-    $('prizeName').textContent = won.name;
-    $('prizeUid').textContent = won.uid;
-    $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; claim(won.uid); };
-    showStage('stageReveal');
+    const { hash } = await S.wallet.executeNano(method, args, actions);
+    if (!silent) $('waitStatus').textContent = `tx ${hash.slice(0, 16)}… waiting for confirmation`;
+    await waitForExecution(hash, s => { $('waitTimer').textContent = s + 's'; });
+    await refresh();
+    if (!silent) $('overlay').hidden = true;
+    return hash;
   } catch (e) {
-    $('errTitle').textContent = 'Pull failed';
+    $('errTitle').textContent = label + ' failed';
     $('errMsg').textContent = e.message || String(e);
     showStage('stageError');
-  } finally {
-    $('machine').classList.remove('shaking');
-    state.busy = false;
-    render();
+    return null;
+  } finally { S.busy = false; render(); }
+}
+
+/* ---------------- flows ---------------- */
+
+async function pull() {
+  const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
+  $('machine').classList.add('shaking');
+  const winsBefore = S.wins;
+  const hash = await doTx('Pulling', 'pull', [], [depAct(HTR, S.pullPrice)], { silent: false });
+  $('machine').classList.remove('shaking');
+  if (!hash) return;
+  const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
+  if (!won) return;
+  const t = TIERS[won.tier];
+  $('prizeCard').style.setProperty('--rc', t.color);
+  $('prizeEmoji').textContent = emojiFor(won);
+  $('prizeTier').textContent = t.name;
+  $('prizeName').textContent = won.name;
+  $('prizePower').textContent = `⚡ POWER ${won.power}`;
+  $('prizeUid').textContent = won.uid;
+  $('revealClaimBtn').onclick = () => { doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  showStage('stageReveal');
+  $('overlay').hidden = false;
+}
+
+async function fuse() {
+  const [a, b] = [...S.selected];
+  S.selected.clear();
+  const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
+  const hash = await doTx('Fusing', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
+  if (!hash) return;
+  const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
+  if (!won) return;
+  const t = TIERS[won.tier];
+  $('prizeCard').style.setProperty('--rc', t.color);
+  $('prizeEmoji').textContent = emojiFor(won);
+  $('prizeTier').textContent = `FUSED · ${t.name}`;
+  $('prizeName').textContent = won.name;
+  $('prizePower').textContent = `⚡ POWER ${won.power}`;
+  $('prizeUid').textContent = won.uid;
+  $('revealClaimBtn').onclick = () => { doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  showStage('stageReveal');
+  $('overlay').hidden = false;
+}
+
+let pickCtx = null;
+function openPick(kind, ref) {
+  pickCtx = { kind, ref };
+  const mine = [...S.cards.values()].filter(c => c.mine);
+  if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You need a card in your wallet.'; showStage('stageError'); $('overlay').hidden = false; return; }
+  $('pickTitle').textContent = kind === 'create' ? 'Create duel — confirm card & wager' : `Accept duel #${ref} — choose your fighter`;
+  $('pickWagerRow').hidden = kind !== 'create';
+  if (kind === 'accept') {
+    const d = S.duels.find(x => x.id === ref);
+    $('pickTitle').textContent += ` (wager ${fmtGems(d.wager)})`;
+  }
+  $('pickCards').innerHTML = mine.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+  document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+  if (kind === 'create' && typeof ref === 'string') {
+    // preselect via direct card button
+  }
+  showStage('stagePick');
+  $('overlay').hidden = false;
+}
+
+async function submitPick(uid) {
+  const { kind, ref } = pickCtx;
+  $('overlay').hidden = true;
+  if (kind === 'create') {
+    const wager = Math.max(0, Number($('pickWager').value) || 0);
+    if (wager > S.gemsLedger) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `Ledger has ${fmtGems(S.gemsLedger)} — stake cards or deposit GEMS first.`; showStage('stageError'); $('overlay').hidden = false; return; }
+    await doTx('Creating duel', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
+  } else {
+    const winsBefore = S.wins;
+    const hash = await doTx('Duel', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
+    if (!hash) return;
+    const won = S.wins > winsBefore;
+    $('duelResult').innerHTML = won
+      ? '<div class="duel-banner win">🏆 VICTORY</div><div class="wait-sub">Your card takes the pot. Claim it back in Collection.</div>'
+      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is gone, but your card returns — claim it in Collection.</div>';
+    showStage('stageDuel');
+    $('overlay').hidden = false;
   }
 }
 
-/* ---------------- claim flow ---------------- */
+/* ---------------- wallet connect ---------------- */
 
-async function claim(uid, btnEl) {
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'CLAIMING…'; }
+async function connectWallet(kind) {
+  $('connectMsg').textContent = 'connecting…';
   try {
-    const resp = await api('/wallet/nano-contracts/execute', {
-      method: 'POST',
-      body: JSON.stringify({
-        nc_id: NC, method: 'claim', address: state.address,
-        data: { actions: [{ type: 'withdrawal', token: uid, amount: 1, address: state.address }] },
-      }),
-    });
-    if (!resp.success) throw new Error(resp.error || 'wallet rejected the claim');
-    // NFT is spendable as soon as the tx propagates; contract state catches up next block
-    const p = state.prizes.find(x => x.uid === uid);
-    if (p) { p.ownedByMe = true; p.pendingFor = null; }
-    render();
+    let w;
+    if (kind === 'demo') w = new window.WALLETS.DemoWallet();
+    else if (kind === 'snap') w = new window.WALLETS.SnapWallet();
+    else w = new window.WALLETS.WcWallet();
+    const onUri = async uri => {
+      $('wcPair').hidden = false;
+      $('wcUri').value = uri;
+      try {
+        const QR = (await import('https://esm.sh/qrcode@1.5.4?bundle')).default;
+        await QR.toCanvas($('wcQr'), uri, { width: 220, margin: 1 });
+      } catch { $('wcQr').hidden = true; }
+    };
+    S.addr = await (kind === 'wc' ? w.connect(onUri) : w.connect());
+    S.wallet = w;
+    localStorage.setItem('gacha_wallet', kind === 'demo' ? 'demo' : '');
+    $('overlay').hidden = true;
+    $('wcPair').hidden = true;
+    await refresh();
   } catch (e) {
-    alert('Claim failed: ' + (e.message || e));
-    render();
+    $('connectMsg').textContent = e.message || String(e);
   }
 }
 
-/* ---------------- misc ---------------- */
+/* ---------------- misc / boot ---------------- */
 
 function showStage(id) {
-  for (const s of ['stageWait', 'stageReveal', 'stageError']) $(s).hidden = s !== id;
+  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick'])
+    $(s).hidden = s !== id;
+  $('overlay').hidden = false;
 }
 
-$('pullBtn').addEventListener('click', pull);
-$('revealCloseBtn').addEventListener('click', () => { $('overlay').hidden = true; });
-$('errCloseBtn').addEventListener('click', () => { $('overlay').hidden = true; });
+$('pullBtn').onclick = pull;
+$('fuseBtn').onclick = fuse;
+$('newDuelBtn').onclick = () => openPick('create', null);
+$('walletBtn').onclick = () => { $('connectMsg').textContent = ''; showStage('stageConnect'); };
+document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
+for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
+  $(id).onclick = () => { $('overlay').hidden = true; };
+document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
+  for (const p of ['collection', 'farm', 'arena']) $('pane-' + p).hidden = p !== el.dataset.tab;
+});
+$('wdGemsBtn')?.addEventListener('click', () => {});
+document.addEventListener('click', e => {
+  if (e.target.id === 'wdGemsBtn') doTx('Withdrawing GEMS', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)]);
+  if (e.target.id === 'depGemsBtn') doTx('Depositing GEMS', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
+});
 $('contractLink').innerHTML =
-  `contract <a href="https://explorer.playground.testnet.hathor.network/transaction/${NC}" target="_blank">${NC}</a> · GachaMachine blueprint · Hathor testnet-playground`;
+  `contract <a href="https://explorer.playground.testnet.hathor.network/transaction/${NC}" target="_blank">${NC}</a> · GachaArena · Hathor testnet-playground`;
 
-refresh().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
-setInterval(() => { if (!state.busy) refresh().catch(() => {}); }, 30000);
+(async () => {
+  await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
+  render();
+  if (localStorage.getItem('gacha_wallet') === 'demo') await connectWallet('demo');
+})();
+setInterval(() => { if (!S.busy) refresh().catch(() => {}); }, 45000);

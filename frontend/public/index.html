@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Hathor Gacha</title>
+<title>Hathor Gacha Arena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Aldrich&family=Inter:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
@@ -18,25 +18,22 @@
     <div class="brand">
       <div class="mark">H</div>
       <div>
-        <div class="wordmark">HATHOR GACHA</div>
-        <div class="netline">testnet-playground · fully onchain · RNG by consensus</div>
+        <div class="wordmark">GACHA ARENA</div>
+        <div class="netline">hathor testnet-playground · pull · farm · fuse · duel</div>
       </div>
     </div>
-    <div class="wallet-chip" id="walletChip">
-      <span class="dot"></span>
-      <span id="walletAddr">connecting…</span>
+    <button class="wallet-chip as-btn" id="walletBtn">
+      <span class="dot off" id="walletDot"></span>
+      <span id="walletAddr">Connect wallet</span>
       <span class="htr" id="walletHtr"></span>
-    </div>
+    </button>
   </header>
 
   <section class="machine-panel">
     <div class="machine-col">
       <div class="machine" id="machine">
         <svg viewBox="0 0 220 300" width="220" height="300" aria-hidden="true">
-          <!-- dome -->
           <circle cx="110" cy="105" r="88" fill="rgba(13,203,255,.06)" stroke="rgba(13,203,255,.35)" stroke-width="3"/>
-          <circle cx="110" cy="105" r="88" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
-          <!-- capsules -->
           <g id="capsules">
             <circle cx="80"  cy="130" r="17" class="cap c0"/>
             <circle cx="115" cy="140" r="17" class="cap c1"/>
@@ -46,24 +43,19 @@
             <circle cx="68"  cy="95"  r="17" class="cap c1b"/>
           </g>
           <ellipse cx="110" cy="192" rx="86" ry="10" fill="rgba(0,0,0,.4)"/>
-          <!-- body -->
           <rect x="30" y="190" width="160" height="82" rx="14" fill="#0d1430" stroke="rgba(191,246,88,.35)" stroke-width="2"/>
-          <!-- knob -->
-          <circle cx="110" cy="228" r="20" fill="#050a24" stroke="rgba(191,246,88,.8)" stroke-width="3" id="knob"/>
-          <rect x="104" y="212" width="12" height="32" rx="5" fill="rgba(191,246,88,.8)" id="knobBar"/>
-          <!-- chute -->
+          <circle cx="110" cy="228" r="20" fill="#050a24" stroke="rgba(191,246,88,.8)" stroke-width="3"/>
+          <rect x="104" y="212" width="12" height="32" rx="5" fill="rgba(191,246,88,.8)"/>
           <rect x="152" y="236" width="26" height="22" rx="5" fill="#020617" stroke="rgba(255,255,255,.15)"/>
         </svg>
       </div>
     </div>
-
     <div class="pull-col">
-      <h1>Insert HTR.<br/>Turn the crank.<br/><span class="accent">Own the pull.</span></h1>
-      <p class="sub">Every draw is decided by Hathor's onchain ChaCha20 RNG inside the
-      nano contract — no server, no oracle, provably the same result on every node.</p>
-
+      <h1>Pull. Farm. Fuse.<br/><span class="accent">Fight.</span></h1>
+      <p class="sub">Every card is a 1-of-1 token minted by the contract with an RNG-rolled
+      power stat. Stake cards to farm <b>GEMS</b>, fuse two of a kind into the next
+      rarity, and wager GEMS in power-weighted duels — all onchain, no oracle.</p>
       <div class="odds" id="odds"></div>
-
       <button id="pullBtn" class="pull-btn" disabled>
         <span class="pull-label">PULL</span>
         <span class="pull-cost" id="pullCost"></span>
@@ -74,50 +66,110 @@
 
   <section class="stats-row" id="statsRow"></section>
 
-  <section class="shelf" id="pendingSection" hidden>
-    <h2>🎉 Won — waiting to be claimed</h2>
-    <div class="cards" id="pendingCards"></div>
-  </section>
+  <nav class="tabs" id="tabs">
+    <button data-tab="collection" class="tab active">Collection</button>
+    <button data-tab="farm" class="tab">GEM Farm</button>
+    <button data-tab="arena" class="tab">Arena</button>
+  </nav>
 
-  <section class="shelf">
-    <h2>Your collection</h2>
+  <section class="shelf tabpane" id="pane-collection">
+    <div class="pane-head">
+      <h2>Your cards</h2>
+      <div class="fuse-bar" id="fuseBar" hidden>
+        <span id="fuseHint"></span>
+        <button class="mini-btn" id="fuseBtn" disabled>FUSE (0.05 GEMS)</button>
+      </div>
+    </div>
     <div class="cards" id="collectionCards"></div>
-    <div class="empty" id="collectionEmpty" hidden>No prizes yet. Turn the crank!</div>
+    <div class="empty" id="collectionEmpty" hidden>No cards yet — turn the crank!</div>
+    <h2 class="mt">Won — waiting to be claimed</h2>
+    <div class="cards" id="pendingCards"></div>
+    <div class="empty" id="pendingEmpty" hidden>Nothing pending.</div>
   </section>
 
-  <footer>
-    <span id="contractLink" class="mono"></span>
-  </footer>
+  <section class="shelf tabpane" id="pane-farm" hidden>
+    <div class="farm-summary" id="farmSummary"></div>
+    <h2>Staked cards</h2>
+    <div class="cards" id="stakedCards"></div>
+    <div class="empty" id="stakedEmpty" hidden>Stake a card from your collection to start farming GEMS.</div>
+  </section>
+
+  <section class="shelf tabpane" id="pane-arena" hidden>
+    <div class="pane-head">
+      <h2>Duels</h2>
+      <button class="mini-btn" id="newDuelBtn">CREATE DUEL</button>
+    </div>
+    <div class="duels" id="duelList"></div>
+    <div class="empty" id="duelEmpty" hidden>No duels yet. Create one!</div>
+  </section>
+
+  <footer><span id="contractLink" class="mono"></span></footer>
 </main>
 
-<!-- reveal overlay -->
+<!-- overlays -->
 <div class="overlay" id="overlay" hidden>
   <div class="overlay-inner">
-    <div class="stage stage-wait" id="stageWait">
+    <div class="stage" id="stageWait" hidden>
       <div class="capsule-drop"><div class="capsule"><div class="capsule-top"></div><div class="capsule-bottom"></div></div></div>
-      <div class="wait-title">Transaction in the mempool…</div>
-      <div class="wait-sub" id="waitStatus">waiting for a block to confirm the draw</div>
+      <div class="wait-title" id="waitTitle">Transaction in the mempool…</div>
+      <div class="wait-sub" id="waitStatus">waiting for a block to confirm</div>
       <div class="wait-timer mono" id="waitTimer">0s</div>
     </div>
-    <div class="stage stage-reveal" id="stageReveal" hidden>
+    <div class="stage" id="stageReveal" hidden>
       <div class="prize-card" id="prizeCard">
         <div class="prize-emoji" id="prizeEmoji"></div>
         <div class="prize-tier" id="prizeTier"></div>
         <div class="prize-name" id="prizeName"></div>
+        <div class="prize-power" id="prizePower"></div>
         <div class="prize-uid mono" id="prizeUid"></div>
       </div>
       <button class="claim-btn" id="revealClaimBtn">CLAIM TO WALLET</button>
       <button class="ghost-btn" id="revealCloseBtn">later</button>
     </div>
-    <div class="stage stage-error" id="stageError" hidden>
+    <div class="stage" id="stageDuel" hidden>
+      <div class="duel-result" id="duelResult"></div>
+      <button class="ghost-btn" id="duelCloseBtn">close</button>
+    </div>
+    <div class="stage" id="stageError" hidden>
       <div class="err-emoji">💥</div>
-      <div class="wait-title" id="errTitle">Pull failed</div>
+      <div class="wait-title" id="errTitle">Failed</div>
       <div class="wait-sub" id="errMsg"></div>
       <button class="ghost-btn" id="errCloseBtn">close</button>
+    </div>
+    <div class="stage" id="stageConnect" hidden>
+      <div class="wait-title">Connect a wallet</div>
+      <div class="connect-list">
+        <button class="connect-opt" data-wallet="snap">
+          <b>🦊 MetaMask</b><span>Hathor Snap — HTR inside MetaMask</span>
+        </button>
+        <button class="connect-opt" data-wallet="wc">
+          <b>🔗 WalletConnect</b><span>Pair the Hathor mobile / desktop wallet</span>
+        </button>
+        <button class="connect-opt" data-wallet="demo">
+          <b>🎮 Demo wallet</b><span>Shared custodial wallet — zero setup, instant play</span>
+        </button>
+      </div>
+      <div class="wc-pair" id="wcPair" hidden>
+        <canvas id="wcQr" width="220" height="220"></canvas>
+        <div class="wait-sub">Scan with the Hathor wallet, or copy the URI:</div>
+        <textarea id="wcUri" readonly rows="3"></textarea>
+      </div>
+      <div class="wait-sub" id="connectMsg"></div>
+      <button class="ghost-btn" id="connectCloseBtn">close</button>
+    </div>
+    <div class="stage" id="stagePick" hidden>
+      <div class="wait-title" id="pickTitle">Choose a card</div>
+      <div class="cards pick-cards" id="pickCards"></div>
+      <div class="pick-wager" id="pickWagerRow">
+        <label>Wager (GEMS-cents): <input type="number" id="pickWager" value="0" min="0" step="1"></label>
+      </div>
+      <button class="ghost-btn" id="pickCloseBtn">cancel</button>
     </div>
   </div>
 </div>
 
+<script src="config.js"></script>
+<script src="wallets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

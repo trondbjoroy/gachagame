@@ -198,3 +198,74 @@ footer a { color: var(--cyan); text-decoration: none; }
   border: none; color: var(--ink-dim); font-size: 13px; text-decoration: underline;
 }
 .err-emoji { font-size: 54px; margin-bottom: 18px; }
+
+/* v2: tabs, arena, farm, connect */
+.wallet-chip.as-btn { cursor: pointer; transition: border-color .15s; }
+.wallet-chip.as-btn:hover { border-color: var(--acid); }
+.wallet-chip .dot.off { background: var(--ink-dim); box-shadow: none; }
+
+.tabs { display: flex; gap: 8px; margin-top: 44px; border-bottom: 1px solid var(--line); }
+.tab {
+  background: none; border: none; cursor: pointer; color: var(--ink-dim);
+  font-family: 'Aldrich', sans-serif; font-size: 14px; letter-spacing: .1em;
+  padding: 12px 18px; border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--acid); border-bottom-color: var(--acid); }
+.tabpane { margin-top: 26px; }
+.mt { margin-top: 34px !important; }
+
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.mini-btn {
+  cursor: pointer; font-family: 'Aldrich', sans-serif; letter-spacing: .08em; font-size: 12px;
+  color: #06210a; background: linear-gradient(135deg, var(--acid), var(--acid-hot));
+  border: none; border-radius: 8px; padding: 8px 14px;
+}
+.mini-btn.alt { background: none; color: var(--ink-muted); border: 1px solid var(--line); }
+.mini-btn:disabled { filter: grayscale(.75) brightness(.6); cursor: not-allowed; }
+.row-btns { display: flex; gap: 8px; margin-top: 12px; }
+.row-btns .mini-btn { flex: 1; }
+
+.card.selected { outline: 2px solid var(--acid); outline-offset: 2px; }
+.fuse-bar { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-muted); }
+.pending-gems { margin-top: 10px; font-family: 'Fragment Mono', monospace; font-size: 12px; color: var(--acid); }
+
+.farm-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.farm-summary .row-btns { margin-top: 12px; }
+
+.duels { display: flex; flex-direction: column; gap: 12px; }
+.duel {
+  display: flex; align-items: center; gap: 16px;
+  border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 14px 18px;
+}
+.duel.closed { opacity: .45; }
+.duel-emoji { font-size: 30px; }
+.duel-info { flex: 1; font-size: 14px; }
+.duel-meta { font-size: 11.5px; color: var(--ink-dim); margin-top: 3px; }
+.duel-done { font-size: 11px; letter-spacing: .12em; color: var(--ink-dim); text-transform: uppercase; }
+
+.connect-list { display: flex; flex-direction: column; gap: 10px; margin: 22px auto 14px; max-width: 360px; }
+.connect-opt {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  cursor: pointer; border: 1px solid var(--line); background: var(--panel);
+  border-radius: 12px; padding: 13px 16px; color: var(--ink); font-family: 'Inter', sans-serif;
+}
+.connect-opt:hover { border-color: var(--acid); }
+.connect-opt b { font-size: 15px; }
+.connect-opt span { font-size: 12px; color: var(--ink-dim); }
+.wc-pair { margin-top: 14px; }
+.wc-pair canvas { background: #fff; border-radius: 12px; padding: 6px; }
+.wc-pair textarea {
+  width: 100%; max-width: 360px; margin-top: 8px; background: rgba(0,0,0,.4);
+  border: 1px solid var(--line); border-radius: 8px; color: var(--ink-muted);
+  font-family: 'Fragment Mono', monospace; font-size: 10px; padding: 8px;
+}
+.pick-cards { max-width: 640px; margin: 22px auto; max-height: 46vh; overflow-y: auto; }
+.pick-wager { color: var(--ink-muted); font-size: 14px; }
+.pick-wager input {
+  width: 90px; background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 7px;
+  color: var(--ink); font-family: 'Fragment Mono', monospace; padding: 6px 9px; margin-left: 8px;
+}
+.prize-power { margin-top: 8px; font-family: 'Fragment Mono', monospace; font-size: 15px; color: var(--ink); }
+.duel-banner { font-family: 'Aldrich', sans-serif; font-size: 40px; letter-spacing: .1em; margin-bottom: 14px; }
+.duel-banner.win { color: var(--acid); text-shadow: 0 0 40px rgba(191,246,88,.5); }
+.duel-banner.lose { color: var(--danger, #ff6b8a); }
