@@ -10,5 +10,5 @@ window.GAME = {
   },
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.
-  wcProjectId: 'bb36c8bcfd09cf5e6c4ca13c5db2b4e2',
+  wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
 };
