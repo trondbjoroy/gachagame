@@ -304,8 +304,11 @@ function bindListActions() {
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
   bind('[data-sell]', u => {
-    const p = Math.floor(Number(prompt('Ask price in HTR cents (e.g. 5 = 0.05 HTR):', '5')));
-    if (p > 0) doTx('Listing card', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
+    const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
+    if (raw === null) return;
+    const p = Math.floor(Number(raw));
+    if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
+    doTx('Listing card', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
   });
   bind('[data-trade]', u => {
     const want = (prompt('Token UID of the card you want in return:') || '').trim().toLowerCase();

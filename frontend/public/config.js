@@ -5,8 +5,8 @@ window.GAME = {
   nc: '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8',
   gems: '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2',
   market: {
-    blueprint: '00c4494c84a8e74393a491f39aca4f49efa3ec022e4336e780dcb55c3f4341fc',
-    nc: '00c059067c19717c856364913d2b3950be4379c8762c13c2b5b91d0ed4ab7620',
+    blueprint: '00837059d28414c67004c1ec6c08187b2c559c8db374210c00022077262e68e4',
+    nc: '00d0f42e839ea9dd4ff82fc48205844a6ee549f06ba14c16fb8d8b761b9cab13',
   },
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.

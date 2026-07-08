@@ -21,10 +21,11 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
 const NC = '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8';
-const MKT_NC = process.env.MARKET_NC || '00c059067c19717c856364913d2b3950be4379c8762c13c2b5b91d0ed4ab7620';
+const MKT_NC = process.env.MARKET_NC || '00d0f42e839ea9dd4ff82fc48205844a6ee549f06ba14c16fb8d8b761b9cab13';
 const GEMS = '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_GEMS = 100_000;   // gems-cents per single ledger move
+const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
 const HEX64 = /^[0-9a-f]{64}$/;
 
 const MIME = {
@@ -74,15 +75,17 @@ const gemsWd = a => a.type === 'withdrawal' && a.token === GEMS && gemsAmt(a) &&
 const isHex64 = v => typeof v === 'string' && HEX64.test(v);
 const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_GEMS;
 
+const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
+  && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR;
 const MKT_METHODS = {
-  list_card:      { actions: [cardDep],  args: [v => Number.isInteger(v) && v > 0 && v <= MAX_DEPOSIT] },
-  buy:            { actions: [htrDep],   args: [isSmallInt] },
+  list_card:      { actions: [cardDep],      args: [v => Number.isInteger(v) && v > 0 && v <= MAX_HTR] },
+  buy:            { actions: [marketHtrDep], args: [isSmallInt] },
   cancel_listing: { actions: [],         args: [isSmallInt] },
   offer_swap:     { actions: [cardDep],  args: [isHex64] },
   accept_swap:    { actions: [cardDep],  args: [isSmallInt] },
   cancel_swap:    { actions: [],         args: [isSmallInt] },
   claim_card:     { actions: [cardWd],   args: [] },
-  withdraw_funds: { actions: [a => a.type === 'withdrawal' && a.token === '00' && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_DEPOSIT && a.address === playerAddress], args: [] },
+  withdraw_funds: { actions: [a => a.type === 'withdrawal' && a.token === '00' && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR && a.address === playerAddress], args: [] },
 };
 
 const METHODS = {
