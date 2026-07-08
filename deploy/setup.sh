@@ -50,8 +50,16 @@ if ! grep -q 'reverse_proxy 127.0.0.1:8090' /etc/caddy/Caddyfile 2>/dev/null; th
   cp deploy/Caddyfile /etc/caddy/Caddyfile
 fi
 systemctl enable --now caddy
+systemctl reload caddy || systemctl restart caddy
 
 echo
+cat > /etc/cron.daily/gacha-faucet <<'CRON'
+#!/bin/sh
+ADDR=$(curl -s -m 10 localhost:8090/api/wallet/address?index=0 | grep -o 'W[1-9A-HJ-NP-Za-km-z]*')
+[ -n "$ADDR" ] && curl -s -m 30 -X POST https://faucet.hathor.dev/api/drip -H 'Content-Type: application/json' -d "{\"address\":\"$ADDR\"}" >/dev/null 2>&1
+CRON
+chmod +x /etc/cron.daily/gacha-faucet
+
 echo "Done. Next steps:"
 echo "  1. Point your domain's A record at this server."
 echo "  2. Edit /etc/caddy/Caddyfile (replace gacha.example.com), then: systemctl reload caddy"
