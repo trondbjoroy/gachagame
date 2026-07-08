@@ -70,7 +70,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 @media (max-width: 760px) { .machine-panel { grid-template-columns: 1fr; text-align: center; } .machine { margin: 0 auto; } }
 .machine { width: 100%; max-width: 300px; position: relative; }
 .machine img {
-  display: block; width: 100%; height: 320px; object-fit: cover;
+  display: block; width: 100%; height: 440px; object-fit: cover; object-position: center 58%;
   border-radius: var(--r-md);
   border: 1px solid rgba(212, 168, 67, .22);
 }
