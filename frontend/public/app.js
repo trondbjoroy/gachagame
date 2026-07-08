@@ -497,7 +497,22 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
-$('walletBtn').onclick = () => { $('connectMsg').textContent = ''; showStage('stageConnect'); };
+async function disconnectWallet() {
+  await S.wallet?.disconnect?.().catch(() => {});
+  S.wallet = null; S.addr = null; S.htr = 0; S.gemsWallet = 0;
+  S.gemsLedger = 0; S.wins = 0; S.selected.clear();
+  for (const c of S.cards.values()) c.mine = false;
+  localStorage.removeItem('gacha_wallet');
+  $('overlay').hidden = true;
+  render();
+}
+
+$('walletBtn').onclick = () => {
+  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${short(S.addr)}` : '';
+  $('disconnectBtn').hidden = !S.addr;
+  showStage('stageConnect');
+};
+$('disconnectBtn').onclick = disconnectWallet;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };

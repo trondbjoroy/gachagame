@@ -202,6 +202,15 @@ class WcWallet {
   }
 
   async htrBalance() { return this.tokenBalance('00'); }
+
+  async disconnect() {
+    if (this.client && this.session) {
+      await this.client.disconnect({
+        topic: this.session.topic,
+        reason: { code: 6000, message: 'user disconnected' },
+      }).catch(() => {});
+    }
+  }
 }
 
 window.WALLETS = { DemoWallet, SnapWallet, WcWallet };
