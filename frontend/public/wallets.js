@@ -9,6 +9,26 @@
 
 const SNAP_ID = 'npm:@hathor/snap';
 
+// Locate a Snaps-capable MetaMask provider. Other wallet extensions
+// (Brave Wallet, Coinbase, ...) often shadow window.ethereum, and
+// MetaMask Mobile's in-app browser does not support Snaps at all.
+async function findMetaMask() {
+  const announced = [];
+  const onAnnounce = e => announced.push(e.detail);
+  window.addEventListener('eip6963:announceProvider', onAnnounce);
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+  await new Promise(r => setTimeout(r, 300));
+  window.removeEventListener('eip6963:announceProvider', onAnnounce);
+  const mm = announced.find(d => /metamask/i.test(d.info?.name || ''));
+  if (mm) return mm.provider;
+  const multi = window.ethereum?.providers;
+  if (Array.isArray(multi)) {
+    const p = multi.find(x => x.isMetaMask);
+    if (p) return p;
+  }
+  return window.ethereum || null;
+}
+
 // amounts in htr_sendNanoContractTx actions are strings per the spec
 function rpcActions(actions) {
   return actions.map(a => ({ ...a, amount: String(a.amount) }));
@@ -59,15 +79,26 @@ class SnapWallet {
   constructor() { this.mode = 'snap'; this.label = 'MetaMask (Hathor Snap)'; this.address = null; }
 
   async invoke(method, params) {
-    return window.ethereum.request({
+    return this.provider.request({
       method: 'wallet_invokeSnap',
       params: { snapId: SNAP_ID, request: { method, params } },
     });
   }
 
   async connect() {
-    if (!window.ethereum) throw new Error('MetaMask is not installed');
-    await window.ethereum.request({ method: 'wallet_requestSnaps', params: { [SNAP_ID]: {} } });
+    this.provider = await findMetaMask();
+    if (!this.provider) throw new Error('MetaMask is not installed');
+    try {
+      await this.provider.request({ method: 'wallet_requestSnaps', params: { [SNAP_ID]: {} } });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (/unsupported method|method not found|does not exist|not supported/i.test(msg)) {
+        throw new Error('This browser wallet cannot run MetaMask Snaps. ' +
+          'Use the MetaMask browser extension (v11+) on desktop Chrome/Firefox, and if you have ' +
+          'several wallet extensions, disable the others — Snaps do not work in MetaMask Mobile.');
+      }
+      throw e;
+    }
     const info = await this.invoke('htr_getWalletInformation', { network: window.GAME.network });
     this.address = info && (info.address ?? info.response?.address ?? info.firstAddress);
     if (!this.address) {
