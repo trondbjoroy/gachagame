@@ -8,15 +8,19 @@ const HTR = '00';
 const CARD_AMT = 100; // one card = 100 base units ('1.00')
 
 const TIERS = [
-  { name: 'Common', color: 'var(--common)', pct: '60%', fallback: '🪙' },
-  { name: 'Rare', color: 'var(--rare)', pct: '30%', fallback: '💠' },
-  { name: 'Epic', color: 'var(--epic)', pct: '9%', fallback: '🔮' },
-  { name: 'Legendary', color: 'var(--legendary)', pct: '1%', fallback: '🌟' },
+  { name: 'Footman', color: 'var(--common)', pct: '60%', fallback: '🪓' },
+  { name: 'Knight', color: 'var(--rare)', pct: '30%', fallback: '🛡️' },
+  { name: 'Highlord', color: 'var(--epic)', pct: '9%', fallback: '🏰' },
+  { name: 'Sovereign', color: 'var(--legendary)', pct: '1%', fallback: '👑' },
 ];
 const EMOJI = {
   'Pixel Slime': '🟢', 'Rusty Dagger': '🗡️', 'Storm Falcon': '🦅',
   'Crystal Golem': '🗿', 'Shadow Dragon': '🐉', 'Genesis Phoenix': '🔥',
   'Moss Snail': '🐌', 'Tin Knight': '🛡️', 'Ember Fox': '🦊', 'Void Kraken': '🐙',
+  'Levy Spearman': '⚔️', 'Bog Witch': '🧙', 'Plague Rat': '🐀',
+  'Raven Keeper': '🐦‍⬛', 'Heartwood Archer': '🏹',
+  'Dire Wolf': '🐺', 'Barrow Wight': '💀',
+  'The Winter Sovereign': '❄️',
 };
 const emojiFor = c => EMOJI[c.name] || TIERS[c.tier]?.fallback || '🎁';
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
@@ -175,23 +179,23 @@ function render() {
   const canPull = S.addr && S.pullPrice != null && S.htr >= S.pullPrice;
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
-  $('pullNote').innerHTML = !S.addr ? 'Connect a wallet to play.' :
+  $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
     S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.hathor.dev" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
-    'Cards are minted onchain the moment your pull confirms (~30–90s).';
+    'The Weaver binds a champion the moment the next block witnesses it (~30–90s).';
 
   $('statsRow').innerHTML = [
-    ['Total pulls', S.totalPulls],
-    ['GEMS ledger', fmtGems(S.gemsLedger)],
-    ['GEMS in wallet', fmtGems(S.gemsWallet)],
-    ['Duel wins', S.wins],
+    ['Souls summoned', S.totalPulls],
+    ['Gems in ledger', fmtGems(S.gemsLedger)],
+    ['Gems in hand', fmtGems(S.gemsWallet)],
+    ['Trials won', S.wins],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
   // collection
   const mine = [...S.cards.values()].filter(c => c.mine);
   $('collectionCards').innerHTML = mine.map(c => cardBox(c, `
     <div class="row-btns">
-      <button class="mini-btn" data-stake="${c.uid}">STAKE</button>
-      <button class="mini-btn alt" data-duel="${c.uid}">DUEL</button>
+      <button class="mini-btn" data-stake="${c.uid}">MINE</button>
+      <button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>
       ${MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>
       <button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : ''}
     </div>`, true)).join('');
@@ -296,32 +300,32 @@ function bindListActions() {
   });
   const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el =>
     el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
-  bind('[data-claim]', u => doTx('Claiming card', 'claim_card', [], [wdAct(u, CARD_AMT)]));
-  bind('[data-stake]', u => doTx('Staking card', 'stake', [], [depAct(u, CARD_AMT)]));
-  bind('[data-unstake]', u => doTx('Unstaking card', 'unstake', [], [wdAct(u, CARD_AMT)]));
-  bind('[data-claimgems]', u => doTx('Claiming GEMS', 'claim_gems', [u], []));
+  bind('[data-claim]', u => doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-stake]', u => doTx('Sending to the mines', 'stake', [], [depAct(u, CARD_AMT)]));
+  bind('[data-unstake]', u => doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
-  bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
+  bind('[data-cancelduel]', id => doTx('Withdrawing challenge', 'cancel_duel', [Number(id)], []));
   bind('[data-sell]', u => {
     const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
     if (raw === null) return;
     const p = Math.floor(Number(raw));
     if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
-    doTx('Listing card', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
+    doTx('Crying your wares', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
   });
   bind('[data-trade]', u => {
     const want = (prompt('Token UID of the card you want in return:') || '').trim().toLowerCase();
-    if (/^[0-9a-f]{64}$/.test(want)) doTx('Offering swap', 'offer_swap', [want], [depAct(u, CARD_AMT)], { target: MKT });
+    if (/^[0-9a-f]{64}$/.test(want)) doTx('Proposing trade', 'offer_swap', [want], [depAct(u, CARD_AMT)], { target: MKT });
     else if (want) alert('That is not a valid 64-hex token UID.');
   });
-  bind('[data-cancellisting]', id => doTx('Cancelling listing', 'cancel_listing', [Number(id)], [], { target: MKT }));
-  bind('[data-cancelswap]', id => doTx('Cancelling swap', 'cancel_swap', [Number(id)], [], { target: MKT }));
-  bind('[data-mclaim]', u => doTx('Claiming card', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT }));
+  bind('[data-cancellisting]', id => doTx('Leaving the stall', 'cancel_listing', [Number(id)], [], { target: MKT }));
+  bind('[data-cancelswap]', id => doTx('Recanting the trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
+  bind('[data-mclaim]', u => doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT }));
   document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () =>
-    doTx('Buying card', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
+    doTx('Buying champion', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
   document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () =>
-    doTx('Swapping', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
+    doTx('Sealing the trade', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
 }
 
 const depAct = (token, amount) => ({ type: 'deposit', token, amount });
@@ -384,7 +388,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
 async function pull() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   $('machine').classList.add('shaking');
-  const hash = await doTx('Pulling', 'pull', [], [depAct(HTR, S.pullPrice)]);
+  const hash = await doTx('Summoning', 'pull', [], [depAct(HTR, S.pullPrice)]);
   $('machine').classList.remove('shaking');
   if (!hash) return;
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
@@ -400,7 +404,7 @@ function revealCard(won, tierLabel) {
   $('prizeName').textContent = won.name;
   $('prizePower').textContent = `\u26a1 POWER ${won.power}`;
   $('prizeUid').textContent = won.uid;
-  $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
   showStage('stageReveal');
 }
 
@@ -408,7 +412,7 @@ async function fuse() {
   const [a, b] = [...S.selected];
   S.selected.clear();
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
-  const hash = await doTx('Fusing', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
+  const hash = await doTx('Forging the Rite of Union', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
   if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
@@ -418,8 +422,8 @@ let pickCtx = null;
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
   const mine = [...S.cards.values()].filter(c => c.mine);
-  if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You need a card in your wallet.'; showStage('stageError'); $('overlay').hidden = false; return; }
-  $('pickTitle').textContent = kind === 'create' ? 'Create duel — confirm card & wager' : `Accept duel #${ref} — choose your fighter`;
+  if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
+  $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge — choose your champion & wager' : `Answer challenge #${ref} — choose your champion`;
   $('pickWagerRow').hidden = kind !== 'create';
   if (kind === 'accept') {
     const d = S.duels.find(x => x.id === ref);
@@ -440,15 +444,15 @@ async function submitPick(uid) {
   if (kind === 'create') {
     const wager = Math.max(0, Number($('pickWager').value) || 0);
     if (wager > S.gemsLedger) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `Ledger has ${fmtGems(S.gemsLedger)} — stake cards or deposit GEMS first.`; showStage('stageError'); $('overlay').hidden = false; return; }
-    await doTx('Creating duel', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
+    await doTx('Issuing challenge', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
   } else {
     const winsBefore = S.wins;
-    const hash = await doTx('Duel', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
+    const hash = await doTx('Trial by combat', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
     if (!hash) return;
     const won = S.wins > winsBefore;
     $('duelResult').innerHTML = won
-      ? '<div class="duel-banner win">🏆 VICTORY</div><div class="wait-sub">Your card takes the pot. Claim it back in Collection.</div>'
-      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is gone, but your card returns — claim it in Collection.</div>';
+      ? '<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. Your champion returns — claim them under Your Host.</div>'
+      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives — claim them under Your Host.</div>';
     showStage('stageDuel');
     $('overlay').hidden = false;
   }
@@ -503,9 +507,9 @@ document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
 });
 $('wdGemsBtn')?.addEventListener('click', () => {});
 document.addEventListener('click', e => {
-  if (e.target.id === 'wdGemsBtn') doTx('Withdrawing GEMS', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)]);
-  if (e.target.id === 'depGemsBtn') doTx('Depositing GEMS', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
-  if (e.target.id === 'wdFundsBtn') doTx('Withdrawing funds', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT });
+  if (e.target.id === 'wdGemsBtn') doTx('Drawing gems from the ledger', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)]);
+  if (e.target.id === 'depGemsBtn') doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
+  if (e.target.id === 'wdFundsBtn') doTx('Collecting your coin', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT });
 });
 $('contractLink').innerHTML =
   `contract <a href="https://explorer.playground.testnet.hathor.network/transaction/${NC}" target="_blank">${NC}</a> · GachaArena · Hathor testnet-playground`;

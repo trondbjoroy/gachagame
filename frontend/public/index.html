@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Gacha Arena — onchain card game on Hathor</title>
-<meta name="description" content="Pull cards minted by a nano contract, farm GEMS, fuse rarities, and duel other players — every move settles on the Hathor blockchain." />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>" />
+<title>Emberfall — a realm bound to the chain</title>
+<meta name="description" content="The throne of Emberfall sits empty. Summon champions bound in soulstone, work the deep mines, forge greater bloodlines, and face trial by combat — every deed witnessed on the Hathor blockchain." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Aldrich&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,10 +18,10 @@
 <main>
   <header class="top">
     <div class="brand">
-      <div class="mark">H</div>
+      <div class="mark">E</div>
       <div>
-        <div class="wordmark">GACHA ARENA</div>
-        <div class="netline">hathor testnet-playground · pull · farm · fuse · duel</div>
+        <div class="wordmark">EMBERFALL</div>
+        <div class="netline">a realm bound to the chain · summon · mine · forge · fight</div>
       </div>
     </div>
     <button class="wallet-chip as-btn" id="walletBtn">
@@ -35,7 +35,7 @@
     <div class="machine-col">
       <div class="machine" id="machine">
         <svg viewBox="0 0 220 300" width="220" height="300" aria-hidden="true">
-          <circle cx="110" cy="105" r="88" fill="rgba(184,230,92,.05)" stroke="rgba(184,230,92,.28)" stroke-width="3"/>
+          <circle cx="110" cy="105" r="88" fill="rgba(212,168,67,.05)" stroke="rgba(212,168,67,.3)" stroke-dasharray="6 10" stroke-width="3"/>
           <g id="capsules">
             <circle cx="80"  cy="130" r="17" class="cap c0"/>
             <circle cx="115" cy="140" r="17" class="cap c1"/>
@@ -45,21 +45,23 @@
             <circle cx="68"  cy="95"  r="17" class="cap c1b"/>
           </g>
           <ellipse cx="110" cy="192" rx="86" ry="10" fill="rgba(0,0,0,.4)"/>
-          <rect x="30" y="190" width="160" height="82" rx="14" fill="#0d1430" stroke="rgba(191,246,88,.35)" stroke-width="2"/>
-          <circle cx="110" cy="228" r="20" fill="#050a24" stroke="rgba(191,246,88,.8)" stroke-width="3"/>
-          <rect x="104" y="212" width="12" height="32" rx="5" fill="rgba(191,246,88,.8)"/>
+          <rect x="30" y="190" width="160" height="82" rx="10" fill="#171310" stroke="rgba(212,168,67,.35)" stroke-width="2"/>
+          <circle cx="110" cy="228" r="20" fill="#0d0a07" stroke="rgba(212,168,67,.8)" stroke-width="3"/>
+          <rect x="104" y="212" width="12" height="32" rx="5" fill="rgba(212,168,67,.8)"/>
           <rect x="152" y="236" width="26" height="22" rx="5" fill="#020617" stroke="rgba(255,255,255,.15)"/>
         </svg>
       </div>
     </div>
     <div class="pull-col">
-      <h1>Pull. Farm. Fuse.<br/><span class="accent">Fight.</span></h1>
-      <p class="sub">Every card is a 1-of-1 token minted by the contract with an RNG-rolled
-      power stat. Stake cards to farm <b>GEMS</b>, fuse two of a kind into the next
-      rarity, and wager GEMS in power-weighted duels — all onchain, no oracle.</p>
+      <h1>The throne is empty.<br/><span class="accent">Raise your host.</span></h1>
+      <p class="sub">The Blind Weaver binds a champion into soulstone with every summoning —
+      each one a 1-of-1 token with its power struck onchain. Send them to the deep mines
+      for <b>GEMS</b>, forge two of a station into a greater bloodline, and stake gems on
+      trial by combat in the Pit. Every deed is witnessed on the Great Ledger. No lord,
+      no oracle, no take-backs.</p>
       <div class="odds" id="odds"></div>
       <button id="pullBtn" class="pull-btn" disabled>
-        <span class="pull-label">PULL</span>
+        <span class="pull-label">SUMMON</span>
         <span class="pull-cost" id="pullCost"></span>
       </button>
       <div class="pull-note" id="pullNote"></div>
@@ -69,62 +71,82 @@
   <section class="stats-row" id="statsRow"></section>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="collection" class="tab active">Collection</button>
-    <button data-tab="farm" class="tab">GEM Farm</button>
-    <button data-tab="arena" class="tab">Arena</button>
-    <button data-tab="market" class="tab">Market</button>
-    <button data-tab="learn" class="tab">Learn</button>
+    <button data-tab="collection" class="tab active">Your Host</button>
+    <button data-tab="farm" class="tab">The Mines</button>
+    <button data-tab="arena" class="tab">The Pit</button>
+    <button data-tab="market" class="tab">The Bazaar</button>
+    <button data-tab="learn" class="tab">The Codex</button>
   </nav>
 
   <section class="shelf tabpane" id="pane-collection">
     <div class="pane-head">
-      <h2>Your cards</h2>
+      <h2>Sworn to your banner</h2>
       <div class="fuse-bar" id="fuseBar" hidden>
         <span id="fuseHint"></span>
         <button class="mini-btn" id="fuseBtn" disabled>FUSE (0.05 GEMS)</button>
       </div>
     </div>
     <div class="cards" id="collectionCards"></div>
-    <div class="empty" id="collectionEmpty" hidden>No cards yet — turn the crank!</div>
-    <h2 class="mt">Won — waiting to be claimed</h2>
+    <div class="empty" id="collectionEmpty" hidden>Your banner hangs bare. Summon a champion.</div>
+    <h2 class="mt">Newly bound — awaiting your claim</h2>
     <div class="cards" id="pendingCards"></div>
-    <div class="empty" id="pendingEmpty" hidden>Nothing pending.</div>
+    <div class="empty" id="pendingEmpty" hidden>No champion waits.</div>
   </section>
 
   <section class="shelf tabpane" id="pane-farm" hidden>
     <div class="farm-summary" id="farmSummary"></div>
-    <h2>Staked cards</h2>
+    <h2>Toiling in the deep</h2>
     <div class="cards" id="stakedCards"></div>
-    <div class="empty" id="stakedEmpty" hidden>Stake a card from your collection to start farming GEMS.</div>
+    <div class="empty" id="stakedEmpty" hidden>The mines stand silent. Send a champion down from your host.</div>
   </section>
 
   <section class="shelf tabpane" id="pane-arena" hidden>
     <div class="pane-head">
-      <h2>Duels</h2>
-      <button class="mini-btn" id="newDuelBtn">CREATE DUEL</button>
+      <h2>Trials by combat</h2>
+      <button class="mini-btn" id="newDuelBtn">ISSUE CHALLENGE</button>
     </div>
     <div class="duels" id="duelList"></div>
-    <div class="empty" id="duelEmpty" hidden>No duels yet. Create one!</div>
+    <div class="empty" id="duelEmpty" hidden>The Pit sands are unbloodied. Issue a challenge.</div>
   </section>
 
   <section class="shelf tabpane" id="pane-market" hidden>
     <div class="pane-head">
-      <h2>Card listings</h2>
+      <h2>Champions for coin</h2>
       <div class="fuse-bar"><span id="marketFunds"></span>
         <button class="mini-btn" id="wdFundsBtn" hidden>WITHDRAW</button></div>
     </div>
     <div class="duels" id="listingList"></div>
-    <div class="empty" id="listingEmpty" hidden>No listings. Use SELL on a card in your collection.</div>
-    <h2 class="mt">Swap offers</h2>
+    <div class="empty" id="listingEmpty" hidden>No merchant cries their wares. SELL a champion from your host.</div>
+    <h2 class="mt">Sworn trades</h2>
     <div class="duels" id="swapList"></div>
-    <div class="empty" id="swapEmpty" hidden>No swap offers. Use TRADE on a card in your collection.</div>
-    <h2 class="mt">Escrow — claim your cards</h2>
+    <div class="empty" id="swapEmpty" hidden>No trades proposed. Offer one with TRADE on a champion you hold.</div>
+    <h2 class="mt">Held by the guild — claim what is yours</h2>
     <div class="cards" id="marketPendingCards"></div>
   </section>
 
 
   <section class="shelf tabpane" id="pane-learn" hidden>
-    <h2>How to play</h2>
+    <h2>The chronicle of Emberfall</h2>
+    <div class="lore">
+      <p>When the last Sovereign died without an heir, the great houses tore the realm
+      apart rather than let a rival sit the throne. The maesters call it the Sundering.
+      To end it, the dying king's Ledgerkeepers worked one final rite: they bound the
+      realm's champions — its knights and beasts, its wights and firstborn flames —
+      into <b>soulstone</b>, and wrote every binding into the <b>Great Ledger</b>, a
+      book no lord can burn and no scribe can forge. A thousand unseen witnesses keep
+      it, and all of them must agree before a single word is written.</p>
+      <p>Above the Ledger sits the <b>Blind Weaver</b>, the fate that decides which
+      champion answers a summoning. She cannot be bribed, for she has no hands; she
+      cannot be read, for she has no eyes. Her threads are spun from the chain itself.</p>
+      <p>Now the banners are yours to raise. Summon champions at the brazier. Send them
+      into the <b>deep mines</b>, where soulstone sweats <b>gems</b>. Give two of equal
+      station to the <b>Rite of Union</b> and forge a greater bloodline. Wager gems on
+      <b>trial by combat</b> in the Pit, where the Crown still takes its tithe. Or sell
+      your sworn swords for coin in the Bazaar — the realm has always run on gold.</p>
+      <p>The throne of Emberfall stays empty. But a host must still be raised, and
+      every deed you do is witnessed forever.</p>
+    </div>
+    <h2 class="mt">How to play</h2>
     <ol class="guide">
       <li>
         <h3>Connect a wallet</h3>
@@ -141,8 +163,8 @@
         1 HTR per day &mdash; that is 20 pulls.</p>
       </li>
       <li>
-        <h3>Pull a card</h3>
-        <p>Hit <b>PULL</b>. The contract rolls a rarity tier
+        <h3>Summon a champion</h3>
+        <p>Light the brazier with <b>SUMMON</b>. The Blind Weaver rolls a station
         (<span class="mono">60% common &middot; 30% rare &middot; 9% epic &middot; 1% legendary</span>),
         picks a card, and mints it as a unique token with a random <b>power</b> stat.
         Rarer tiers roll higher power. The draw settles when the next block confirms,
@@ -150,7 +172,7 @@
         When it lands, claim the card to your wallet.</p>
       </li>
       <li>
-        <h3>Farm GEMS</h3>
+        <h3>Work the deep mines</h3>
         <p>Stake cards from your collection to earn <b>GEMS</b> per minute:
         <span class="mono">0.01 common &middot; 0.03 rare &middot; 0.10 epic &middot; 0.40 legendary</span>.
         Earnings accrue to your in-game ledger &mdash; claim them any time, and withdraw
@@ -158,14 +180,14 @@
         fusion and duel wagers.</p>
       </li>
       <li>
-        <h3>Fuse duplicates</h3>
+        <h3>Forge the Rite of Union</h3>
         <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
         (costs <span class="mono">0.05 GEMS</span> from your ledger). Both cards are
         burned and you receive a card of the next tier that inherits 10% of the
         parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
       </li>
       <li>
-        <h3>Fight in the arena</h3>
+        <h3>Face trial by combat</h3>
         <p>Open a duel with any card and an optional GEMS wager, or accept someone
         else&rsquo;s. The contract rolls a number below
         <span class="mono">powerA&nbsp;+&nbsp;powerB</span> &mdash; your chance to win is
@@ -173,7 +195,7 @@
         house rake. Cards always return to their owners; only the wager is at risk.</p>
       </li>
       <li>
-        <h3>Trade on the market</h3>
+        <h3>Barter in the Bazaar</h3>
         <p><b>SELL</b> lists a card at your asking price in HTR (2% fee on sale,
         proceeds withdrawable from the Market tab). <b>TRADE</b> offers your card
         for one specific card you want. Buying or swapping escrows through the
