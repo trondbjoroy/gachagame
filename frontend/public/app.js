@@ -499,7 +499,7 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
   $(id).onclick = () => { $('overlay').hidden = true; };
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
-  for (const p of ['collection', 'farm', 'arena', 'market']) $('pane-' + p).hidden = p !== el.dataset.tab;
+  for (const p of ['collection', 'farm', 'arena', 'market', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
 $('wdGemsBtn')?.addEventListener('click', () => {});
 document.addEventListener('click', e => {

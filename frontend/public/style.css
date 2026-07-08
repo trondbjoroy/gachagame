@@ -330,3 +330,26 @@ body::after {
 /* tinted shadows on primary actions (match background hue, not black) */
 .pull-btn { box-shadow: 0 14px 45px -12px rgba(164, 230, 53, .4), 0 4px 14px -6px rgba(5, 8, 23, .8); }
 .toast { box-shadow: 0 14px 40px -12px rgba(5, 8, 23, .85); }
+
+/* learn page */
+.guide { list-style: none; margin: 0; padding: 0; counter-reset: step; max-width: 64ch; }
+.guide li { counter-increment: step; position: relative; padding: 0 0 30px 58px; }
+.guide li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute; left: 0; top: 1px;
+  font-family: 'Fragment Mono', monospace; font-size: 13px; color: var(--acid);
+  border: 1px solid rgba(184, 230, 92, .3); border-radius: var(--r-sm);
+  padding: 6px 8px; background: rgba(184, 230, 92, .06);
+}
+.guide li:not(:last-child)::after {
+  content: ''; position: absolute; left: 16px; top: 40px; bottom: 8px;
+  width: 1px; background: var(--line);
+}
+.guide h3 { margin: 2px 0 7px; font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+.guide p { margin: 0; color: var(--ink-muted); font-size: 14px; line-height: 1.7; text-wrap: pretty; }
+.guide a, .faq a { color: var(--acid); text-decoration-color: rgba(184, 230, 92, .4); }
+
+.faq { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 26px 34px; }
+.faq .qa h4 { margin: 0 0 7px; font-size: 14.5px; font-weight: 700; letter-spacing: -.005em; }
+.faq .qa p { margin: 0; color: var(--ink-muted); font-size: 13.5px; line-height: 1.65; text-wrap: pretty; }
+@media (max-width: 700px) { .faq { grid-template-columns: 1fr; } }

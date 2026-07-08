@@ -73,6 +73,7 @@
     <button data-tab="farm" class="tab">GEM Farm</button>
     <button data-tab="arena" class="tab">Arena</button>
     <button data-tab="market" class="tab">Market</button>
+    <button data-tab="learn" class="tab">Learn</button>
   </nav>
 
   <section class="shelf tabpane" id="pane-collection">
@@ -119,6 +120,110 @@
     <div class="empty" id="swapEmpty" hidden>No swap offers. Use TRADE on a card in your collection.</div>
     <h2 class="mt">Escrow — claim your cards</h2>
     <div class="cards" id="marketPendingCards"></div>
+  </section>
+
+
+  <section class="shelf tabpane" id="pane-learn" hidden>
+    <h2>How to play</h2>
+    <ol class="guide">
+      <li>
+        <h3>Connect a wallet</h3>
+        <p>Click the wallet chip in the header. The <b>Demo wallet</b> is a shared,
+        zero-setup wallet that works instantly &mdash; best for trying the game.
+        <b>MetaMask (Hathor Snap)</b> and <b>WalletConnect</b> pair your own wallet;
+        they connect today, and signing goes live once the game is deployed on a
+        network the official wallets serve.</p>
+      </li>
+      <li>
+        <h3>Get HTR</h3>
+        <p>Pulls cost <span class="mono">0.05 HTR</span>. On the playground network the
+        <a href="https://faucet.hathor.dev" target="_blank" rel="noopener">faucet</a> sends
+        1 HTR per day &mdash; that is 20 pulls.</p>
+      </li>
+      <li>
+        <h3>Pull a card</h3>
+        <p>Hit <b>PULL</b>. The contract rolls a rarity tier
+        (<span class="mono">60% common &middot; 30% rare &middot; 9% epic &middot; 1% legendary</span>),
+        picks a card, and mints it as a unique token with a random <b>power</b> stat.
+        Rarer tiers roll higher power. The draw settles when the next block confirms,
+        usually 30&ndash;90 seconds; a corner toast tracks it while you keep playing.
+        When it lands, claim the card to your wallet.</p>
+      </li>
+      <li>
+        <h3>Farm GEMS</h3>
+        <p>Stake cards from your collection to earn <b>GEMS</b> per minute:
+        <span class="mono">0.01 common &middot; 0.03 rare &middot; 0.10 epic &middot; 0.40 legendary</span>.
+        Earnings accrue to your in-game ledger &mdash; claim them any time, and withdraw
+        ledger GEMS to your wallet as real tokens whenever you want. GEMS pay for
+        fusion and duel wagers.</p>
+      </li>
+      <li>
+        <h3>Fuse duplicates</h3>
+        <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
+        (costs <span class="mono">0.05 GEMS</span> from your ledger). Both cards are
+        burned and you receive a card of the next tier that inherits 10% of the
+        parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
+      </li>
+      <li>
+        <h3>Fight in the arena</h3>
+        <p>Open a duel with any card and an optional GEMS wager, or accept someone
+        else&rsquo;s. The contract rolls a number below
+        <span class="mono">powerA&nbsp;+&nbsp;powerB</span> &mdash; your chance to win is
+        your card&rsquo;s share of the total power. Winner takes the pot minus a 5%
+        house rake. Cards always return to their owners; only the wager is at risk.</p>
+      </li>
+      <li>
+        <h3>Trade on the market</h3>
+        <p><b>SELL</b> lists a card at your asking price in HTR (2% fee on sale,
+        proceeds withdrawable from the Market tab). <b>TRADE</b> offers your card
+        for one specific card you want. Buying or swapping escrows through the
+        market contract &mdash; claim your side from the escrow shelf after it settles.</p>
+      </li>
+    </ol>
+
+    <h2 class="mt">Questions</h2>
+    <div class="faq">
+      <div class="qa"><h4>Why does every action take about a minute?</h4>
+        <p>Every move is a real blockchain transaction. It confirms when the next
+        Hathor block includes it &mdash; typically 30&ndash;90 seconds. Nothing is
+        simulated; the toast in the corner shows the live status.</p></div>
+      <div class="qa"><h4>Is the randomness fair?</h4>
+        <p>Draws use Hathor&rsquo;s built-in ChaCha20 RNG inside the contract. The seed
+        comes from consensus, every node computes the same result, and no server
+        (including ours) can influence or predict a roll.</p></div>
+      <div class="qa"><h4>What exactly is a card?</h4>
+        <p>A real Hathor token with a fixed supply of 100 base units (shown as
+        &ldquo;1.00&rdquo;), minted by the game contract with its name, tier, and power
+        recorded onchain. It sits in your wallet like any other token and always moves
+        as one indivisible piece.</p></div>
+      <div class="qa"><h4>What backs GEMS?</h4>
+        <p>GEMS is a token created and minted by the game contract. Minting requires
+        HTR collateral, which comes from pull proceeds &mdash; so the reward pool is
+        funded by play, not by a promise.</p></div>
+      <div class="qa"><h4>Ledger GEMS vs wallet GEMS?</h4>
+        <p>The ledger is your balance inside the contract &mdash; where farming rewards
+        land and what fusion fees and wagers draw from. Wallet GEMS are real tokens you
+        hold. Move between them any time with WITHDRAW and DEPOSIT on the Farm tab.</p></div>
+      <div class="qa"><h4>Can I lose my cards?</h4>
+        <p>Only one action destroys cards: fusion burns both parents. Duels never take
+        cards &mdash; win or lose, your fighter returns and only the GEMS wager changes
+        hands. Staked, listed, and escrowed cards are always recoverable by you.</p></div>
+      <div class="qa"><h4>My own wallet says &ldquo;Invalid blueprint ID&rdquo;.</h4>
+        <p>Your wallet runs on a different Hathor network than this deployment
+        (testnet-playground). Use the Demo wallet for now; Snap and WalletConnect
+        signing activates when the game moves to the public testnet or mainnet.</p></div>
+      <div class="qa"><h4>Is any of this real money?</h4>
+        <p>No. Everything runs on a Hathor test network with valueless test HTR.
+        The mechanics are real; the money is not.</p></div>
+      <div class="qa"><h4>Where is the code and the contract?</h4>
+        <p>The contract source, frontend, and deployment scripts are open at
+        <a href="https://github.com/trondbjoroy/gachagame" target="_blank" rel="noopener">github.com/trondbjoroy/gachagame</a>.
+        The contract ID is in the footer &mdash; you can audit every rule described here.</p></div>
+      <div class="qa"><h4>What are the odds of a legendary?</h4>
+        <p>1% per pull, rolled independently each time. Or skip luck entirely: fuse
+        two epics. Two epics take four rares; four rares take eight commons &mdash;
+        a guaranteed legendary from 14 fusions&rsquo; worth of cards.</p></div>
+    </div>
   </section>
 
   <footer><span id="contractLink" class="mono"></span></footer>
