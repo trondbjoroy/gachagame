@@ -172,7 +172,7 @@ function render() {
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
      <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
 
-  const canPull = S.addr && S.pullPrice != null && S.htr >= S.pullPrice && !S.busy;
+  const canPull = S.addr && S.pullPrice != null && S.htr >= S.pullPrice;
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Connect a wallet to play.' :
@@ -205,15 +205,15 @@ function render() {
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
   $('fuseHint').textContent = selCount === 2 ? 'Fuse into next tier:' : 'Select two cards of the same tier —';
-  $('fuseBtn').disabled = !(selCount === 2 && sameTierSelected() && !S.busy);
+  $('fuseBtn').disabled = !(selCount === 2 && sameTierSelected());
 
   // farm
   const staked = [...S.cards.values()].filter(c => c.staker === S.addr);
   $('farmSummary').innerHTML = `
     <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}</div>
       <div class="row-btns">
-        <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 || S.busy ? 'disabled' : ''}>WITHDRAW ALL</button>
-        <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 || S.busy ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
+        <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 ? 'disabled' : ''}>WITHDRAW ALL</button>
+        <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
       </div></div>
     <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 0.01 · R 0.03 · E 0.10 · L 0.40</small></div></div>`;
   $('stakedCards').innerHTML = staked.map(c => cardBox(c, `
@@ -343,23 +343,33 @@ async function waitForExecution(hash, onTick) {
   }
 }
 
-async function doTx(label, method, args, actions, { silent, target } = {}) {
-  if (S.busy || !S.wallet) return null;
-  S.busy = true; render();
-  if (!silent) { $('waitTitle').textContent = label + '…'; $('waitStatus').textContent = 'confirm in your wallet, then wait for a block'; showStage('stageWait'); }
+let txSeq = 0;
+async function doTx(label, method, args, actions, { target } = {}) {
+  if (!S.wallet) return null;
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>${label}</b>
+    <span class="t-sub">sign & push\u2026</span></div><span class="t-time mono"></span>`;
+  $('txToasts').appendChild(el);
+  const sub = el.querySelector('.t-sub');
+  const tim = el.querySelector('.t-time');
   try {
     const { hash } = await S.wallet.executeNano(method, args, actions, target);
-    if (!silent) $('waitStatus').textContent = `tx ${hash.slice(0, 16)}… waiting for confirmation`;
-    await waitForExecution(hash, s => { $('waitTimer').textContent = s + 's'; });
+    sub.textContent = 'tx ' + hash.slice(0, 12) + '\u2026 confirming';
+    await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
+    el.classList.add('ok');
+    sub.textContent = 'confirmed';
+    setTimeout(() => el.remove(), 6000);
     await refresh();
-    if (!silent) $('overlay').hidden = true;
     return hash;
   } catch (e) {
-    $('errTitle').textContent = label + ' failed';
-    $('errMsg').textContent = e.message || String(e);
-    showStage('stageError');
+    el.classList.add('fail');
+    sub.textContent = e.message || String(e);
+    el.insertAdjacentHTML('beforeend', '<button class="t-x">\u2715</button>');
+    el.querySelector('.t-x').onclick = () => el.remove();
+    refresh().catch(() => {});
     return null;
-  } finally { S.busy = false; render(); }
+  }
 }
 
 /* ---------------- flows ---------------- */
@@ -367,22 +377,24 @@ async function doTx(label, method, args, actions, { silent, target } = {}) {
 async function pull() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   $('machine').classList.add('shaking');
-  const winsBefore = S.wins;
-  const hash = await doTx('Pulling', 'pull', [], [depAct(HTR, S.pullPrice)], { silent: false });
+  const hash = await doTx('Pulling', 'pull', [], [depAct(HTR, S.pullPrice)]);
   $('machine').classList.remove('shaking');
   if (!hash) return;
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
   if (!won) return;
-  const t = TIERS[won.tier];
+  revealCard(won, TIERS[won.tier].name);
+}
+
+function revealCard(won, tierLabel) {
+  const t = TIERS[won.tier] || TIERS[0];
   $('prizeCard').style.setProperty('--rc', t.color);
   $('prizeEmoji').textContent = emojiFor(won);
-  $('prizeTier').textContent = t.name;
+  $('prizeTier').textContent = tierLabel;
   $('prizeName').textContent = won.name;
-  $('prizePower').textContent = `⚡ POWER ${won.power}`;
+  $('prizePower').textContent = `\u26a1 POWER ${won.power}`;
   $('prizeUid').textContent = won.uid;
-  $('revealClaimBtn').onclick = () => { doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
   showStage('stageReveal');
-  $('overlay').hidden = false;
 }
 
 async function fuse() {
@@ -392,17 +404,7 @@ async function fuse() {
   const hash = await doTx('Fusing', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
-  if (!won) return;
-  const t = TIERS[won.tier];
-  $('prizeCard').style.setProperty('--rc', t.color);
-  $('prizeEmoji').textContent = emojiFor(won);
-  $('prizeTier').textContent = `FUSED · ${t.name}`;
-  $('prizeName').textContent = won.name;
-  $('prizePower').textContent = `⚡ POWER ${won.power}`;
-  $('prizeUid').textContent = won.uid;
-  $('revealClaimBtn').onclick = () => { doTx('Claiming card', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
-  showStage('stageReveal');
-  $('overlay').hidden = false;
+  if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
 }
 
 let pickCtx = null;
@@ -506,4 +508,4 @@ $('contractLink').innerHTML =
   render();
   if (localStorage.getItem('gacha_wallet') === 'demo') await connectWallet('demo');
 })();
-setInterval(() => { if (!S.busy) refresh().catch(() => {}); }, 45000);
+setInterval(() => refresh().catch(() => {}), 45000);
