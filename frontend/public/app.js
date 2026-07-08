@@ -367,7 +367,11 @@ async function doTx(label, method, args, actions, { target } = {}) {
     return hash;
   } catch (e) {
     el.classList.add('fail');
-    sub.textContent = e.message || String(e);
+    let msg = e.message || String(e);
+    if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
+      msg += ' — your wallet is on a different Hathor network than this deployment. Use the Demo wallet for now (Snap/WalletConnect work once the game is deployed on public testnet/mainnet).';
+    }
+    sub.textContent = msg;
     el.insertAdjacentHTML('beforeend', '<button class="t-x">\u2715</button>');
     el.querySelector('.t-x').onclick = () => el.remove();
     refresh().catch(() => {});
