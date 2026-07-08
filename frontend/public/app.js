@@ -511,8 +511,6 @@ document.addEventListener('click', e => {
   if (e.target.id === 'depGemsBtn') doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
   if (e.target.id === 'wdFundsBtn') doTx('Collecting your coin', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT });
 });
-$('contractLink').innerHTML =
-  `contract <a href="https://explorer.playground.testnet.hathor.network/transaction/${NC}" target="_blank">${NC}</a> · GachaArena · Hathor testnet-playground`;
 
 (async () => {
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
