@@ -210,10 +210,11 @@ function render() {
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
   const fuseReady = selCount === 2 && sameTierSelected();
-  const canPayFuse = S.gemsLedger >= 5;
+  const canPayFuse = S.gemsLedger + S.gemsWallet >= 5;
   $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station —'
-    : (canPayFuse ? 'Forge into the next station:'
-       : `Fusion costs 0.05 GEMS — you have ${fmtGems(S.gemsLedger)}. Earn more in the Mines.`);
+    : (S.gemsLedger >= 5 ? 'Forge into the next station:'
+       : canPayFuse ? 'Forge into the next station (gems move to your ledger first):'
+       : `Fusion costs 0.05 GEMS — you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
@@ -341,6 +342,14 @@ const wdAct = (token, amount) => ({ type: 'withdrawal', token, amount, address: 
 
 /* ---------------- tx pipeline ---------------- */
 
+async function ensureLedgerGems(amount) {
+  if (S.gemsLedger >= amount) return true;
+  const shortfall = amount - S.gemsLedger;
+  if (S.gemsWallet < shortfall) return false;
+  const hash = await doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, shortfall)]);
+  return !!hash && S.gemsLedger >= amount;
+}
+
 async function waitForExecution(hash, onTick) {
   const start = Date.now();
   for (;;) {
@@ -425,6 +434,12 @@ function revealCard(won, tierLabel) {
 async function fuse() {
   const [a, b] = [...S.selected];
   S.selected.clear();
+  if (!(await ensureLedgerGems(5))) {
+    $('errTitle').textContent = 'Not enough gems';
+    $('errMsg').textContent = 'Fusion costs 0.05 GEMS. Earn more in the Mines.';
+    showStage('stageError');
+    return;
+  }
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   const hash = await doTx('Forging the Rite of Union', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
@@ -475,9 +490,17 @@ async function submitPick(uid) {
   }
   if (kind === 'create') {
     const wager = Math.max(0, Number($('pickWager').value) || 0);
-    if (wager > S.gemsLedger) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `Ledger has ${fmtGems(S.gemsLedger)} — stake cards or deposit GEMS first.`; showStage('stageError'); $('overlay').hidden = false; return; }
+    if (wager > S.gemsLedger + S.gemsWallet) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtGems(S.gemsLedger + S.gemsWallet)} in total.`; showStage('stageError'); return; }
+    if (!(await ensureLedgerGems(wager))) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = 'Could not move enough gems to the ledger.'; showStage('stageError'); return; }
     await doTx('Issuing challenge', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
   } else {
+    const duel = S.duels.find(x => x.id === ref);
+    if (duel && duel.wager > 0 && !(await ensureLedgerGems(duel.wager))) {
+      $('errTitle').textContent = 'Not enough gems for the wager';
+      $('errMsg').textContent = `This trial wagers ${fmtGems(duel.wager)}.`;
+      showStage('stageError');
+      return;
+    }
     const winsBefore = S.wins;
     const hash = await doTx('Trial by combat', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
     if (!hash) return;
