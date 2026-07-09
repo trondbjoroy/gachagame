@@ -16,6 +16,8 @@ const TIERS = [
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
 const fmtGems = c => (c / 100).toFixed(2) + ' GEMS';
 const short = u => u.slice(0, 10) + '…';
+const myAddrs = () => new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
+const isMine = a => !!a && myAddrs().has(a);
 const $ = id => document.getElementById(id);
 
 const S = {
@@ -230,7 +232,8 @@ function render() {
   $('duelList').innerHTML = S.duels.map(d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0];
-    const mineD = d.challenger === S.addr;
+    const mineD = isMine(d.challenger);
+    const cancellable = d.challenger === S.addr;
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
       <div class="duel-info">
@@ -239,7 +242,9 @@ function render() {
       </div>
       ${d.status === 'open'
         ? (mineD
-          ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
+          ? (cancellable
+            ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
+            : '<span class="duel-done">yours · main wallet</span>')
           : `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`)
         : '<span class="duel-done">settled</span>'}
     </div>`;
@@ -257,9 +262,11 @@ function render() {
     };
     $('listingList').innerHTML = S.listings.map(l => `
       <div class="duel ${l.status}">${cardBit(l.card)}
-        <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${l.seller === S.addr ? 'you' : short(l.seller || '?')}</div></div>
-        ${l.status === 'open' ? (l.seller === S.addr
-          ? `<button class="mini-btn alt" data-cancellisting="${l.id}">CANCEL</button>`
+        <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${isMine(l.seller) ? 'you' : short(l.seller || '?')}</div></div>
+        ${l.status === 'open' ? (isMine(l.seller)
+          ? (l.seller === S.addr
+            ? `<button class="mini-btn alt" data-cancellisting="${l.id}">CANCEL</button>`
+            : '<span class="duel-done">yours · main wallet</span>')
           : `<button class="mini-btn" data-buy="${l.id}" data-price="${l.price}">BUY</button>`)
           : '<span class="duel-done">sold</span>'}
       </div>`).join('');
@@ -267,9 +274,11 @@ function render() {
     $('swapList').innerHTML = S.swaps.map(w => {
       const wantMine = S.cards.get(w.want)?.mine;
       return `<div class="duel ${w.status}">${cardBit(w.give)}
-        <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${w.maker === S.addr ? 'you' : short(w.maker || '?')}</div></div>
-        ${w.status === 'open' ? (w.maker === S.addr
-          ? `<button class="mini-btn alt" data-cancelswap="${w.id}">CANCEL</button>`
+        <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${isMine(w.maker) ? 'you' : short(w.maker || '?')}</div></div>
+        ${w.status === 'open' ? (isMine(w.maker)
+          ? (w.maker === S.addr
+            ? `<button class="mini-btn alt" data-cancelswap="${w.id}">CANCEL</button>`
+            : '<span class="duel-done">yours · main wallet</span>')
           : (wantMine ? `<button class="mini-btn" data-acceptswap="${w.id}" data-want="${w.want}">SWAP</button>` : '<span class="duel-done">need the wanted card</span>'))
           : '<span class="duel-done">done</span>'}
       </div>`;
@@ -545,10 +554,39 @@ async function endSession() {
   if (S.wallet?.mode !== 'session') return;
   try {
     $('sessionEndBtn').disabled = true;
+    sessionNote('Checking for anything still in play\u2026');
+    await refresh();
+    const blockers = [];
+    const cs = [...S.cards.values()];
+    const n1 = cs.filter(c => c.pending === S.addr).length;
+    if (n1) blockers.push(`${n1} unclaimed champion${n1 > 1 ? 's' : ''}`);
+    const n2 = cs.filter(c => c.staker === S.addr).length;
+    if (n2) blockers.push(`${n2} in the mines`);
+    const n3 = cs.filter(c => c.marketPending === S.addr).length;
+    if (n3) blockers.push(`${n3} in market escrow`);
+    if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in the ledger`);
+    if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds`);
+    const n4 = S.duels.filter(d => d.status === 'open' && d.challenger === S.addr).length;
+    if (n4) blockers.push(`${n4} open challenge${n4 > 1 ? 's' : ''}`);
+    const n5 = S.listings.filter(l => l.status === 'open' && l.seller === S.addr).length;
+    if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''}`);
+    const n6 = S.swaps.filter(w => w.status === 'open' && w.maker === S.addr).length;
+    if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''}`);
+    if (blockers.length) {
+      sessionNote('Resolve before ending: ' + blockers.join(', ') +
+        '. Claim, recall, cancel, and withdraw \u2014 then sweep.');
+      return;
+    }
     sessionNote('Sweeping your champions and coin home\u2026');
     const r = await S.wallet.sweep();
     sessionNote(r ? `Swept ${r.moved} holdings back to your wallet.` : 'Nothing to sweep.');
     await S.wallet.disconnect();
+    try {
+      const arch = JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]');
+      const cur = JSON.parse(localStorage.getItem(SESSION_LS) || 'null');
+      if (cur) arch.push({ ...cur, endedAt: Date.now(), address: S.wallet.address });
+      localStorage.setItem(SESSION_LS + '_archive', JSON.stringify(arch.slice(-10)));
+    } catch { /* best effort */ }
     localStorage.removeItem(SESSION_LS);
     const main = S.mainWallet;
     S.mainWallet = null;
