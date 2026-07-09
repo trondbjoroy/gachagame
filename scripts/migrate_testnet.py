@@ -71,7 +71,7 @@ wait(has_funds, "operator funded", tries=120)
 code = open("blueprint/gacha_arena.py", encoding="utf-8").read()
 r = post("/wallet/nano-contracts/create-on-chain-blueprint", "operator", {"code": code, "address": OP})
 GAME_BP = r["hash"]; print("game blueprint:", GAME_BP, flush=True)
-wait(lambda: get(f"{NODE}/nano_contract/blueprint/info?blueprint_id={GAME_BP}").get("name") == "GachaArena",
+wait(lambda: get(f"{NODE}/nano_contract/blueprint/info?blueprint_id={GAME_BP}").get("name") == "EmberfallArena",
      "game blueprint confirmed")
 
 r = post("/wallet/nano-contracts/create", "operator", {
@@ -97,7 +97,7 @@ for tier, name in [(0, "Moss Snail"), (0, "Pixel Slime"), (0, "Tin Knight"), (0,
 code = open("blueprint/card_market.py", encoding="utf-8").read()
 r = post("/wallet/nano-contracts/create-on-chain-blueprint", "operator", {"code": code, "address": OP})
 MKT_BP = r["hash"]; print("market blueprint:", MKT_BP, flush=True)
-wait(lambda: get(f"{NODE}/nano_contract/blueprint/info?blueprint_id={MKT_BP}").get("name") == "CardMarket",
+wait(lambda: get(f"{NODE}/nano_contract/blueprint/info?blueprint_id={MKT_BP}").get("name") == "EmberfallCardMarket",
      "market blueprint confirmed")
 r = post("/wallet/nano-contracts/create", "operator", {
     "blueprint_id": MKT_BP, "address": OP, "data": {"args": [OP, GAME_NC, 200]}})

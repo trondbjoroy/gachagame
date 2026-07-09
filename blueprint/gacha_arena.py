@@ -8,7 +8,7 @@ from hathor import (
 
 
 @export
-class GachaArena(Blueprint):
+class EmberfallArena(Blueprint):
     """Onchain gacha game: pull cards, farm GEMS, fuse, duel.
 
     - pull(): pay HTR, a fresh 1-of-1 card token is minted from the

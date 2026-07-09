@@ -8,8 +8,8 @@ from hathor import (
 
 
 @export
-class CardMarket(Blueprint):
-    """Marketplace for GachaArena cards.
+class EmberfallCardMarket(Blueprint):
+    """Marketplace for EmberfallArena cards.
 
     - list_card(price): escrow a card, ask HTR.
     - buy(listing_id): pay exact HTR; card becomes claimable by the buyer,
@@ -19,7 +19,7 @@ class CardMarket(Blueprint):
     - claim_card() / withdraw_funds() settle escrow and proceeds.
 
     Only genuine cards are accepted: authenticity is checked with a
-    cross-contract view call to the GachaArena contract.
+    cross-contract view call to the EmberfallArena contract.
     """
 
     owner: Address

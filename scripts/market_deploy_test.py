@@ -53,7 +53,7 @@ wait(lambda: state(GAME, "fields[]=total_pulls") and json.loads(json.dumps(
 def bp_ok():
     try:
         with urllib.request.urlopen(f"{NODE}/nano_contract/blueprint/info?blueprint_id={BP}", timeout=20) as r:
-            return json.loads(r.read()).get("name") == "CardMarket"
+            return json.loads(r.read()).get("name") == "EmberfallCardMarket"
     except Exception:
         return False
 wait(bp_ok, "blueprint confirmed")
