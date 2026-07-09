@@ -163,6 +163,11 @@ function render() {
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only — your wallet shows the full total' : '';
   $('walletHint').textContent = S.addr ? (S.wallet?.mode === 'session' ? 'session' : 'this address') : '';
+  const hsb = $('headerSessionBtn');
+  hsb.hidden = !S.addr;
+  const inSess = S.wallet?.mode === 'session';
+  hsb.innerHTML = inSess ? '\u26a1 SESSION ACTIVE' : '\u26a1 PROMPTLESS PLAY';
+  hsb.classList.toggle('active', inSess);
 
   $('odds').innerHTML = TIERS.map(t =>
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
@@ -595,6 +600,10 @@ $('walletBtn').onclick = () => {
 };
 $('disconnectBtn').onclick = disconnectWallet;
 $('sessionStartBtn').onclick = startSession;
+$('headerSessionBtn').onclick = () => {
+  $('walletBtn').onclick();
+  if (S.wallet?.mode !== 'session') startSession();
+};
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));

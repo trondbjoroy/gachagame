@@ -384,3 +384,7 @@ body::after {
 .session-box b { font-size: 14px; }
 .session-box p { margin: 6px 0 12px; font-size: 12px; color: var(--ink-muted); line-height: 1.55; }
 .session-box .mini-btn { margin-right: 8px; }
+
+.wallet-area { display: flex; align-items: center; gap: 10px; }
+.header-session { white-space: nowrap; }
+.header-session.active { background: none; color: var(--acid); border: 1px solid rgba(212, 168, 67, .4); }

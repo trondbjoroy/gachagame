@@ -34,12 +34,15 @@
         <div class="netline">a realm bound to the chain · summon · mine · forge · fight</div>
       </div>
     </div>
-    <button class="wallet-chip as-btn" id="walletBtn">
-      <span class="dot off" id="walletDot"></span>
-      <span id="walletAddr">Connect wallet</span>
-      <span class="htr" id="walletHtr"></span>
-      <span class="hint" id="walletHint"></span>
-    </button>
+    <div class="wallet-area">
+      <button class="mini-btn header-session" id="headerSessionBtn" hidden>&#9889; PROMPTLESS PLAY</button>
+      <button class="wallet-chip as-btn" id="walletBtn">
+        <span class="dot off" id="walletDot"></span>
+        <span id="walletAddr">Connect wallet</span>
+        <span class="htr" id="walletHtr"></span>
+        <span class="hint" id="walletHint"></span>
+      </button>
+    </div>
   </header>
 
   <section class="machine-panel">
@@ -149,7 +152,9 @@
         <p>Click the wallet chip in the header and pair your own wallet &mdash;
         <b>MetaMask (Hathor Snap)</b> or <b>WalletConnect</b> for the Hathor
         mobile/desktop wallet. Every deed is signed by you and owned by you;
-        set your wallet's network to <b>testnet</b>.</p>
+        set your wallet's network to <b>testnet</b>. Then hit
+        <b>&#9889; Promptless play</b> to fund a session and skip per-deed
+        approvals entirely.</p>
       </li>
       <li>
         <h3>Get HTR</h3>
@@ -232,6 +237,14 @@
         <p>Your wallet is on a different Hathor network than the game. Emberfall runs
         on the public <b>testnet</b> &mdash; switch your wallet's network to testnet
         and try again.</p></div>
+      <div class="qa"><h4>What is promptless play?</h4>
+        <p>Starting a session forges a fresh key that lives only in your browser and
+        funds it with 1 HTR from your wallet (one approval). Every deed after that
+        signs instantly &mdash; no popups. <b>Sweep &amp; end</b> returns all champions
+        and coin to your main wallet in one transaction, and sessions survive page
+        reloads. One caution: the session key lives in this browser's storage, so
+        sweep before clearing site data or switching devices &mdash; unswept holdings
+        stay locked to that browser.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
