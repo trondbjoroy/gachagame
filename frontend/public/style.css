@@ -367,3 +367,5 @@ body::after {
 .lore { max-width: 64ch; border-left: 2px solid rgba(212, 168, 67, .35); padding-left: 22px; margin-bottom: 8px; }
 .lore p { color: var(--ink-muted); font-size: 14.5px; line-height: 1.75; margin: 0 0 14px; text-wrap: pretty; }
 .lore b { color: var(--ink); font-weight: 600; }
+
+.wallet-chip .hint { font-size: 10px; color: var(--ink-dim); letter-spacing: .04em; }

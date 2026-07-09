@@ -2,7 +2,6 @@
    Every adapter exposes: connect() -> address, executeNano(method, args, actions),
    tokenBalance(uid) -> int, label, mode.
 
-   - demo:  server-side custodial wallet via the hardened /api proxy
    - snap:  Hathor MetaMask Snap (npm:@hathor/snap), htr_* JSON-RPC
    - wc:    WalletConnect / Reown pairing with the Hathor mobile/desktop
             wallet, same htr_* JSON-RPC over the relay                     */
@@ -52,45 +51,6 @@ async function addrBalance(address, token) {
   }
   const t = balCache.data[token];
   return t ? Math.max(0, (t.received || 0) - (t.spent || 0)) : 0;
-}
-
-/* ---------------- demo (custodial) ---------------- */
-
-class DemoWallet {
-  constructor() { this.mode = 'demo'; this.label = 'Demo wallet (shared)'; this.address = null; }
-
-  async connect() {
-    const r = await fetch('/api/wallet/address?index=0', { headers: { 'x-wallet-id': 'player' } });
-    const d = await r.json();
-    if (!d.address) throw new Error('demo wallet unavailable');
-    this.address = d.address;
-    return this.address;
-  }
-
-  async executeNano(method, args, actions, target) {
-    const r = await fetch('/api/wallet/nano-contracts/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-wallet-id': 'player' },
-      body: JSON.stringify({
-        nc_id: (target || window.GAME).nc, method, address: this.address,
-        data: { args, actions },
-      }),
-    });
-    const d = await r.json();
-    if (!d.success) throw new Error(d.error || 'transaction rejected');
-    return { hash: d.hash };
-  }
-
-  async tokenBalance(uid) {
-    const r = await fetch(`/api/wallet/balance?token=${uid}`, { headers: { 'x-wallet-id': 'player' } });
-    const d = await r.json();
-    return d.available || 0;
-  }
-
-  async htrBalance() {
-    const r = await fetch('/api/wallet/balance', { headers: { 'x-wallet-id': 'player' } });
-    return (await r.json()).available || 0;
-  }
 }
 
 /* ---------------- MetaMask Snap ---------------- */
@@ -232,4 +192,4 @@ class WcWallet {
   }
 }
 
-window.WALLETS = { DemoWallet, SnapWallet, WcWallet };
+window.WALLETS = { SnapWallet, WcWallet };

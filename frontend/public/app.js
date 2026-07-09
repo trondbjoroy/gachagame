@@ -171,13 +171,15 @@ function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
+  $('walletHtr').title = S.addr ? 'Balance on your main address only — your wallet shows the full total' : '';
+  $('walletHint').textContent = S.addr ? 'this address' : '';
 
   $('odds').innerHTML = TIERS.map(t =>
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
      <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
 
-  // self-custody wallets may hold funds on addresses we cannot see; let their wallet gate it
-  const canPull = S.addr && S.pullPrice != null && (S.htr >= S.pullPrice || S.wallet?.mode !== 'demo');
+  // wallets may hold funds on addresses we cannot see; the wallet itself gates affordability
+  const canPull = S.addr && S.pullPrice != null;
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
@@ -464,10 +466,7 @@ async function submitPick(uid) {
 async function connectWallet(kind) {
   $('connectMsg').textContent = 'connecting…';
   try {
-    let w;
-    if (kind === 'demo') w = new window.WALLETS.DemoWallet();
-    else if (kind === 'snap') w = new window.WALLETS.SnapWallet();
-    else w = new window.WALLETS.WcWallet();
+    const w = kind === 'snap' ? new window.WALLETS.SnapWallet() : new window.WALLETS.WcWallet();
     const onUri = async uri => {
       $('wcPair').hidden = false;
       $('wcUri').value = uri;
@@ -478,7 +477,6 @@ async function connectWallet(kind) {
     };
     S.addr = await (kind === 'wc' ? w.connect(onUri) : w.connect());
     S.wallet = w;
-    localStorage.setItem('gacha_wallet', kind === 'demo' ? 'demo' : '');
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
     await refresh();
@@ -531,6 +529,5 @@ document.addEventListener('click', e => {
 (async () => {
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   render();
-  if (localStorage.getItem('gacha_wallet') === 'demo') await connectWallet('demo');
 })();
 setInterval(() => refresh().catch(() => {}), 45000);
