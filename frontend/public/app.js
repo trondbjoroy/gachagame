@@ -183,11 +183,12 @@ function render() {
     S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
     'Speak, and the Weaver answers within moments.';
 
+  const me = v => S.addr ? v : '—';
   $('statsRow').innerHTML = [
-    ['Souls summoned', S.totalPulls],
-    ['Gems in ledger', fmtGems(S.gemsLedger)],
-    ['Gems in hand', fmtGems(S.gemsWallet)],
-    ['Trials won', S.wins],
+    ['Souls summoned · realm', S.totalPulls],
+    ['Your gems in ledger', me(fmtGems(S.gemsLedger))],
+    ['Your gems in hand', me(fmtGems(S.gemsWallet))],
+    ['Your trials won', me(S.wins)],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
   // collection
