@@ -149,15 +149,38 @@ async function refresh() {
 
 /* ---------------- rendering ---------------- */
 
+function slugOf(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+function cardMeta(name) { return (window.CATALOG || {})[name]; }
+
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
+  const meta = cardMeta(c.name);
+  if (meta?.art) {
+    return `<div class="card art-card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+      <img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">
+      <div class="ac-scrim"></div>
+      <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
+      <div class="ac-bottom">
+        <div class="ac-station" style="color:${t.color}">${t.name} · ${meta.type}</div>
+        <div class="ac-flavor">${meta.flavor}</div>
+        ${buttonsHtml || ''}
+      </div>
+    </div>`;
+  }
   return `<div class="card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
     <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
     <div class="tier">${t.name} · ⚡${c.power}</div>
     ${buttonsHtml || ''}
   </div>`;
+}
+
+function rowArt(c) {
+  if (!c) return '?';
+  const meta = cardMeta(c.name);
+  return meta?.art ? `<img class="row-thumb" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    : artSvg(c.name, 'card-art duel-art');
 }
 
 function render() {
@@ -245,7 +268,7 @@ function render() {
     const mineD = isMine(d.challenger);
     const cancellable = d.challenger === S.addr;
     return `<div class="duel ${d.status}">
-      <span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
+      <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
         <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : short(d.challenger || '?')}</div>
@@ -267,7 +290,7 @@ function render() {
     const cardBit = uid => {
       const c = S.cards.get(uid);
       const t = TIERS[c?.tier ?? 0] || TIERS[0];
-      return `<span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
+      return `<span class="duel-emoji">${rowArt(c)}</span>
         <div class="duel-info"><b>${c?.name ?? '?'}</b> <span style="color:${t.color}">\u26a1${c?.power ?? '?'}</span>`;
     };
     $('listingList').innerHTML = S.listings.map(l => `
@@ -426,11 +449,22 @@ async function pull() {
 
 function revealCard(won, tierLabel) {
   const t = TIERS[won.tier] || TIERS[0];
-  $('prizeCard').style.setProperty('--rc', t.color);
-  $('prizeEmoji').innerHTML = artSvg(won.name, 'card-art prize-art');
-  $('prizeTier').textContent = tierLabel;
-  $('prizeName').textContent = won.name;
-  $('prizePower').textContent = `\u26a1 POWER ${won.power}`;
+  const pc = $('prizeCard');
+  pc.style.setProperty('--rc', t.color);
+  const meta = cardMeta(won.name);
+  pc.classList.toggle('art-reveal', !!meta?.art);
+  pc.innerHTML = meta?.art ? `
+    <img class="ac-img" src="cards/${slugOf(won.name)}.jpg" alt="">
+    <div class="ac-scrim"></div>
+    <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power">\u26a1${won.power}</span></div>
+    <div class="ac-bottom">
+      <div class="ac-station" style="color:${t.color}">${tierLabel} \u00b7 ${meta.type}</div>
+      <div class="ac-flavor">${meta.flavor}</div>
+    </div>` : `
+    <div class="prize-emoji">${artSvg(won.name, 'card-art prize-art')}</div>
+    <div class="prize-tier">${tierLabel}</div>
+    <div class="prize-name">${won.name}</div>
+    <div class="prize-power">\u26a1 POWER ${won.power}</div>`;
   $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
   showStage('stageReveal');
 }

@@ -31,6 +31,7 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 };
 
 // ---- shared wallet address (callers/claims are pinned to it) ----
