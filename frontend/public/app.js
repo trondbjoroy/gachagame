@@ -13,16 +13,6 @@ const TIERS = [
   { name: 'Highlord', color: 'var(--epic)', pct: '9%', fallback: '🏰' },
   { name: 'Sovereign', color: 'var(--legendary)', pct: '1%', fallback: '👑' },
 ];
-const EMOJI = {
-  'Pixel Slime': '🟢', 'Rusty Dagger': '🗡️', 'Storm Falcon': '🦅',
-  'Crystal Golem': '🗿', 'Shadow Dragon': '🐉', 'Genesis Phoenix': '🔥',
-  'Moss Snail': '🐌', 'Tin Knight': '🛡️', 'Ember Fox': '🦊', 'Void Kraken': '🐙',
-  'Levy Spearman': '⚔️', 'Bog Witch': '🧙', 'Plague Rat': '🐀',
-  'Raven Keeper': '🐦‍⬛', 'Heartwood Archer': '🏹',
-  'Dire Wolf': '🐺', 'Barrow Wight': '💀',
-  'The Winter Sovereign': '❄️',
-};
-const emojiFor = c => EMOJI[c.name] || TIERS[c.tier]?.fallback || '🎁';
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
 const fmtGems = c => (c / 100).toFixed(2) + ' GEMS';
 const short = u => u.slice(0, 10) + '…';
@@ -159,7 +149,7 @@ function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
   return `<div class="card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
-    <div class="emoji">${emojiFor(c)}</div>
+    <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
     <div class="tier">${t.name} · ⚡${c.power}</div>
     <div class="uid">${c.uid.slice(0, 18)}…</div>
@@ -237,7 +227,7 @@ function render() {
     const t = TIERS[c?.tier ?? 0];
     const mineD = d.challenger === S.addr;
     return `<div class="duel ${d.status}">
-      <span class="duel-emoji">${c ? emojiFor(c) : '❔'}</span>
+      <span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
         <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : short(d.challenger || '?')}</div>
@@ -257,7 +247,7 @@ function render() {
     const cardBit = uid => {
       const c = S.cards.get(uid);
       const t = TIERS[c?.tier ?? 0];
-      return `<span class="duel-emoji">${c ? emojiFor(c) : '\u2754'}</span>
+      return `<span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
         <div class="duel-info"><b>${c?.name ?? '?'}</b> <span style="color:${t.color}">\u26a1${c?.power ?? '?'}</span>`;
     };
     $('listingList').innerHTML = S.listings.map(l => `
@@ -402,7 +392,7 @@ async function pull() {
 function revealCard(won, tierLabel) {
   const t = TIERS[won.tier] || TIERS[0];
   $('prizeCard').style.setProperty('--rc', t.color);
-  $('prizeEmoji').textContent = emojiFor(won);
+  $('prizeEmoji').innerHTML = artSvg(won.name, 'card-art prize-art');
   $('prizeTier').textContent = tierLabel;
   $('prizeName').textContent = won.name;
   $('prizePower').textContent = `\u26a1 POWER ${won.power}`;

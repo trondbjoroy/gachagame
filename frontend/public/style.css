@@ -369,3 +369,8 @@ body::after {
 .lore b { color: var(--ink); font-weight: 600; }
 
 .wallet-chip .hint { font-size: 10px; color: var(--ink-dim); letter-spacing: .04em; }
+
+/* champion sigils */
+.card-art { width: 46px; height: 46px; color: #e7dcc4; filter: drop-shadow(0 0 12px var(--rc, rgba(0,0,0,.4))); }
+.duel-art { width: 30px; height: 30px; }
+.prize-art { width: 96px; height: 96px; }
