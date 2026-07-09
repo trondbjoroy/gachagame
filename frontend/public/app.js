@@ -174,7 +174,7 @@ function render() {
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
     S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
-    'The Weaver binds a champion the moment the next block witnesses it (~30–90s).';
+    'The Weaver binds a champion the moment the next block witnesses it — usually within seconds.';
 
   $('statsRow').innerHTML = [
     ['Souls summoned', S.totalPulls],
@@ -329,7 +329,7 @@ const wdAct = (token, amount) => ({ type: 'withdrawal', token, amount, address: 
 async function waitForExecution(hash, onTick) {
   const start = Date.now();
   for (;;) {
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 2500));
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};

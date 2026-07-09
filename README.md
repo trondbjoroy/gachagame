@@ -129,8 +129,8 @@ curl -X POST localhost:8000/wallet/nano-contracts/execute \
                       "address":"WSAici31LzwhrgKaRiXHFjWx3XF4eGTiUE"}]}}'
 ```
 
-Nano contract transactions execute when the next block confirms them (typically under
-a minute on the playground). Query state any time via the node's
+Nano contract transactions execute when the next block confirms them (blocks average
+~7.5 seconds on the public testnet and mainnet). Query state any time via the node's
 `/v1a/nano_contract/state` endpoint; per-tx execution logs via `/v1a/nano_contract/logs?id=<tx>`.
 
 ## Deploying to a public domain

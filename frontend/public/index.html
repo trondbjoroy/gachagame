@@ -163,8 +163,9 @@
         <p>Light the brazier with <b>SUMMON</b>. The Blind Weaver rolls a station
         (<span class="mono">60% common &middot; 30% rare &middot; 9% epic &middot; 1% legendary</span>),
         picks a card, and mints it as a unique token with a random <b>power</b> stat.
-        Rarer tiers roll higher power. The draw settles when the next block confirms,
-        usually 30&ndash;90 seconds; a corner toast tracks it while you keep playing.
+        Rarer tiers roll higher power. The draw settles when the next block confirms
+        &mdash; blocks land about every 8 seconds, so it is usually done within
+        a few heartbeats; a corner toast tracks it while you keep playing.
         When it lands, claim the card to your wallet.</p>
       </li>
       <li>
@@ -201,10 +202,11 @@
 
     <h2 class="mt">Questions</h2>
     <div class="faq">
-      <div class="qa"><h4>Why does every action take about a minute?</h4>
+      <div class="qa"><h4>Why do actions take a few seconds to land?</h4>
         <p>Every move is a real blockchain transaction. It confirms when the next
-        Hathor block includes it &mdash; typically 30&ndash;90 seconds. Nothing is
-        simulated; the toast in the corner shows the live status.</p></div>
+        Hathor block includes it &mdash; blocks arrive roughly every 8 seconds, so
+        most deeds settle in about 5&ndash;15 seconds. Nothing is simulated; the
+        toast in the corner shows the live status.</p></div>
       <div class="qa"><h4>Is the randomness fair?</h4>
         <p>Draws use Hathor&rsquo;s built-in ChaCha20 RNG inside the contract. The seed
         comes from consensus, every node computes the same result, and no server
