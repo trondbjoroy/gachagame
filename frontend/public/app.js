@@ -176,7 +176,8 @@ function render() {
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
      <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
 
-  const canPull = S.addr && S.pullPrice != null && S.htr >= S.pullPrice;
+  // self-custody wallets may hold funds on addresses we cannot see; let their wallet gate it
+  const canPull = S.addr && S.pullPrice != null && (S.htr >= S.pullPrice || S.wallet?.mode !== 'demo');
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :

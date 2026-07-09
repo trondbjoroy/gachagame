@@ -29,9 +29,14 @@ async function findMetaMask() {
   return window.ethereum || null;
 }
 
-// amounts in htr_sendNanoContractTx actions are strings per the spec
-function rpcActions(actions) {
-  return actions.map(a => ({ ...a, amount: String(a.amount) }));
+// amounts in htr_sendNanoContractTx actions are strings per the spec.
+// changeAddress pins deposit change back to the shared address so the
+// node-side balance display stays accurate for multi-address wallets.
+function rpcActions(actions, changeAddress) {
+  return actions.map(a => ({
+    ...a, amount: String(a.amount),
+    ...(a.type === 'deposit' && changeAddress ? { changeAddress } : {}),
+  }));
 }
 
 // Prompt-free balance reads for self-custody wallets: query the node for
@@ -136,7 +141,7 @@ class SnapWallet {
       method,
       blueprint_id: (target || window.GAME).blueprint,
       nc_id: (target || window.GAME).nc,
-      actions: rpcActions(actions),
+      actions: rpcActions(actions, this.address),
       args,
       push_tx: true,
     });
@@ -204,7 +209,7 @@ class WcWallet {
       method,
       blueprint_id: (target || window.GAME).blueprint,
       nc_id: (target || window.GAME).nc,
-      actions: rpcActions(actions),
+      actions: rpcActions(actions, this.address),
       args,
       push_tx: true,
     });
