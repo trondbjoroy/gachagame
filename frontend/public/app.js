@@ -169,6 +169,7 @@ function render() {
   const inSess = S.wallet?.mode === 'session';
   hsb.innerHTML = inSess ? '\u26a1 SESSION ACTIVE' : '\u26a1 PROMPTLESS PLAY';
   hsb.classList.toggle('active', inSess);
+  syncSessionBox();
 
   $('odds').innerHTML = TIERS.map(t =>
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
@@ -529,9 +530,24 @@ const SESSION_LS = 'emberfall_session';
 
 function sessionNote(msg) { $('connectMsg').textContent = msg; }
 
+function syncSessionBox() {
+  const inSession = S.wallet?.mode === 'session';
+  $('sessionBox').hidden = !S.addr;
+  $('sessionStartBtn').hidden = inSession;
+  $('sessionEndBtn').hidden = !inSession;
+  $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
+  $('disconnectBtn').hidden = !S.addr || inSession;
+  if (!S.sessionStarting) {
+    $('sessionInfo').textContent = inSession
+      ? 'Session active — every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
+      : 'Fund a session key held in this browser and play without approving every deed. Sweep everything back to your wallet whenever you like.';
+  }
+}
+
 async function startSession() {
   if (!S.wallet || S.wallet.mode === 'session') return;
   const main = S.wallet;
+  S.sessionStarting = true;
   try {
     $('sessionStartBtn').disabled = true;
     sessionNote('Forging a session key in this browser\u2026');
@@ -571,6 +587,7 @@ async function startSession() {
   } catch (e) {
     sessionNote(e.message || String(e));
   } finally {
+    S.sessionStarting = false;
     $('sessionStartBtn').disabled = false;
   }
 }
@@ -665,15 +682,8 @@ async function disconnectWallet() {
 }
 
 $('walletBtn').onclick = () => {
-  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} \u00b7 ${short(S.addr)}` : '';
-  $('disconnectBtn').hidden = !S.addr || S.wallet?.mode === 'session';
-  const inSession = S.wallet?.mode === 'session';
-  $('sessionBox').hidden = !S.addr;
-  $('sessionStartBtn').hidden = inSession;
-  $('sessionEndBtn').hidden = !inSession;
-  $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
-  if (inSession) $('sessionInfo').textContent =
-    'Session active \u2014 every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.';
+  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${short(S.addr)}` : '';
+  syncSessionBox();
   showStage('stageConnect');
 };
 $('disconnectBtn').onclick = disconnectWallet;
