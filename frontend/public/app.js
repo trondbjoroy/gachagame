@@ -220,7 +220,7 @@ function render() {
   const mine = [...S.cards.values()].filter(c => c.mine);
   $('collectionCards').innerHTML = mine.map(c => cardBox(c, `
     <div class="row-btns">
-      <button class="mini-btn" data-stake="${c.uid}">MINE</button>
+      <button class="mini-btn alt" data-stake="${c.uid}">MINE</button>
       <button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>
       ${MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>
       <button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : ''}
