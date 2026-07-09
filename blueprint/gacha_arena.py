@@ -92,7 +92,7 @@ class EmberfallArena(Blueprint):
         # deposited HTR beyond the GEMS-creation collateral seeds the reserve
         self.proceeds = action.amount - 1
         self.gems_uid = self.syscall.create_deposit_token(
-            token_name="Gacha Gems",
+            token_name="Emberfall Gems",
             token_symbol="GEMS",
             amount=100,
             mint_authority=True,
