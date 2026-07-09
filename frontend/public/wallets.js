@@ -34,6 +34,21 @@ function rpcActions(actions) {
   return actions.map(a => ({ ...a, amount: String(a.amount) }));
 }
 
+// Prompt-free balance reads for self-custody wallets: query the node for
+// the shared address instead of htr_getBalance (which opens a MetaMask
+// confirmation for every call). Cached briefly to avoid hammering the node.
+let balCache = { addr: null, at: 0, data: null };
+async function addrBalance(address, token) {
+  const now = Date.now();
+  if (balCache.addr !== address || now - balCache.at > 5000) {
+    const r = await fetch(`/node/thin_wallet/address_balance?address=${address}`);
+    const d = await r.json();
+    balCache = { addr: address, at: now, data: d.tokens_data || {} };
+  }
+  const t = balCache.data[token];
+  return t ? Math.max(0, (t.received || 0) - (t.spent || 0)) : 0;
+}
+
 /* ---------------- demo (custodial) ---------------- */
 
 class DemoWallet {
@@ -100,7 +115,7 @@ class SnapWallet {
       throw e;
     }
     const info = await this.invoke('htr_getWalletInformation', { network: window.GAME.network });
-    this.address = info && (info.address ?? info.response?.address ?? info.firstAddress);
+    this.address = info && (info.response?.address0 ?? info.address ?? info.response?.address);
     if (!this.address) {
       const a = await this.invoke('htr_getAddress', { type: 'index', index: 0, network: window.GAME.network });
       this.address = typeof a === 'string' ? a : a?.address ?? a?.response?.address;
@@ -123,11 +138,7 @@ class SnapWallet {
     return { hash };
   }
 
-  async tokenBalance(uid) {
-    const res = await this.invoke('htr_getBalance', { network: window.GAME.network, tokens: [uid] });
-    const list = Array.isArray(res) ? res : res?.response ?? [];
-    return list[0]?.balance?.unlocked ?? 0;
-  }
+  async tokenBalance(uid) { return addrBalance(this.address, uid); }
 
   async htrBalance() { return this.tokenBalance('00'); }
 }
@@ -195,11 +206,7 @@ class WcWallet {
     return { hash };
   }
 
-  async tokenBalance(uid) {
-    const res = await this.request('htr_getBalance', { network: window.GAME.network, tokens: [uid] });
-    const list = Array.isArray(res) ? res : res?.response ?? [];
-    return list[0]?.balance?.unlocked ?? 0;
-  }
+  async tokenBalance(uid) { return addrBalance(this.address, uid); }
 
   async htrBalance() { return this.tokenBalance('00'); }
 

@@ -167,7 +167,7 @@ async function handleApi(req, res, ip) {
   return deny(res, 403, 'forbidden');
 }
 
-const NODE_PREFIXES = ['/nano_contract/state', '/nano_contract/logs', '/transaction'];
+const NODE_PREFIXES = ['/nano_contract/state', '/nano_contract/logs', '/transaction', '/thin_wallet/address_balance'];
 async function handleNode(req, res, ip) {
   if (req.method !== 'GET') return deny(res, 403, 'forbidden');
   const rest = req.url.slice(5);
