@@ -94,10 +94,15 @@ class SnapWallet {
   constructor() { this.mode = 'snap'; this.label = 'MetaMask (Hathor Snap)'; this.address = null; }
 
   async invoke(method, params) {
-    return this.provider.request({
+    const r = await this.provider.request({
       method: 'wallet_invokeSnap',
       params: { snapId: SNAP_ID, request: { method, params } },
     });
+    // some provider/snap combinations return the result JSON-stringified
+    if (typeof r === 'string' && (r.startsWith('{') || r.startsWith('['))) {
+      try { return JSON.parse(r); } catch { return r; }
+    }
+    return r;
   }
 
   async connect() {
@@ -120,7 +125,9 @@ class SnapWallet {
       const a = await this.invoke('htr_getAddress', { type: 'index', index: 0, network: window.GAME.network });
       this.address = typeof a === 'string' ? a : a?.address ?? a?.response?.address;
     }
-    if (!this.address) throw new Error('snap did not return an address');
+    if (!this.address || !/^[A-Za-z0-9]{30,40}$/.test(this.address)) {
+      throw new Error('snap returned an unexpected address format');
+    }
     return this.address;
   }
 
