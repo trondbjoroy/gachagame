@@ -151,8 +151,8 @@ class WcWallet {
     const { uri, approval } = await this.client.connect({
       requiredNamespaces: {
         hathor: {
-          methods: ['htr_sendNanoContractTx', 'htr_getBalance', 'htr_getAddress',
-                    'htr_getConnectedNetwork', 'htr_signWithAddress'],
+          methods: ['htr_sendNanoContractTx', 'htr_sendTransaction', 'htr_getBalance',
+                    'htr_getAddress', 'htr_getConnectedNetwork', 'htr_signWithAddress'],
           chains: [this.chain],
           events: [],
         },
