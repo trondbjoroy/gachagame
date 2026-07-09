@@ -117,7 +117,7 @@ class SnapWallet {
   async sendHtr(toAddress, amount) {
     const res = await this.invoke('htr_sendTransaction', {
       network: window.GAME.network,
-      outputs: [{ address: toAddress, value: String(amount), token: '00' }],
+      outputs: [{ address: toAddress, value: String(amount) }],
     });
     const hash = res?.hash ?? res?.response?.hash;
     if (!hash) throw new Error('wallet did not return a transaction id');
@@ -196,7 +196,7 @@ class WcWallet {
   async sendHtr(toAddress, amount) {
     const res = await this.request('htr_sendTransaction', {
       network: window.GAME.network,
-      outputs: [{ address: toAddress, value: String(amount), token: '00' }],
+      outputs: [{ address: toAddress, value: String(amount) }],
     });
     const hash = res?.hash ?? res?.response?.hash;
     if (!hash) throw new Error('wallet did not return a transaction id');
