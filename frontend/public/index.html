@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Emberfall</title>
-<meta name="description" content="The throne of Emberfall sits empty. Summon champions bound in soulstone, work the deep mines, forge greater bloodlines, and face trial by combat — every deed witnessed on the Hathor blockchain." />
+<meta name="description" content="The throne of Emberfall sits empty. Summon champions bound in soulstone, work the deep mines, forge greater bloodlines, and face trial by combat — every deed witnessed forever in the realm of Emberfall." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,7 +31,7 @@
       </div>
       <div>
         <div class="wordmark">EMBERFALL</div>
-        <div class="netline">a realm bound to the chain · summon · mine · forge · fight</div>
+        <div class="netline">a realm written in soulstone · summon · mine · forge · fight</div>
       </div>
     </div>
     <div class="wallet-area">
@@ -54,10 +54,10 @@
     <div class="pull-col">
       <h1>The throne is empty.<br/><span class="accent">Raise your host.</span></h1>
       <p class="sub">The Blind Weaver binds a champion into soulstone with every summoning —
-      each one a 1-of-1 token with its power struck onchain. Send them to the deep mines
-      for <b>GEMS</b>, forge two of a station into a greater bloodline, and stake gems on
-      trial by combat in the Pit. Every deed is witnessed on the Great Ledger. No lord,
-      no oracle, no take-backs.</p>
+      each one unique in all the realm, its power struck at birth. Send them to the deep
+      mines for <b>GEMS</b>, forge two of a station into a greater bloodline, and stake
+      gems on trial by combat in the Pit. Every deed is witnessed on the Great Ledger.
+      No lord, no luck-twisting, no take-backs.</p>
       <div class="odds" id="odds"></div>
       <button id="pullBtn" class="pull-btn" disabled>
         <span class="pull-label">SUMMON</span>
@@ -136,7 +136,7 @@
       it, and all of them must agree before a single word is written.</p>
       <p>Above the Ledger sits the <b>Blind Weaver</b>, the fate that decides which
       champion answers a summoning. She cannot be bribed, for she has no hands; she
-      cannot be read, for she has no eyes. Her threads are spun from the chain itself.</p>
+      cannot be read, for she has no eyes. Her threads are spun from the Ledger itself.</p>
       <p>Now the banners are yours to raise. Summon champions at the brazier. Send them
       into the <b>deep mines</b>, where soulstone sweats <b>gems</b>. Give two of equal
       station to the <b>Rite of Union</b> and forge a greater bloodline. Wager gems on
@@ -248,10 +248,7 @@
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
-      <div class="qa"><h4>Where is the code and the contract?</h4>
-        <p>The contract source, frontend, and deployment scripts are open at
-        <a href="https://github.com/trondbjoroy/gachagame" target="_blank" rel="noopener">github.com/trondbjoroy/gachagame</a>.
-        You can audit every rule described here.</p></div>
+      
       <div class="qa"><h4>What are the odds of a legendary?</h4>
         <p>1% per pull, rolled independently each time. Or skip luck entirely: fuse
         two epics. Two epics take four rares; four rares take eight commons &mdash;
@@ -268,8 +265,8 @@
   <div class="overlay-inner">
     <div class="stage" id="stageWait" hidden>
       <div class="capsule-drop"><div class="capsule"><div class="capsule-top"></div><div class="capsule-bottom"></div></div></div>
-      <div class="wait-title" id="waitTitle">Transaction in the mempool…</div>
-      <div class="wait-sub" id="waitStatus">waiting for a block to confirm</div>
+      <div class="wait-title" id="waitTitle">The Weaver is at work…</div>
+      <div class="wait-sub" id="waitStatus">your deed awaits witness</div>
       <div class="wait-timer mono" id="waitTimer">0s</div>
     </div>
     <div class="stage" id="stageReveal" hidden>

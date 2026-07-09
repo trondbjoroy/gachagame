@@ -180,8 +180,8 @@ function render() {
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
-    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
-    'The Weaver binds a champion the moment the next block witnesses it — usually within seconds.';
+    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
+    'Speak, and the Weaver answers within moments.';
 
   $('statsRow').innerHTML = [
     ['Souls summoned', S.totalPulls],
@@ -347,12 +347,12 @@ async function waitForExecution(hash, onTick) {
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
-    if ((meta.voided_by || []).length) throw new Error('transaction was voided');
+    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate — try again');
     if (!meta.first_block) continue;
     const logs = await node(`/nano_contract/logs?id=${hash}`);
     if (logs.nc_execution === 'success') return;
     if (logs.nc_execution && logs.nc_execution !== 'pending') {
-      throw new Error(`contract rejected the call (${logs.nc_execution})`);
+      throw new Error('the realm refused this deed');
     }
   }
 }
@@ -363,16 +363,16 @@ async function doTx(label, method, args, actions, { target } = {}) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>${label}</b>
-    <span class="t-sub">sign & push\u2026</span></div><span class="t-time mono"></span>`;
+    <span class="t-sub">sealing the deed\u2026</span></div><span class="t-time mono"></span>`;
   $('txToasts').appendChild(el);
   const sub = el.querySelector('.t-sub');
   const tim = el.querySelector('.t-time');
   try {
     const { hash } = await S.wallet.executeNano(method, args, actions, target);
-    sub.textContent = 'tx ' + hash.slice(0, 12) + '\u2026 confirming';
+    sub.textContent = 'the realm bears witness\u2026';
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
-    sub.textContent = 'confirmed';
+    sub.textContent = 'done';
     setTimeout(() => el.remove(), 6000);
     await refresh();
     return hash;
@@ -380,7 +380,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     el.classList.add('fail');
     let msg = e.message || String(e);
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
-      msg += ' — your wallet is on a different Hathor network than this deployment. Use the Demo wallet for now (Snap/WalletConnect work once the game is deployed on public testnet/mainnet).';
+      msg = 'Your wallet is on a different Hathor network — switch it to testnet and try again.';
     }
     sub.textContent = msg;
     el.insertAdjacentHTML('beforeend', '<button class="t-x">\u2715</button>');
