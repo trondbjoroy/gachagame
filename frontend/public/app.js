@@ -23,7 +23,7 @@ const S = {
   pullPrice: null, totalPulls: 0,
   cards: new Map(),      // uid -> {name,tier,power,pending,staker,mine,pendingGems}
   gemsLedger: 0, wins: 0,
-  duels: [], selected: new Set(), busy: false,
+  duels: [], selected: new Set(), busy: false, mainWallet: null,
   listings: [], swaps: [], marketFunds: 0,
 };
 
@@ -162,7 +162,7 @@ function render() {
   $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only — your wallet shows the full total' : '';
-  $('walletHint').textContent = S.addr ? 'this address' : '';
+  $('walletHint').textContent = S.addr ? (S.wallet?.mode === 'session' ? 'session' : 'this address') : '';
 
   $('odds').innerHTML = TIERS.map(t =>
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
@@ -486,6 +486,91 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
+/* ---------------- promptless session ---------------- */
+
+const SESSION_LS = 'emberfall_session';
+
+function sessionNote(msg) { $('connectMsg').textContent = msg; }
+
+async function startSession() {
+  if (!S.wallet || S.wallet.mode === 'session') return;
+  const main = S.wallet;
+  try {
+    $('sessionStartBtn').disabled = true;
+    sessionNote('Forging a session key in this browser\u2026');
+    const words = await window.WALLETS.SessionWallet.create();
+    const sw = await window.WALLETS.SessionWallet.open(words, main.address);
+    sessionNote('Approve the 1 HTR funding in your wallet\u2026');
+    await main.sendHtr(sw.address, 100);
+    sessionNote('Waiting for the funding to arrive\u2026');
+    for (let i = 0; i < 60; i++) {
+      if (await sw.htrBalance() >= 100) break;
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    if (await sw.htrBalance() < 100) throw new Error('funding never arrived \u2014 try again');
+    localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address }));
+    S.mainWallet = main;
+    S.wallet = sw;
+    S.addr = sw.address;
+    $('overlay').hidden = true;
+    await refresh();
+  } catch (e) {
+    sessionNote(e.message || String(e));
+  } finally {
+    $('sessionStartBtn').disabled = false;
+  }
+}
+
+async function topUpSession() {
+  if (!S.mainWallet || S.wallet?.mode !== 'session') return;
+  try {
+    $('sessionTopupBtn').disabled = true;
+    sessionNote('Approve the 1 HTR top-up in your wallet\u2026');
+    await S.mainWallet.sendHtr(S.wallet.address, 100);
+    sessionNote('Top-up sent \u2014 it lands within seconds.');
+    setTimeout(() => refresh().catch(() => {}), 4000);
+  } catch (e) {
+    sessionNote(e.message || String(e));
+  } finally {
+    $('sessionTopupBtn').disabled = false;
+  }
+}
+
+async function endSession() {
+  if (S.wallet?.mode !== 'session') return;
+  try {
+    $('sessionEndBtn').disabled = true;
+    sessionNote('Sweeping your champions and coin home\u2026');
+    const r = await S.wallet.sweep();
+    sessionNote(r ? `Swept ${r.moved} holdings back to your wallet.` : 'Nothing to sweep.');
+    await S.wallet.disconnect();
+    localStorage.removeItem(SESSION_LS);
+    const main = S.mainWallet;
+    S.mainWallet = null;
+    if (main) { S.wallet = main; S.addr = main.address; }
+    else { S.wallet = null; S.addr = null; }
+    await refresh();
+  } catch (e) {
+    sessionNote(e.message || String(e));
+  } finally {
+    $('sessionEndBtn').disabled = false;
+  }
+}
+
+async function resumeSession() {
+  const raw = localStorage.getItem(SESSION_LS);
+  if (!raw) return;
+  try {
+    const { words, mainAddr } = JSON.parse(raw);
+    const sw = await window.WALLETS.SessionWallet.open(words, mainAddr);
+    S.wallet = sw;
+    S.addr = sw.address;
+    await refresh();
+  } catch (e) {
+    console.warn('session resume failed:', e);
+  }
+}
+
 async function disconnectWallet() {
   await S.wallet?.disconnect?.().catch(() => {});
   S.wallet = null; S.addr = null; S.htr = 0; S.gemsWallet = 0;
@@ -497,11 +582,21 @@ async function disconnectWallet() {
 }
 
 $('walletBtn').onclick = () => {
-  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${short(S.addr)}` : '';
-  $('disconnectBtn').hidden = !S.addr;
+  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} \u00b7 ${short(S.addr)}` : '';
+  $('disconnectBtn').hidden = !S.addr || S.wallet?.mode === 'session';
+  const inSession = S.wallet?.mode === 'session';
+  $('sessionBox').hidden = !S.addr;
+  $('sessionStartBtn').hidden = inSession;
+  $('sessionEndBtn').hidden = !inSession;
+  $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
+  if (inSession) $('sessionInfo').textContent =
+    'Session active \u2014 every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.';
   showStage('stageConnect');
 };
 $('disconnectBtn').onclick = disconnectWallet;
+$('sessionStartBtn').onclick = startSession;
+$('sessionTopupBtn').onclick = topUpSession;
+$('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
@@ -519,5 +614,6 @@ document.addEventListener('click', e => {
 (async () => {
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   render();
+  await resumeSession();
 })();
 setInterval(() => refresh().catch(() => {}), 45000);

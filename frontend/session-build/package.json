@@ -1,0 +1,15 @@
+{
+  "name": "emberfall-session-build",
+  "private": true,
+  "description": "Bundles @hathor/wallet-lib for in-browser session signing -> ../public/session-lib.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "@hathor/wallet-lib": "4.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "esbuild-plugin-polyfill-node": "^0.3.0"
+  }
+}

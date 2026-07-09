@@ -113,6 +113,16 @@ class SnapWallet {
   async tokenBalance(uid) { return addrBalance(this.address, uid); }
 
   async htrBalance() { return this.tokenBalance('00'); }
+
+  async sendHtr(toAddress, amount) {
+    const res = await this.invoke('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ address: toAddress, value: String(amount), token: '00' }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('wallet did not return a transaction id');
+    return { hash };
+  }
 }
 
 /* ---------------- WalletConnect / Reown ---------------- */
@@ -183,6 +193,16 @@ class WcWallet {
 
   async htrBalance() { return this.tokenBalance('00'); }
 
+  async sendHtr(toAddress, amount) {
+    const res = await this.request('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ address: toAddress, value: String(amount), token: '00' }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('wallet did not return a transaction id');
+    return { hash };
+  }
+
   async disconnect() {
     if (this.client && this.session) {
       await this.client.disconnect({
@@ -193,4 +213,56 @@ class WcWallet {
   }
 }
 
-window.WALLETS = { SnapWallet, WcWallet };
+/* ---------------- Session (promptless, browser-held key) ---------------- */
+
+let sessionLibLoading = null;
+function loadSessionLib() {
+  if (window.SessionKit) return Promise.resolve();
+  if (!sessionLibLoading) {
+    sessionLibLoading = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'session-lib.js';
+      el.onload = resolve;
+      el.onerror = () => reject(new Error('failed to load the session signer'));
+      document.head.appendChild(el);
+    });
+  }
+  return sessionLibLoading;
+}
+
+class SessionWallet {
+  constructor(handle, mainAddr) {
+    this.mode = 'session';
+    this.label = 'Session (promptless)';
+    this.handle = handle;
+    this.address = handle.address;
+    this.mainAddr = mainAddr;
+  }
+
+  static async create() {
+    await loadSessionLib();
+    return window.SessionKit.generateWords();
+  }
+
+  static async open(words, mainAddr) {
+    await loadSessionLib();
+    const handle = await window.SessionKit.open(words);
+    return new SessionWallet(handle, mainAddr);
+  }
+
+  async executeNano(method, args, actions, target) {
+    return this.handle.executeNano(method, {
+      ncId: (target || window.GAME).nc,
+      blueprintId: (target || window.GAME).blueprint,
+      args,
+      actions,
+    });
+  }
+
+  async tokenBalance(uid) { return this.handle.balance(uid); }
+  async htrBalance() { return this.handle.balance('00'); }
+  async sweep() { return this.handle.sweep(this.mainAddr); }
+  async disconnect() { await this.handle.stop().catch(() => {}); }
+}
+
+window.WALLETS = { SnapWallet, WcWallet, SessionWallet };

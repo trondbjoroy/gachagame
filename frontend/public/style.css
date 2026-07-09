@@ -374,3 +374,13 @@ body::after {
 .card-art { width: 46px; height: 46px; color: #e7dcc4; filter: drop-shadow(0 0 12px var(--rc, rgba(0,0,0,.4))); }
 .duel-art { width: 30px; height: 30px; }
 .prize-art { width: 96px; height: 96px; }
+
+/* promptless session */
+.session-box {
+  max-width: 360px; margin: 18px auto 4px; text-align: left;
+  border: 1px solid rgba(212, 168, 67, .3); border-radius: var(--r-md);
+  background: rgba(212, 168, 67, .05); padding: 14px 16px;
+}
+.session-box b { font-size: 14px; }
+.session-box p { margin: 6px 0 12px; font-size: 12px; color: var(--ink-muted); line-height: 1.55; }
+.session-box .mini-btn { margin-right: 8px; }

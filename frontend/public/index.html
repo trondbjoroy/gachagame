@@ -295,6 +295,14 @@
         <div class="wait-sub">Scan with the Hathor wallet, or copy the URI:</div>
         <textarea id="wcUri" readonly rows="3"></textarea>
       </div>
+      <div class="session-box" id="sessionBox" hidden>
+        <b>&#9889; Promptless play</b>
+        <p id="sessionInfo">Fund a session key held in this browser and play without
+        approving every deed. Sweep everything back to your wallet whenever you like.</p>
+        <button class="mini-btn" id="sessionStartBtn">START SESSION &middot; 1 HTR</button>
+        <button class="mini-btn" id="sessionTopupBtn" hidden>TOP UP &middot; 1 HTR</button>
+        <button class="mini-btn alt" id="sessionEndBtn" hidden>SWEEP &amp; END SESSION</button>
+      </div>
       <div class="wait-sub" id="connectMsg"></div>
       <button class="mini-btn alt" id="disconnectBtn" hidden>DISCONNECT</button>
       <button class="ghost-btn" id="connectCloseBtn">close</button>
