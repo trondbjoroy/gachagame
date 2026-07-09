@@ -166,6 +166,7 @@ class WcWallet {
 
   async executeNano(method, args, actions, target) {
     const res = await this.request('htr_sendNanoContractTx', {
+      network: window.GAME.network,
       method,
       blueprint_id: (target || window.GAME).blueprint,
       nc_id: (target || window.GAME).nc,
