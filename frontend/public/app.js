@@ -599,22 +599,22 @@ async function endSession() {
     const blockers = [];
     const cs = [...S.cards.values()];
     const n1 = cs.filter(c => c.pending === S.addr).length;
-    if (n1) blockers.push(`${n1} unclaimed champion${n1 > 1 ? 's' : ''}`);
+    if (n1) blockers.push(`${n1} champion${n1 > 1 ? 's' : ''} awaiting claim under Your Host`);
     const n2 = cs.filter(c => c.staker === S.addr).length;
-    if (n2) blockers.push(`${n2} in the mines`);
+    if (n2) blockers.push(`${n2} champion${n2 > 1 ? 's' : ''} still toiling in The Mines (recall them)`);
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
-    if (n3) blockers.push(`${n3} in market escrow`);
-    if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in the ledger`);
-    if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds`);
+    if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
+    if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in your ledger (withdraw in The Mines)`);
+    if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in The Bazaar (withdraw them)`);
     const n4 = S.duels.filter(d => d.status === 'open' && d.challenger === S.addr).length;
-    if (n4) blockers.push(`${n4} open challenge${n4 > 1 ? 's' : ''}`);
+    if (n4) blockers.push(`${n4} open challenge${n4 > 1 ? 's' : ''} in The Pit (cancel or see them fought)`);
     const n5 = S.listings.filter(l => l.status === 'open' && l.seller === S.addr).length;
-    if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''}`);
+    if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''} in The Bazaar (cancel or sell)`);
     const n6 = S.swaps.filter(w => w.status === 'open' && w.maker === S.addr).length;
-    if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''}`);
+    if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''} in The Bazaar (cancel them)`);
     if (blockers.length) {
-      sessionNote('Resolve before ending: ' + blockers.join(', ') +
-        '. Claim, recall, cancel, and withdraw \u2014 then sweep.');
+      sessionNote('Before the sweep can carry everything home, settle: '
+        + blockers.join(' · ') + '.');
       return;
     }
     sessionNote('Sweeping your champions and coin home\u2026');
