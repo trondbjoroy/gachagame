@@ -49,6 +49,7 @@ class GachaArena(Blueprint):
     next_duel_id: int
     wins: dict[Address, int]
     total_pulls: int
+    pulls_by: dict[Address, int]
     total_minted: int
     proceeds: Amount
 
@@ -86,6 +87,7 @@ class GachaArena(Blueprint):
         self.next_duel_id = 0
         self.wins = {}
         self.total_pulls = 0
+        self.pulls_by = {}
         self.total_minted = 0
         # deposited HTR beyond the GEMS-creation collateral seeds the reserve
         self.proceeds = action.amount - 1
@@ -107,8 +109,9 @@ class GachaArena(Blueprint):
     def _power_base(self, tier: int) -> int:
         return [10, 25, 60, 150][tier]
 
-    def _fusion_fee(self) -> Amount:
-        return 5  # gems-cents
+    def _fusion_fee(self, tier: int) -> Amount:
+        # gems-cents, by the station of the pair being fused
+        return [5, 10, 50, 100][tier]
 
     def _rake_bps(self) -> int:
         return 500  # 5% of the duel pot
@@ -124,6 +127,13 @@ class GachaArena(Blueprint):
         if len(name) < 1 or len(name) > 30:
             raise NCFail("name must be 1-30 chars")
         self._templates(tier).append(name)
+
+    @public
+    def set_pull_price(self, ctx: Context, new_price: Amount) -> None:
+        self._check_owner(ctx)
+        if new_price <= 1:
+            raise NCFail("pull_price must exceed the 1-cent mint collateral")
+        self.pull_price = new_price
 
     @public(allow_withdrawal=True)
     def withdraw_proceeds(self, ctx: Context) -> None:
@@ -154,6 +164,7 @@ class GachaArena(Blueprint):
         self.pending[card] = caller
         self.proceeds += action.amount - 1  # 1 cent consumed as mint collateral
         self.total_pulls += 1
+        self.pulls_by[caller] = self.pulls_by.get(caller, 0) + 1
         self.syscall.emit_event(
             f'{{"event":"pull","tier":{tier},"token":"{card.hex()}"}}'.encode()
         )
@@ -259,7 +270,7 @@ class GachaArena(Blueprint):
             raise NCFail("cards must be the same tier")
         if tier >= 3:
             raise NCFail("legendary cards cannot be fused")
-        fee = self._fusion_fee()
+        fee = self._fusion_fee(tier)
         balance = self.gems_ledger.get(caller, 0)
         if balance < fee:
             raise NCFail(f"fusion costs {fee} GEMS-cents (earn them by staking)")
@@ -430,6 +441,10 @@ class GachaArena(Blueprint):
     @view
     def get_total_pulls(self) -> int:
         return self.total_pulls
+
+    @view
+    def get_player_pulls(self, address: Address) -> int:
+        return self.pulls_by.get(address, 0)
 
     @view
     def get_proceeds(self) -> Amount:

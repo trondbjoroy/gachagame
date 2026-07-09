@@ -6,6 +6,8 @@ const MKT = window.GAME.market; // {nc, blueprint} or null
 const GEMS = window.GAME.gems;
 const HTR = '00';
 const CARD_AMT = 100; // one card = 100 base units ('1.00')
+const ECON = window.GAME.economy || { sessionFund: 100, fusionFees: [5, 5, 5, 5] };
+const fuseFeeFor = tier => ECON.fusionFees[tier] ?? 5;
 
 const TIERS = [
   { name: 'Footman', color: 'var(--common)', pct: '60%', fallback: '🪓' },
@@ -210,11 +212,13 @@ function render() {
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
   const fuseReady = selCount === 2 && sameTierSelected();
-  const canPayFuse = S.gemsLedger + S.gemsWallet >= 5;
+  const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
+  const fuseFee = fuseFeeFor(selTier);
+  const canPayFuse = S.gemsLedger + S.gemsWallet >= fuseFee;
   $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station —'
-    : (S.gemsLedger >= 5 ? 'Forge into the next station:'
-       : canPayFuse ? 'Forge into the next station (gems move to your ledger first):'
-       : `Fusion costs 0.05 GEMS — you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
+    : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
+       : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
+       : `Fusion costs ${fmtGems(fuseFee)} — you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
@@ -237,7 +241,7 @@ function render() {
   // arena
   $('duelList').innerHTML = S.duels.map(d => {
     const c = S.cards.get(d.card);
-    const t = TIERS[c?.tier ?? 0];
+    const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
     const cancellable = d.challenger === S.addr;
     return `<div class="duel ${d.status}">
@@ -262,7 +266,7 @@ function render() {
     $('wdFundsBtn').hidden = S.marketFunds < 1;
     const cardBit = uid => {
       const c = S.cards.get(uid);
-      const t = TIERS[c?.tier ?? 0];
+      const t = TIERS[c?.tier ?? 0] || TIERS[0];
       return `<span class="duel-emoji">${c ? artSvg(c.name, 'card-art duel-art') : '?'}</span>
         <div class="duel-info"><b>${c?.name ?? '?'}</b> <span style="color:${t.color}">\u26a1${c?.power ?? '?'}</span>`;
     };
@@ -434,9 +438,10 @@ function revealCard(won, tierLabel) {
 async function fuse() {
   const [a, b] = [...S.selected];
   S.selected.clear();
-  if (!(await ensureLedgerGems(5))) {
+  const fee = fuseFeeFor(S.cards.get(a)?.tier ?? 0);
+  if (!(await ensureLedgerGems(fee))) {
     $('errTitle').textContent = 'Not enough gems';
-    $('errMsg').textContent = 'Fusion costs 0.05 GEMS. Earn more in the Mines.';
+    $('errMsg').textContent = `Fusion costs ${fmtGems(fee)}. Earn more in the Mines.`;
     showStage('stageError');
     return;
   }
@@ -558,6 +563,8 @@ function syncSessionBox() {
   const inSession = S.wallet?.mode === 'session';
   $('sessionBox').hidden = !S.addr;
   $('sessionStartBtn').hidden = inSession;
+  $('sessionStartBtn').innerHTML = 'START SESSION \u00b7 ' + fmtHtr(ECON.sessionFund);
+  $('sessionTopupBtn').innerHTML = 'TOP UP \u00b7 ' + fmtHtr(ECON.sessionFund);
   $('sessionEndBtn').hidden = !inSession;
   $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
   $('disconnectBtn').hidden = !S.addr || inSession;
@@ -583,25 +590,25 @@ async function startSession() {
     const autoFund = main.mode !== 'wc';
     try {
       if (!autoFund) throw new Error('manual funding for WalletConnect');
-      sessionNote('Approve the 1 HTR funding in your wallet\u2026');
-      await main.sendHtr(sw.address, 100);
+      sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
+      await main.sendHtr(sw.address, ECON.sessionFund);
       sessionNote('Waiting for the funding to arrive\u2026');
     } catch (e) {
       // wallet could not build the transfer (some wallets' sendTransaction
       // over WalletConnect is flaky) — fall back to a manual send
       waitRounds = 150; // 5 minutes for a human-driven transfer
       $('sessionInfo').innerHTML = (autoFund ? 'Automatic funding failed in your wallet. ' : '')
-        + 'Send <b>1 HTR</b> (or more) to the session address below from your '
+        + `Send <b>${fmtHtr(ECON.sessionFund)}</b> (or more) to the session address below from your `
         + 'wallet\u2019s normal send screen \u2014 the game will detect it.<br>'
         + `<span class="mono" style="word-break:break-all">${sw.address}</span> `
         + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${sw.address}')">COPY ADDRESS</button>`;
-      sessionNote('Waiting for a manual 1 HTR transfer\u2026');
+      sessionNote('Waiting for the funding transfer\u2026');
     }
     for (let i = 0; i < waitRounds; i++) {
-      if (await sw.htrBalance() >= 100) break;
+      if (await sw.htrBalance() >= ECON.sessionFund) break;
       await new Promise(r => setTimeout(r, 2000));
     }
-    if (await sw.htrBalance() < 100) throw new Error('funding never arrived \u2014 try again');
+    if (await sw.htrBalance() < ECON.sessionFund) throw new Error('funding never arrived \u2014 try again');
     localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address }));
     S.mainWallet = main;
     S.wallet = sw;
@@ -620,8 +627,8 @@ async function topUpSession() {
   if (!S.mainWallet || S.wallet?.mode !== 'session') return;
   try {
     $('sessionTopupBtn').disabled = true;
-    sessionNote('Approve the 1 HTR top-up in your wallet\u2026');
-    await S.mainWallet.sendHtr(S.wallet.address, 100);
+    sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' top-up in your wallet\u2026');
+    await S.mainWallet.sendHtr(S.wallet.address, ECON.sessionFund);
     sessionNote('Top-up sent \u2014 it lands within seconds.');
     setTimeout(() => refresh().catch(() => {}), 4000);
   } catch (e) {

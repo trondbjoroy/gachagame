@@ -82,7 +82,7 @@
       <h2>Sworn to your banner</h2>
       <div class="fuse-bar" id="fuseBar" hidden>
         <span id="fuseHint"></span>
-        <button class="mini-btn" id="fuseBtn" disabled>FUSE (0.05 GEMS)</button>
+        <button class="mini-btn" id="fuseBtn" disabled>FUSE</button>
       </div>
     </div>
     <div class="cards" id="collectionCards"></div>
@@ -158,7 +158,7 @@
       </li>
       <li>
         <h3>Get HTR</h3>
-        <p>Pulls cost <span class="mono">0.05 HTR</span> in testnet coin. The
+        <p>Summons cost a fixed HTR price — shown on the button — in testnet coin. The
         <a href="https://faucet.testnet.hathor.network" target="_blank" rel="noopener">testnet
         faucet</a> pays enough for a small army &mdash; paste your address from the
         wallet chip.</p>
@@ -184,7 +184,7 @@
       <li>
         <h3>Forge the Rite of Union</h3>
         <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
-        (costs <span class="mono">0.05 GEMS</span> from your ledger). Both cards are
+        (a GEMS fee from your ledger that rises with the station being forged). Both cards are
         burned and you receive a card of the next tier that inherits 10% of the
         parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
       </li>
@@ -239,7 +239,7 @@
         and try again.</p></div>
       <div class="qa"><h4>What is promptless play?</h4>
         <p>Starting a session forges a fresh key that lives only in your browser and
-        funds it with 1 HTR from your wallet (one approval). Every deed after that
+        funds it with a fixed HTR stake from your wallet (one approval). Every deed after that
         signs instantly &mdash; no popups. <b>Sweep &amp; end</b> returns all champions
         and coin to your main wallet in one transaction, and sessions survive page
         reloads. One caution: the session key lives in this browser's storage, so
@@ -308,8 +308,8 @@
         <b>&#9889; Promptless play</b>
         <p id="sessionInfo">Fund a session key held in this browser and play without
         approving every deed. Sweep everything back to your wallet whenever you like.</p>
-        <button class="mini-btn" id="sessionStartBtn">START SESSION &middot; 1 HTR</button>
-        <button class="mini-btn" id="sessionTopupBtn" hidden>TOP UP &middot; 1 HTR</button>
+        <button class="mini-btn" id="sessionStartBtn">START SESSION</button>
+        <button class="mini-btn" id="sessionTopupBtn" hidden>TOP UP</button>
         <button class="mini-btn alt" id="sessionEndBtn" hidden>SWEEP &amp; END SESSION</button>
       </div>
       <div class="wait-sub" id="connectMsg"></div>
