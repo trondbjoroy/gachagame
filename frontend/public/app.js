@@ -514,16 +514,20 @@ async function startSession() {
     sessionNote('Forging a session key in this browser\u2026');
     const words = await window.WALLETS.SessionWallet.create();
     const sw = await window.WALLETS.SessionWallet.open(words, main.address);
-    sessionNote('Approve the 1 HTR funding in your wallet\u2026');
     let waitRounds = 60; // 2 minutes on the automatic path
+    // the mobile wallet's sendTransaction over WalletConnect fails post-approval
+    // on custom networks, so WalletConnect goes straight to the manual transfer
+    const autoFund = main.mode !== 'wc';
     try {
+      if (!autoFund) throw new Error('manual funding for WalletConnect');
+      sessionNote('Approve the 1 HTR funding in your wallet\u2026');
       await main.sendHtr(sw.address, 100);
       sessionNote('Waiting for the funding to arrive\u2026');
     } catch (e) {
       // wallet could not build the transfer (some wallets' sendTransaction
       // over WalletConnect is flaky) — fall back to a manual send
       waitRounds = 150; // 5 minutes for a human-driven transfer
-      $('sessionInfo').innerHTML = 'Automatic funding failed in your wallet. '
+      $('sessionInfo').innerHTML = (autoFund ? 'Automatic funding failed in your wallet. ' : '')
         + 'Send <b>1 HTR</b> (or more) to the session address below from your '
         + 'wallet\u2019s normal send screen \u2014 the game will detect it.<br>'
         + `<span class="mono" style="word-break:break-all">${sw.address}</span> `
