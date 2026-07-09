@@ -154,7 +154,6 @@ function cardBox(c, buttonsHtml, selectable) {
     <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
     <div class="tier">${t.name} · ⚡${c.power}</div>
-    <div class="uid">${c.uid.slice(0, 18)}…</div>
     ${buttonsHtml || ''}
   </div>`;
 }
@@ -321,11 +320,7 @@ function bindListActions() {
     if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
     doTx('Crying your wares', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
   });
-  bind('[data-trade]', u => {
-    const want = (prompt('Token UID of the card you want in return:') || '').trim().toLowerCase();
-    if (/^[0-9a-f]{64}$/.test(want)) doTx('Proposing trade', 'offer_swap', [want], [depAct(u, CARD_AMT)], { target: MKT });
-    else if (want) alert('That is not a valid 64-hex token UID.');
-  });
+  bind('[data-trade]', u => openPick('want', u));
   bind('[data-cancellisting]', id => doTx('Leaving the stall', 'cancel_listing', [Number(id)], [], { target: MKT }));
   bind('[data-cancelswap]', id => doTx('Recanting the trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
   bind('[data-mclaim]', u => doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT }));
@@ -410,7 +405,6 @@ function revealCard(won, tierLabel) {
   $('prizeTier').textContent = tierLabel;
   $('prizeName').textContent = won.name;
   $('prizePower').textContent = `\u26a1 POWER ${won.power}`;
-  $('prizeUid').textContent = won.uid;
   $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
   showStage('stageReveal');
 }
@@ -428,6 +422,20 @@ async function fuse() {
 let pickCtx = null;
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
+  if (kind === 'want') {
+    const others = [...S.cards.values()].filter(c => c.tier >= 0 && !c.mine);
+    if (!others.length) {
+      $('errTitle').textContent = 'No champions to trade for';
+      $('errMsg').textContent = 'No other champion is known to the realm yet.';
+      showStage('stageError'); return;
+    }
+    $('pickTitle').textContent = 'Choose the champion you want in return';
+    $('pickWagerRow').hidden = true;
+    $('pickCards').innerHTML = others.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    return;
+  }
   const mine = [...S.cards.values()].filter(c => c.mine);
   if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
   $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge — choose your champion & wager' : `Answer challenge #${ref} — choose your champion`;
@@ -448,6 +456,10 @@ function openPick(kind, ref) {
 async function submitPick(uid) {
   const { kind, ref } = pickCtx;
   $('overlay').hidden = true;
+  if (kind === 'want') {
+    await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT });
+    return;
+  }
   if (kind === 'create') {
     const wager = Math.max(0, Number($('pickWager').value) || 0);
     if (wager > S.gemsLedger) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `Ledger has ${fmtGems(S.gemsLedger)} — stake cards or deposit GEMS first.`; showStage('stageError'); $('overlay').hidden = false; return; }
