@@ -429,6 +429,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     sub.textContent = msg;
     el.insertAdjacentHTML('beforeend', '<button class="t-x">\u2715</button>');
     el.querySelector('.t-x').onclick = () => el.remove();
+    setTimeout(() => el.remove(), 20000);
     refresh().catch(() => {});
     return null;
   }
