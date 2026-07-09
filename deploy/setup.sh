@@ -55,8 +55,12 @@ systemctl reload caddy || systemctl restart caddy
 echo
 cat > /etc/cron.daily/gacha-faucet <<'CRON'
 #!/bin/sh
+# top up the shared demo wallet from the operator treasury when it runs low
 ADDR=$(curl -s -m 10 localhost:8090/api/wallet/address?index=0 | grep -o 'W[1-9A-HJ-NP-Za-km-z]*')
-[ -n "$ADDR" ] && curl -s -m 30 -X POST https://faucet.hathor.dev/api/drip -H 'Content-Type: application/json' -d "{\"address\":\"$ADDR\"}" >/dev/null 2>&1
+BAL=$(curl -s -m 10 localhost:8000/wallet/balance -H 'x-wallet-id: player' | grep -o '"available":[0-9]*' | cut -d: -f2)
+[ -n "$ADDR" ] && [ "${BAL:-0}" -lt 500 ] && curl -s -m 60 -X POST localhost:8000/wallet/simple-send-tx \
+  -H 'x-wallet-id: operator' -H 'Content-Type: application/json' \
+  -d "{\"address\":\"$ADDR\",\"value\":500}" >/dev/null 2>&1
 CRON
 chmod +x /etc/cron.daily/gacha-faucet
 

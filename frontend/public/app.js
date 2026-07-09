@@ -180,7 +180,7 @@ function render() {
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
-    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.hathor.dev" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
+    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">faucet</a> → <span class="mono">${S.addr}</span>` :
     'The Weaver binds a champion the moment the next block witnesses it (~30–90s).';
 
   $('statsRow').innerHTML = [

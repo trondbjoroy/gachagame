@@ -14,15 +14,15 @@ const fs = require('fs');
 const path = require('path');
 
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
-const NODE = process.env.NODE_URL || 'https://node1.playground.testnet.hathor.network/v1a';
+const NODE = process.env.NODE_URL || 'https://node1.testnet.hathor.network/v1a';
 const PUB = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-const NC = '00cc50d78771c245e95f794bd7090d8009eae90b562c77a938ff53efca4d34f8';
-const MKT_NC = process.env.MARKET_NC || '00d0f42e839ea9dd4ff82fc48205844a6ee549f06ba14c16fb8d8b761b9cab13';
-const GEMS = '3647ee44cf81b74dd8e8e26d7b6237cc7c6b588e53cc30dd0a2eb3dbdf5c63f2';
+const NC = '00b1bddc439d8b4255c16fec70d9578f7cebdb989e277c2cca934ac7bb48dcbb';
+const MKT_NC = process.env.MARKET_NC || '006318ef0471d957345db139f9b5e0b1d830e596180de558ea37b289845d1391';
+const GEMS = '357ec146e2492361474c4d6d685a9e7747360b44a5ec829c856f020a10f834d5';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_GEMS = 100_000;   // gems-cents per single ledger move
 const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
