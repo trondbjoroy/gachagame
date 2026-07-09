@@ -1,6 +1,7 @@
 # Emberfall card catalog — full (180)
 
-The authoritative set: 70 Footman · 50 Knight · 40 Highlord · 20 Sovereign.
+The authoritative set: 99 Footman · 54 Knight · 20 Highlord · 7 Sovereign
+(55 / 30 / 11 / 4 % weighting).
 The 20 cards marked **[art done]** already have illustrations in
 `frontend/public/cards/`; the other 160 need art. Format per card: **Name** ·
 Station · Type — flavor text, then the Leonardo `[SUBJECT]` line to splice
@@ -13,7 +14,7 @@ Undead, Drake, Leviathan, Firstborn.
 
 ---
 
-## Footman (common) — 70
+## Footman (common) — 99
 
 **Moss Snail** · Footman · Beast **[art done]**
 > Sieges are won by whoever is still there in the morning. The snail has never lost one.
@@ -365,7 +366,152 @@ SUBJECT: a faint translucent ghost of a beggar holding out a spectral bowl, stan
 
 SUBJECT: a skeletal figure in a rotted coat digging by lantern light in a foggy graveyard, shovel raised mid-swing, open grave before him
 
-## Knight (rare) — 50
+**Bell Sheep** · Footman · Beast
+> The flock follows her bell through fog, flood, and war. Half the shepherds do too.
+
+SUBJECT: a stout ewe with a tarnished bronze bell on a leather collar, standing calm in thick fog, dim shapes of a flock behind
+
+**Old Mole** · Footman · Beast
+> It has undermined three castle walls without ever once being paid as a sapper.
+
+SUBJECT: a huge velvet-black mole with massive digging claws emerging from a mound of earth beside a leaning castle wall, moonlight
+
+**Pond Pike** · Footman · Beast
+> The moat's oldest resident. The garrison feeds it debtors' scraps and calls it the castellan.
+
+SUBJECT: a long predatory pike fish lurking just beneath green moat water, eyes and toothy jaw breaking the surface, castle stones behind
+
+**Hearth Hedgehog** · Footman · Beast
+> It wandered in one winter and never left. The household now negotiates with it for the warm spot.
+
+SUBJECT: a round hedgehog with ember-warm glowing spines curled on a stone hearth beside a dying fire, cozy dark kitchen
+
+**Gutter Gull** · Footman · Beast
+> It has robbed more travelers than the toll keeper, with less paperwork.
+
+SUBJECT: a scruffy white gull with a stolen fish in its beak perched on a harbor piling, grey docks and gallows silhouettes behind
+
+**Furrow Ox** · Footman · Beast
+> The plow, the cart, the ram — the realm's wars and harvests ride the same patient shoulders.
+
+SUBJECT: a massive horned ox in a wooden yoke standing in a half-plowed field at dawn, steam rising from its back
+
+**Saddle Tick** · Footman · Vermin
+> Many a famous knight has been unhorsed by nothing the ballads will admit to.
+
+SUBJECT: a swollen grey tick the size of a coin clinging to worn saddle leather, a knight's shadow looming, stable lantern light
+
+**Book Mite** · Footman · Vermin
+> The archive's great enemy is not fire. Fire only takes pages; the mite takes meanings.
+
+SUBJECT: a tiny pale insect crawling across an open illuminated manuscript, ornate margins eaten into lace patterns, candlelit library
+
+**Candle Moth** · Footman · Vermin
+> It loves what kills it. The court poets have adopted it as a sigil, which tells you about court.
+
+SUBJECT: a large dusty moth with flame-scorched wing edges circling a tall candle flame, wax pooling, darkness around
+
+**Barrel Roach** · Footman · Vermin
+> It survived the siege, the sack, and the fire that followed. The city, in fairness, did not.
+
+SUBJECT: a glossy armored cockroach the size of a hand atop a charred ale barrel in a burnt-out cellar
+
+**Weathervane Cockerel** · Footman · Construct
+> It has pointed at every storm, army, and omen to arrive from any quarter. It has never once been thanked.
+
+SUBJECT: a copper rooster weathervane come alive, wings half-spread atop a crooked spire, green patina, storm clouds gathering
+
+**Rope Golem** · Footman · Construct
+> Knotted together from every noose the town no longer needed. It is very gentle.
+
+SUBJECT: a man-shaped figure of coiled and knotted ropes standing in a barn doorway, frayed ends drifting like hair, soft lantern light
+
+**Waxwork Page** · Footman · Construct
+> The chandler's son melted every candle stub into a servant. It works hard in winter and weeps in summer.
+
+SUBJECT: a small boy-shaped figure of dripping candle wax holding a candelabra, one flame lit on its head, dark manor corridor
+
+**Runaway Wheel** · Footman · Construct
+> A cartwheel that came off on the king's road and simply kept going. It has seen more of the realm than most knights.
+
+SUBJECT: a single iron-rimmed wooden cartwheel rolling by itself down a moonlit country road, dust trail, startled crows
+
+**Moth-Eaten Cloak** · Footman · Relic
+> It kept a king warm the night he lost everything. The losing side has passed it down ever since.
+
+SUBJECT: a ragged travel cloak hanging on a wooden peg, faint golden thread glinting in the moth holes, humble inn wall
+
+**Splintered Oar** · Footman · Relic
+> One oar came back from the fleet that didn't. The rowers' guild keeps it, and keeps the count.
+
+SUBJECT: a broken ship's oar mounted on a tavern wall among candles, salt-bleached wood, rows of small notches carved in the blade
+
+**Marching Boots** · Footman · Relic
+> Their last four owners deserted, in the same direction. The quartermaster has begun to suspect the boots.
+
+SUBJECT: a pair of worn leather army boots standing alone on a moonlit road facing away from a distant campfire, laces neatly tied
+
+**Rusted Key** · Footman · Relic
+> No lock in the realm fits it, which the locksmiths find more alarming, not less.
+
+SUBJECT: an ornate old key of flaking rust hanging from a nail, faint gold glow deep in the corrosion, cellar stone wall
+
+**Apprentice Fletcher** · Footman · Levy
+> Every arrow in the last battle passed through her hands first. Aim is the archer's craft; arrival is hers.
+
+SUBJECT: a focused young woman binding fletching to an arrow shaft, bundles of feathers and finished arrows on her workbench, oil lamp
+
+**Bellows Boy** · Footman · Levy
+> The forge's fire has a heartbeat, and it is him.
+
+SUBJECT: a soot-covered boy straining at huge leather forge bellows twice his size, shower of sparks, smithy darkness
+
+**Palisade Builder** · Footman · Levy
+> The wall was to be stone, someday. His timber has held for thirty years of somedays.
+
+SUBJECT: a weathered carpenter driving a sharpened stake with a heavy mallet, timber palisade line stretching into evening mist
+
+**Horn Blower** · Footman · Levy
+> One note for danger, two for retreat, three for victory. He has practiced the third in secret all his life.
+
+SUBJECT: a soldier on a hilltop blowing a long curved war horn, cheeks bulging, banner snapping beside him, valley below in shadow
+
+**Rat Catcher** · Footman · Levy
+> The city pays him by the tail. He is rich, which the city prefers not to think about.
+
+SUBJECT: a wiry man in a leather coat hung with traps and cages, a lantern in one hand and a wriggling sack in the other, night alley
+
+**Night Carter** · Footman · Levy
+> His cart goes out empty every dusk and comes back heavy every dawn. No one asks, and he charges accordingly.
+
+SUBJECT: a hooded man leading a creaking covered cart pulled by a black nag through empty midnight streets, single swinging lantern
+
+**Ford Washerwoman** · Footman · Levy
+> She washes the war's linen in the river. When she washes a lord's shirt unasked, lords take to their beds.
+
+SUBJECT: an old woman kneeling at a river ford scrubbing a white shirt, red tint swirling downstream, dawn mist on the water
+
+**Tea-Leaf Aunt** · Footman · Mystic
+> Every village has one. Between them they know everything, which is why the kings fear no guild more.
+
+SUBJECT: a cheerful plump old woman peering into a teacup, golden leaf shapes floating above the rim, cluttered cottage kitchen
+
+**Threshold Blesser** · Footman · Mystic
+> No plague, thief, or ghost may cross a door she has marked. Husbands are not covered under the standard blessing.
+
+SUBJECT: a brisk middle-aged woman painting a glowing golden swirl on a farmhouse door lintel with her thumb, family watching from within
+
+**Echo Listener** · Footman · Mystic
+> Wells remember every wish dropped into them. He collects on behalf of the management.
+
+SUBJECT: a thin man leaning deep into a stone well, one ear turned down into the dark, faint golden whispers rising as light
+
+**Crossroads Palmist** · Footman · Mystic
+> She reads the road's palm, not yours. Every traveler is just a line the road is thinking about.
+
+SUBJECT: a mysterious woman seated at a night crossroads reading the crossing paths like lines in a hand, lantern on a stick, gold dust drifting
+
+## Knight (rare) — 54
 
 **Storm Falcon** · Knight · Beast **[art done]**
 > It nests in thunderheads and stoops faster than the lightning it races. The lightning has stopped racing.
@@ -617,7 +763,27 @@ SUBJECT: a small fierce drake with cooling-lava scales puffing a tiny jet of fla
 
 SUBJECT: a long moss-green wyrm with lantern-like eyes coiling through misty swamp water, only head and back arches above surface, ruins behind
 
-## Highlord (epic) — 40
+**Pit Bear** · Knight · Beast
+> Seven years undefeated in the fighting pits. Freed by decree, it returns nightly anyway. It likes the applause.
+
+SUBJECT: a scarred brown bear with a broken chain collar standing upright in a torchlit fighting pit, raked sand, empty benches
+
+**Tourney Champion** · Knight · Levy
+> Undefeated in the lists, untested in the war. He suspects, correctly, that everyone is wondering.
+
+SUBJECT: a gleaming knight in ornate tourney armor with gilded laurels on his helm, lance couched, empty tilting yard, long shadows
+
+**Chapel Organ** · Knight · Construct
+> It played its own requiem when the congregation stopped coming. It has since moved on to angrier composers.
+
+SUBJECT: a massive cathedral pipe organ come alive, pipes rearing like serpents, keys pressing themselves, golden sound visible in dusty light
+
+**Beacon Keeper** · Knight · Mystic
+> Her tower's flame calls ships home and other things away. Both duties come with the post, and the pay reflects neither.
+
+SUBJECT: a windswept woman tending a great flaming brazier atop a cliff tower at night, dark sea below, pale shapes turning away in the water
+
+## Highlord (epic) — 20
 
 **Void Kraken** · Highlord · Leviathan **[art done]**
 > The drowned fleets of the Sundering did not sink. They were collected.
@@ -649,40 +815,15 @@ SUBJECT: a mountainous four-legged beast of stone-grey hide with boulders and pi
 
 SUBJECT: a gargantuan bird of prey with storm-grey feathers spanning the sky, lightning webbing between its wingtips, tiny ships on the sea below
 
-**Old Red Tusk** · Highlord · Beast
-> Every great house has sent its finest son to kill it. It is, in this way, the realm's leading cause of modest second sons inheriting.
-
-SUBJECT: a colossal ancient boar with one broken blood-red tusk, hide bristling with decades of broken spearheads, misty primeval forest
-
 **Spectral Stag** · Highlord · Beast
 > To see it means a king will die. It has been seen every night this year.
 
 SUBJECT: a majestic translucent stag glowing pale gold, walking through a dark forest, trees faintly visible through its body
 
-**Pale Ape** · Highlord · Beast
-> The high passes have a toll and a toll-keeper. Climbers pay in supplies, or in company.
-
-SUBJECT: a massive white-furred ape crouched on a snowy mountain pass, knuckles down, watching with unsettling intelligence, prayer flags frozen
-
-**Thunder Bison** · Highlord · Beast
-> The herd went east before the Sundering. Their king stayed, and the plains still shake with his argument.
-
-SUBJECT: a titanic black bison with storm clouds tangled in its hump and horns, lightning striking as it stamps, endless dark plains
-
 **Ledger Colossus** · Highlord · Construct
 > The Great Ledger's final guardian. It weighs all who approach, and it has never once been wrong.
 
 SUBJECT: a giant bronze colossus with balance scales built into its chest, seated on a ruined archive throne, golden script orbiting its head
-
-**Belfry Golem** · Highlord · Construct
-> When the city fell, the cathedral tower shook off its stones and walked. The bell still tolls inside it.
-
-SUBJECT: a towering golem assembled from cathedral tower stones with a great bronze bell for a heart, striding through a ruined city at dusk
-
-**Siegebreaker Engine** · Highlord · Construct
-> The engineers built it to end one siege. No one remembered to tell it the war was over.
-
-SUBJECT: a massive war machine of black timber and iron on grinding wheels, part trebuchet part fortress, torn banners caught in its frame, dawn field
 
 **Forge Titan** · Highlord · Construct
 > The Firstborn's forges needed a smith who would not burn. They made one, and it is still filling orders.
@@ -694,16 +835,6 @@ SUBJECT: a giant humanoid of cooling slag and rivets with a molten glowing core,
 
 SUBJECT: a magnificent golden crown split in two floating halves, glowing fracture between them, hovering above an empty throne in darkness
 
-**The Last Decree** · Highlord · Relic
-> One sentence, in the last king's hand. The maesters who read it stopped speaking. It is now read to the condemned.
-
-SUBJECT: an open illuminated manuscript on a black altar, one line of text burning gold on the page, chained and locked binding, vault shadows
-
-**Ember Reliquary** · Highlord · Relic
-> A coal from the First Flame, kept warm for an age. The realm argues over what to light with it.
-
-SUBJECT: an ornate gold and glass reliquary box containing a single impossibly bright ember, carried on poles by shadowed robed figures
-
 **The Weaver's Hand** · Highlord · Mystic
 > She rolled dice with the Blind Weaver and lost everything, then won it back doubled. Neither has stopped playing.
 
@@ -713,21 +844,6 @@ SUBJECT: a regal woman with a blindfold of golden cloth casting glowing dice tha
 > The coastal villages pay her tribute in candles and quiet. The sea pays her more.
 
 SUBJECT: an imperious old woman standing on a cliff in billowing storm robes, the hurricane bending around her like a curtain, lightning crown
-
-**Bone Choir** · Highlord · Mystic
-> Nine throats, one song. The song is old, and it is looking for its tenth voice.
-
-SUBJECT: nine hooded skeletal singers arranged in a crescent, jaws open in eerie harmony, golden sound waves visible in candlelit catacomb air
-
-**Hollow Saint** · Highlord · Mystic
-> They carried her statue into battle for a century before someone noticed the statue was walking on its own.
-
-SUBJECT: a serene marble saint statue with hollow glowing eyes walking through a battlefield, chipped and arrow-struck, soldiers kneeling in her wake
-
-**Ash Prophet** · Highlord · Mystic
-> He has foretold the realm's end eleven times. He has been right once, so far, which is once more than anyone liked.
-
-SUBJECT: a wild-eyed prophet robed in grey ash, arms wide before a bonfire whose smoke forms crowns and falling towers, night crowd silhouettes
 
 **Mirror Queen** · Highlord · Mystic
 > Her court exists only in reflections. Increasingly, so does she — and glass, unlike ambition, is everywhere.
@@ -739,30 +855,10 @@ SUBJECT: an elegant queen visible only inside a tall cracked mirror, reaching ou
 
 SUBJECT: an undead admiral in a barnacled greatcoat and bicorne standing on a ghostly ship deck, spectral drowned fleet in formation behind
 
-**Crypt Marshal** · Highlord · Undead
-> The catacombs hold forty generations of soldiers. Someone must keep them drilled.
-
-SUBJECT: a towering skeleton in ceremonial black armor with a marshal's baton, ranks of standing skeletal soldiers in torchlit catacombs behind
-
-**Legion Remnant** · Highlord · Undead
-> One body, many soldiers. The legion refused to be counted among the dead individually.
-
-SUBJECT: a hulking figure fused from many armored corpses and shields and spears, moving as one, standard poles jutting from its back, battlefield fog
-
 **Vale Banshee** · Highlord · Undead
 > Her scream has emptied three castles. She is not angry, the maesters insist. She is grieving. This is not better.
 
 SUBJECT: a spectral woman in tattered white mid-scream floating above a moonlit valley, sound rippling the mist, black hair storming around her
-
-**Cairn Shepherd** · Highlord · Undead
-> He raises the dead gently, leads them somewhere kinder, and lays them back down. The necromancers hate him.
-
-SUBJECT: a tall quiet skeleton in a shepherd's cloak with a crook staff, leading a line of docile spirits across dark hills of stone cairns
-
-**Plague Cardinal** · Highlord · Undead
-> The pestilence needed a church of its own. It promoted from within.
-
-SUBJECT: a gaunt undead cardinal in rotting scarlet vestments and a tall mitre, censer swinging green-gold smoke, ruined cathedral nave
 
 **Storm Drake** · Highlord · Drake
 > It rides the hurricanes it hatches. The coast has learned to read its moods like weather, because they are.
@@ -774,26 +870,6 @@ SUBJECT: a powerful blue-grey dragon banking through a hurricane wall, rain stre
 
 SUBJECT: a skeletal dragon with tattered wing membranes rearing among giant dragon bones in a desert of white dust, cold blue fire in its ribcage
 
-**Verdigris Drake** · Highlord · Drake
-> It slept so long the bronze age ended on its back. It woke green, and finds patience easy now.
-
-SUBJECT: a huge dragon with oxidized green-bronze scales uncoiling from around a ruined monument, verdigris streaks, overgrown plaza
-
-**Ember Wyvern** · Highlord · Drake
-> Where it roosts, winter ends early. Whole villages leave offerings to keep it, and their harvests, warm.
-
-SUBJECT: a two-legged wyvern of deep red scales with glowing ember cracks, wings mantled over a roost of scorched stones, melting snow around
-
-**Deep Wyrm** · Highlord · Drake
-> The mines go down until they don't. What the miners call the bottom, it calls the roof.
-
-SUBJECT: an eyeless pale dragon-wyrm boring through glittering cavern rock, gemstones embedded in its hide, miners' abandoned lanterns tiny below
-
-**Marsh Leviathan** · Highlord · Leviathan
-> The fen has a heartbeat. The locals build their stilt-houses to its rhythm and ask no further questions.
-
-SUBJECT: a vast moss-backed leviathan surfacing beneath stilt houses in a swamp, its back an island of reeds and huts, lantern lights, dusk
-
 **The Pale Whale** · Highlord · Leviathan
 > Every captain who hunted it retired rich in stories and poor in ships.
 
@@ -804,22 +880,12 @@ SUBJECT: an immense ghost-white whale breaching beside a tiny whaling ship, old 
 
 SUBJECT: a titanic crowned sea-serpent coiled in the eye of a vast whirlpool, water walls spiraling around her, drowned cargo circling
 
-**Reef Titan** · Highlord · Leviathan
-> Charts mark it as an island. Older charts mark it as a warning. The oldest charts mark it politely, by name.
-
-SUBJECT: a colossal armored sea creature encrusted with a living coral reef, rising half out of turquoise-black water, shipwreck on its shoulder
-
 **The Free Captain** · Highlord · Levy
 > Her company has never lost a war. Her secret is unremarkable: she reads the contract, and then the ground.
 
 SUBJECT: a commanding mercenary captain in gilded half-plate on a map table strewn with coins, banner of a broken chain behind her, war tent braziers
 
-**Breach Warmaster** · Highlord · Levy
-> He has stood in nine breaches. The walls fell. He did not.
-
-SUBJECT: a massive armored veteran standing alone in a shattered wall breach, greatsword planted, silhouetted against fire, rubble and broken ladders
-
-## Sovereign (legendary) — 20
+## Sovereign (legendary) — 7
 
 **Genesis Phoenix** · Sovereign · Firstborn **[art done]**
 > It burned before the realm was named, and it will burn after the name is forgotten. Everything between is borrowed warmth.
@@ -836,60 +902,15 @@ SUBJECT: a tall spectral monarch in ice-blue regalia and a frost crown, frozen b
 
 SUBJECT: a vast androgynous god-figure with bandaged eyes weaving a loom of golden threads that dissolve into falling dice and embers, cosmic darkness
 
-**The First Ember** · Sovereign · Firstborn
-> Before the realm, there was one spark. Everything since has been kindling.
-
-SUBJECT: a tiny incandescent ember floating in immense darkness, its single point of light revealing the silhouettes of kneeling giants around it
-
-**The Ashen Mother** · Sovereign · Firstborn
-> Everything the fire takes, she keeps. Ask her for nothing back — she gives only forward.
-
-SUBJECT: a colossal maternal figure of grey ash and smoke cradling a glowing hearth-fire in her hands, burnt forest kneeling around her like a congregation
-
-**The Elder Hart** · Sovereign · Firstborn
-> The forests are its antlers, shed and regrown an age at a time. Hunt beneath them respectfully.
-
-SUBJECT: a god-like white hart the size of a hill, antlers grown into a vast forest canopy with golden leaves, tiny pilgrims on the path between its hooves
-
-**The Worldroot** · Sovereign · Firstborn
-> All the weirwoods are one tree. It has opinions about axes, delivered slowly.
-
-SUBJECT: an immense ancient tree with a serene sleeping face in its bark, roots becoming mountain ridges, golden sap veins glowing, star-filled sky
-
-**The Pale Dawn** · Sovereign · Firstborn
-> The morning after the Sundering, the sun rose white as bone. Some mornings, when the realm errs badly, it does so again.
-
-SUBJECT: a luminous bone-white sun rising over a dark ruined landscape, a faint regal female figure visible within the light, long white rays
-
 **The Great Ledger** · Sovereign · Firstborn
 > Every debt, every deed, every summoned soul, written. It is not a book about the realm. The realm is a book about it.
 
 SUBJECT: a colossal open tome hovering in a dark void, pages of golden light turning by themselves, script rising off the pages like embers, chains dangling broken
 
-**The Summer That Was** · Sovereign · Firstborn
-> The old folk swear the summers before the Sundering lasted years. One of them, it turns out, is still going — elsewhere.
-
-SUBJECT: a radiant spirit of high summer, a golden-skinned figure crowned in wheat and honeybees, standing in an impossible sunlit meadow torn like a doorway in dark winter woods
-
 **The Ember Tyrant** · Sovereign · Drake
 > The mountain kings paid it tribute for a thousand years. The mountain kings are gone. The tribute, it notes, is late.
 
 SUBJECT: an ancient tyrant dragon of black scale and rivers of magma, crowned with fused gold crowns of dead kings, atop a volcano hoard
-
-**The Sleeping Wyrm** · Sovereign · Drake
-> The realm's largest mountain range is, on a long enough timescale, weather.
-
-SUBJECT: a dragon vast as a mountain range asleep beneath grass and snow, one closing golden eye the size of a lake, villages glowing on its flanks
-
-**The Night Wyrm** · Sovereign · Drake
-> Stars are said to be holes its claws left in the sky. It is said to be coming back for the moon.
-
-SUBJECT: an immense serpent-dragon of living night sky coiling above a dark horizon, its body full of stars, moon caught gently in one claw
-
-**The Drowned Court** · Sovereign · Leviathan
-> The sea kept every king given to it and founded a dynasty of its own. Its politics are cold, deep, and ongoing.
-
-SUBJECT: a vast underwater throne room scene, a leviathan king of coral and drowned royalty seated among schools of fish like courtiers, sunken crowns, deep blue-gold light
 
 **The Silent Deep** · Sovereign · Leviathan
 > Below the last fish, below the last light, something listens. Sailors say nothing important above the waves.
@@ -900,26 +921,6 @@ SUBJECT: an abyssal leviathan of impossible scale barely visible in black water,
 > The barrow-kings wait for him. The throne waits for him. He waits, in turn, for the realm to be worth returning to.
 
 SUBJECT: a majestic undead king in shattered regal armor standing at the edge of a barrow field, crown held in his hands rather than worn, golden mist dawn
-
-**The Unmourned Queen** · Sovereign · Undead
-> No bells rang when she died, by her own final order. The realm has been apologizing to her ghost ever since.
-
-SUBJECT: a beautiful spectral queen in funeral black and silver, standing in an empty cathedral where no candles burn, tears of gold on stone-still face
-
-**The Sundered Saint** · Sovereign · Undead
-> He was holy enough to survive the Sundering and human enough not to survive it whole. Both halves still perform miracles.
-
-SUBJECT: a towering saintly figure split down the middle by a seam of golden light, half serene flesh half hollow armor, healing hands outstretched, pilgrims below
-
-**The First Ledgerkeeper** · Sovereign · Mystic
-> She invented writing to record a debt the Weaver owed her. Neither party considers the matter closed.
-
-SUBJECT: an ancient regal woman with ink-stained golden hands, quill of white flame, seated at a desk from which all bookshelves in an infinite archive radiate
-
-**The Waiting Throne** · Sovereign · Relic
-> Iron does not hope. Iron endures, which from a distance looks the same.
-
-SUBJECT: a massive empty iron throne on a high dais in a ruined great hall, snow falling through the broken roof, a single ember glowing on the seat
 
 ---
 
