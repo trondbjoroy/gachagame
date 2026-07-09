@@ -207,8 +207,12 @@ function render() {
 
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
-  $('fuseHint').textContent = selCount === 2 ? 'Fuse into next tier:' : 'Select two cards of the same tier —';
-  $('fuseBtn').disabled = !(selCount === 2 && sameTierSelected());
+  const fuseReady = selCount === 2 && sameTierSelected();
+  const canPayFuse = S.gemsLedger >= 5;
+  $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station —'
+    : (canPayFuse ? 'Forge into the next station:'
+       : `Fusion costs 0.05 GEMS — you have ${fmtGems(S.gemsLedger)}. Earn more in the Mines.`);
+  $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
@@ -347,7 +351,14 @@ async function waitForExecution(hash, onTick) {
     const logs = await node(`/nano_contract/logs?id=${hash}`);
     if (logs.nc_execution === 'success') return;
     if (logs.nc_execution && logs.nc_execution !== 'pending') {
-      throw new Error('the realm refused this deed');
+      let reason = '';
+      for (const entries of Object.values(logs.logs || {})) {
+        for (const e of entries) {
+          const m = (e.error_traceback || '').match(/NCFail: (.+?)\s*$/m);
+          if (m) reason = m[1];
+        }
+      }
+      throw new Error(reason || 'the realm refused this deed');
     }
   }
 }
