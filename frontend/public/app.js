@@ -152,6 +152,57 @@ async function refresh() {
 function slugOf(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 function cardMeta(name) { return (window.CATALOG || {})[name]; }
 
+/* ---------------- deeds & standing (read from what the Ledger already knows) ---------------- */
+
+const TITLES = ['Wanderer', 'Footman', 'Man-at-Arms', 'Knight', 'Banneret', 'Highlord', "Sovereign's Hand"];
+
+const DEEDS = [
+  { id: 'first-muster', name: 'First Muster', desc: 'Have a champion sworn to your banner', test: s => s.owned.length >= 1 },
+  { id: 'warband', name: 'Raise a Warband', desc: 'Have five champions at once', test: s => s.owned.length >= 5 },
+  { id: 'host', name: 'Raise a Host', desc: 'Have ten champions at once', test: s => s.owned.length >= 10 },
+  { id: 'knighted', name: 'Knight of the Realm', desc: 'Have a champion of Knight station or higher', test: s => s.owned.some(c => c.tier >= 1) },
+  { id: 'high-court', name: 'Court of Highlords', desc: 'Have a Highlord in your host', test: s => s.owned.some(c => c.tier >= 2) },
+  { id: 'sovereign', name: "Sovereign's Own", desc: 'Have a Sovereign in your host', test: s => s.owned.some(c => c.tier >= 3) },
+  { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four stations at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
+  { id: 'delver', name: 'Delver of the Deep', desc: 'Have a champion toiling in the Mines', test: s => s.staked >= 1 },
+  { id: 'gem-hoard', name: 'Gem-Hoarder', desc: 'Hold 1.00 gems or more', test: s => s.gems >= 100 },
+  { id: 'first-blood', name: 'First Blood', desc: 'Win a trial in the Pit', test: s => s.wins >= 1 },
+  { id: 'pit-champion', name: 'Pit Champion', desc: 'Win ten trials in the Pit', test: s => s.wins >= 10 },
+  { id: 'gathering-storm', name: 'The Gathering Storm', desc: 'Command 250 combined power', test: s => s.power >= 250 },
+];
+
+function deedState() {
+  const owned = [...S.cards.values()].filter(c => c.tier >= 0 &&
+    (c.mine || (S.addr && (c.staker === S.addr || c.pending === S.addr || c.marketPending === S.addr))));
+  return {
+    owned,
+    staked: owned.filter(c => c.staker === S.addr).length,
+    gems: S.gemsLedger + S.gemsWallet,
+    wins: S.wins,
+    power: owned.reduce((a, c) => a + (c.power || 0), 0),
+  };
+}
+
+function computeDeeds() {
+  const s = deedState();
+  return DEEDS.map(d => ({ ...d, done: S.addr ? !!d.test(s) : false }));
+}
+
+function titleFor(doneCount) {
+  // 12 deeds → 7 titles: 0, 1-2, 3-4, 5-6, 7-8, 9-10, 11-12
+  return TITLES[Math.min(Math.ceil(doneCount / 2), TITLES.length - 1)];
+}
+
+function announceNewDeeds(deeds) {
+  if (!S.addr) return;
+  const key = 'emberfall_deeds_' + S.addr;
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(key) || '[]'); } catch { }
+  const done = deeds.filter(d => d.done).map(d => d.id);
+  for (const id of done) if (!seen.includes(id)) track('deed_complete', { deed: id });
+  localStorage.setItem(key, JSON.stringify(done));
+}
+
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
@@ -209,12 +260,28 @@ function render() {
     'Speak, and the Weaver answers within moments.';
 
   const me = v => S.addr ? v : '—';
+  const deeds = computeDeeds();
+  const deedsDone = deeds.filter(d => d.done).length;
+  announceNewDeeds(deeds);
   $('statsRow').innerHTML = [
     ['Souls summoned · realm', S.totalPulls],
     ['Your gems in ledger', me(fmtGems(S.gemsLedger))],
     ['Your gems in hand', me(fmtGems(S.gemsWallet))],
     ['Your trials won', me(S.wins)],
+    ['Your standing', me(titleFor(deedsDone))],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // deeds of renown (Codex)
+  const nextTitle = deedsDone >= DEEDS.length ? null : titleFor(Math.min(deedsDone + 1, DEEDS.length));
+  $('deedsSummary').innerHTML = !S.addr
+    ? 'Swear a wallet to your cause and your chronicle begins.'
+    : `You stand as <b>${titleFor(deedsDone)}</b> — ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
+      (nextTitle && nextTitle !== titleFor(deedsDone) ? ` The next deed makes you <b>${nextTitle}</b>.` : '');
+  $('deedsGrid').innerHTML = deeds.map(d => `
+    <div class="deed${d.done ? ' done' : ''}">
+      <span class="deed-mark">${d.done ? '✦' : '·'}</span>
+      <div><b>${d.name}</b><div class="deed-desc">${d.desc}</div></div>
+    </div>`).join('');
 
   // collection
   const mine = [...S.cards.values()].filter(c => c.mine);
