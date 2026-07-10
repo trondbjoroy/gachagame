@@ -291,152 +291,152 @@ SUBJECT: a wild-eyed soldier climbing a siege ladder with a knife in his teeth, 
 
 SUBJECT: a hooded figure with a wicker basket of salvaged arrows on their back, pulling a shaft from muddy ground among fallen shields, crows watching
 
-**Conscript Halberdier** · Footman · Levy
+**Conscript Halberdier** · Footman · Levy **[art done]**
 > The halberd is taller than he is and older than his village. One of the three will survive the war.
 
 SUBJECT: a nervous young man in ill-fitting armor holding an ancient ornate halberd at attention, rank of spears fading into fog behind
 
-**Toll Keeper** · Footman · Levy
+**Toll Keeper** · Footman · Levy **[art done]**
 > The bridge has stood a thousand years because no one has ever crossed it for free.
 
 SUBJECT: a wiry old man on a stone bridge holding out an open palm, iron strongbox chained to his belt, river mist rising
 
-**Stable Squire** · Footman · Levy
+**Stable Squire** · Footman · Levy **[art done]**
 > He knows every warhorse by name and every knight by how hard they are on their horses.
 
 SUBJECT: a young squire brushing a massive black destrier in a torchlit stable, saddle and barding hung behind, straw underfoot
 
-**Mud Skirmisher** · Footman · Levy
+**Mud Skirmisher** · Footman · Levy **[art done]**
 > The marshes have swallowed three invading columns. The skirmishers just show the mud where to bite.
 
 SUBJECT: a camouflaged fighter crouched in reeds smeared with grey mud, sling in hand, only eyes bright, marsh water reflecting dawn
 
-**Hedge Wizard** · Footman · Mystic
+**Hedge Wizard** · Footman · Mystic **[art done]**
 > His spells are small, his fees smaller, and his cures mostly honest. In the villages this counts as greatness.
 
 SUBJECT: a shabby wizard in a patched robe and drooping hat, sparks of amber light fizzing from a gnarled walking staff, village lane at dusk
 
-**Gutter Oracle** · Footman · Mystic
+**Gutter Oracle** · Footman · Mystic **[art done]**
 > She reads fortunes in puddles and refuse. Lately every future she sees is the same one.
 
 SUBJECT: a wild-haired old woman crouched over a rain puddle that reflects golden fire instead of the sky, narrow alley, wet cobbles
 
-**Salt Scatterer** · Footman · Mystic
+**Salt Scatterer** · Footman · Mystic **[art done]**
 > Every doorway she salts stays unhaunted. The dead find this rude but respect the custom.
 
 SUBJECT: a solemn woman in grey casting a handful of glowing white salt across a dark farmhouse threshold, faint spirits recoiling in shadow
 
-**Candle Nun** · Footman · Mystic
+**Candle Nun** · Footman · Mystic **[art done]**
 > Her order keeps a flame lit for the vanished king. She is the last sister, and the wax is running low.
 
 SUBJECT: an elderly nun in dark habit shielding a single candle flame with her hand, rows of dead candles behind her in a stone chapel
 
-**Bone Reader** · Footman · Mystic
+**Bone Reader** · Footman · Mystic **[art done]**
 > The bones never lie. The trouble is they gossip.
 
 SUBJECT: a hooded seer casting carved knucklebones across a black cloth, the bones glowing faintly gold mid-fall, dim tent interior
 
-**Festival Conjurer** · Footman · Mystic
+**Festival Conjurer** · Footman · Mystic **[art done]**
 > Cheap illusions for market days. Once a year, by accident, one of them is real.
 
 SUBJECT: a flamboyant street magician releasing a burst of golden illusory butterflies from empty hands, delighted shadows of a crowd, festival lanterns
 
-**Wart Charmer** · Footman · Mystic
+**Wart Charmer** · Footman · Mystic **[art done]**
 > The least of the healing arts, practiced perfectly for sixty years. Mock the small magics at your peril.
 
 SUBJECT: a tiny wrinkled woman pressing a glowing thumb to a farmhand's arm, herbs and dried toads hanging in her cluttered hut
 
-**Lantern Hermit** · Footman · Mystic
+**Lantern Hermit** · Footman · Mystic **[art done]**
 > He hangs lamps in the dark wood for travelers he never meets. Some nights the wood hangs its own.
 
 SUBJECT: a bearded hermit in furs hanging a glowing amber lantern on a twisted branch, dozens more lanterns receding into black forest
 
-**Puddle Seer** · Footman · Mystic
+**Puddle Seer** · Footman · Mystic **[art done]**
 > Scrying pools are for lords. Rain does the same work for free, if you know how to ask.
 
 SUBJECT: a barefoot young woman kneeling at a moonlit puddle, golden ripples forming a crown shape in the reflection, drizzle
 
-**Pauper Ghast** · Footman · Undead
+**Pauper Ghast** · Footman · Undead **[art done]**
 > He died owed three coppers. Small debts keep small ghosts.
 
 SUBJECT: a faint translucent ghost of a beggar holding out a spectral bowl, standing at a crossroads under a broken lantern, pale glow
 
-**Restless Gravedigger** · Footman · Undead
+**Restless Gravedigger** · Footman · Undead **[art done]**
 > He buried the whole village during the plague, then dug one grave too few. He is still working on it.
 
 SUBJECT: a skeletal figure in a rotted coat digging by lantern light in a foggy graveyard, shovel raised mid-swing, open grave before him
 
-**Bell Sheep** · Footman · Beast
+**Bell Sheep** · Footman · Beast **[art done]**
 > The flock follows her bell through fog, flood, and war. Half the shepherds do too.
 
 SUBJECT: a stout ewe with a tarnished bronze bell on a leather collar, standing calm in thick fog, dim shapes of a flock behind
 
-**Old Mole** · Footman · Beast
+**Old Mole** · Footman · Beast **[art done]**
 > It has undermined three castle walls without ever once being paid as a sapper.
 
 SUBJECT: a huge velvet-black mole with massive digging claws emerging from a mound of earth beside a leaning castle wall, moonlight
 
-**Pond Pike** · Footman · Beast
+**Pond Pike** · Footman · Beast **[art done]**
 > The moat's oldest resident. The garrison feeds it debtors' scraps and calls it the castellan.
 
 SUBJECT: a long predatory pike fish lurking just beneath green moat water, eyes and toothy jaw breaking the surface, castle stones behind
 
-**Hearth Hedgehog** · Footman · Beast
+**Hearth Hedgehog** · Footman · Beast **[art done]**
 > It wandered in one winter and never left. The household now negotiates with it for the warm spot.
 
 SUBJECT: a round hedgehog with ember-warm glowing spines curled on a stone hearth beside a dying fire, cozy dark kitchen
 
-**Gutter Gull** · Footman · Beast
+**Gutter Gull** · Footman · Beast **[art done]**
 > It has robbed more travelers than the toll keeper, with less paperwork.
 
 SUBJECT: a scruffy white gull with a stolen fish in its beak perched on a harbor piling, grey docks and gallows silhouettes behind
 
-**Furrow Ox** · Footman · Beast
+**Furrow Ox** · Footman · Beast **[art done]**
 > The plow, the cart, the ram — the realm's wars and harvests ride the same patient shoulders.
 
 SUBJECT: a massive horned ox in a wooden yoke standing in a half-plowed field at dawn, steam rising from its back
 
-**Saddle Tick** · Footman · Vermin
+**Saddle Tick** · Footman · Vermin **[art done]**
 > Many a famous knight has been unhorsed by nothing the ballads will admit to.
 
 SUBJECT: a swollen grey tick the size of a coin clinging to worn saddle leather, a knight's shadow looming, stable lantern light
 
-**Book Mite** · Footman · Vermin
+**Book Mite** · Footman · Vermin **[art done]**
 > The archive's great enemy is not fire. Fire only takes pages; the mite takes meanings.
 
 SUBJECT: a tiny pale insect crawling across an open illuminated manuscript, ornate margins eaten into lace patterns, candlelit library
 
-**Candle Moth** · Footman · Vermin
+**Candle Moth** · Footman · Vermin **[art done]**
 > It loves what kills it. The court poets have adopted it as a sigil, which tells you about court.
 
 SUBJECT: a large dusty moth with flame-scorched wing edges circling a tall candle flame, wax pooling, darkness around
 
-**Barrel Roach** · Footman · Vermin
+**Barrel Roach** · Footman · Vermin **[art done]**
 > It survived the siege, the sack, and the fire that followed. The city, in fairness, did not.
 
 SUBJECT: a glossy armored cockroach the size of a hand atop a charred ale barrel in a burnt-out cellar
 
-**Weathervane Cockerel** · Footman · Construct
+**Weathervane Cockerel** · Footman · Construct **[art done]**
 > It has pointed at every storm, army, and omen to arrive from any quarter. It has never once been thanked.
 
 SUBJECT: a copper rooster weathervane come alive, wings half-spread atop a crooked spire, green patina, storm clouds gathering
 
-**Rope Golem** · Footman · Construct
+**Rope Golem** · Footman · Construct **[art done]**
 > Knotted together from every noose the town no longer needed. It is very gentle.
 
 SUBJECT: a man-shaped figure of coiled and knotted ropes standing in a barn doorway, frayed ends drifting like hair, soft lantern light
 
-**Waxwork Page** · Footman · Construct
+**Waxwork Page** · Footman · Construct **[art done]**
 > The chandler's son melted every candle stub into a servant. It works hard in winter and weeps in summer.
 
 SUBJECT: a small boy-shaped figure of dripping candle wax holding a candelabra, one flame lit on its head, dark manor corridor
 
-**Runaway Wheel** · Footman · Construct
+**Runaway Wheel** · Footman · Construct **[art done]**
 > A cartwheel that came off on the king's road and simply kept going. It has seen more of the realm than most knights.
 
 SUBJECT: a single iron-rimmed wooden cartwheel rolling by itself down a moonlit country road, dust trail, startled crows
 
-**Moth-Eaten Cloak** · Footman · Relic
+**Moth-Eaten Cloak** · Footman · Relic **[art done]**
 > It kept a king warm the night he lost everything. The losing side has passed it down ever since.
 
 SUBJECT: a ragged travel cloak hanging on a wooden peg, faint golden thread glinting in the moth holes, humble inn wall
