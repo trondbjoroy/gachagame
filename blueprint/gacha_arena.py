@@ -25,6 +25,17 @@ class EmberfallArena(Blueprint):
     All GEMS bookkeeping is an internal ledger; withdraw_gems() /
     deposit_gems() move real GEMS tokens out of / into the contract.
     Pull proceeds provide the HTR collateral that GEMS minting needs.
+
+    v2.2 — progression, funded from proceeds (never printed):
+    - renown: every fee-bearing deed earns renown points, multiplied
+      up to 2x by the vigil (consecutive days played, capped at 7).
+    - deeds: one-time achievement flags (a bitmask per player) that
+      pay a small GEMS bounty into the ledger, backed like all other
+      GEMS by pull-proceeds collateral.
+    - the Weaver's favor: 10% of every pull payment feeds a favor
+      pool; each pull has a 1-in-25 chance to win back up to the pull
+      price from that pool (never more than the pool holds).
+      claim_favor() withdraws winnings.
     """
 
     owner: Address
@@ -52,6 +63,12 @@ class EmberfallArena(Blueprint):
     pulls_by: dict[Address, int]
     total_minted: int
     proceeds: Amount
+    renown: dict[Address, int]
+    vigil_day: dict[Address, int]
+    vigil_streak: dict[Address, int]
+    deed_flags: dict[Address, int]
+    favor_pool: Amount
+    favor_owed: dict[Address, Amount]
 
     @public(allow_deposit=True)
     def initialize(self, ctx: Context, owner: Address, pull_price: Amount,
@@ -89,6 +106,12 @@ class EmberfallArena(Blueprint):
         self.total_pulls = 0
         self.pulls_by = {}
         self.total_minted = 0
+        self.renown = {}
+        self.vigil_day = {}
+        self.vigil_streak = {}
+        self.deed_flags = {}
+        self.favor_pool = 0
+        self.favor_owed = {}
         # deposited HTR beyond the GEMS-creation collateral seeds the reserve
         self.proceeds = action.amount - 1
         self.gems_uid = self.syscall.create_deposit_token(
@@ -115,6 +138,53 @@ class EmberfallArena(Blueprint):
 
     def _rake_bps(self) -> int:
         return 500  # 5% of the duel pot
+
+    def _favor_bps(self) -> int:
+        return 1000  # 10% of each pull payment feeds the favor pool
+
+    def _favor_odds(self) -> int:
+        return 25  # 1-in-25 pulls wins the Weaver's favor
+
+    def _fuse_renown(self, tier: int) -> int:
+        # renown by the station of the pair being fused
+        return [20, 40, 80, 0][tier]
+
+    # deed bits and their one-time GEMS-cent bounties
+    # 0 first summoning, 1 first rite of union, 2 forge a highlord,
+    # 3 forge a sovereign, 4 first trial won, 5 ten trials won
+    def _deed_bounty(self, bit: int) -> Amount:
+        return [10, 20, 50, 200, 25, 100][bit]
+
+    # ------------------------------------------------------------------
+    # Progression internals
+    # ------------------------------------------------------------------
+
+    def _earn_renown(self, who: Address, base: int, now: int) -> None:
+        day = now // 86400
+        last = self.vigil_day.get(who, 0)
+        if day == last:
+            streak = self.vigil_streak.get(who, 1)
+        elif day == last + 1:
+            streak = self.vigil_streak.get(who, 0) + 1
+            self.vigil_streak[who] = streak
+            self.vigil_day[who] = day
+        else:
+            streak = 1
+            self.vigil_streak[who] = 1
+            self.vigil_day[who] = day
+        capped = streak if streak < 7 else 7
+        # 1x on day one, rising to 2x at a seven-day vigil
+        self.renown[who] = self.renown.get(who, 0) + base + base * (capped - 1) // 6
+
+    def _grant_deed(self, who: Address, bit: int) -> None:
+        mask = self.deed_flags.get(who, 0)
+        flag = 1 << bit
+        if mask & flag:
+            return
+        self.deed_flags[who] = mask | flag
+        bounty = self._deed_bounty(bit)
+        if bounty > 0:
+            self.gems_ledger[who] = self.gems_ledger.get(who, 0) + bounty
 
     # ------------------------------------------------------------------
     # Operator
@@ -165,6 +235,22 @@ class EmberfallArena(Blueprint):
         self.proceeds += action.amount - 1  # 1 cent consumed as mint collateral
         self.total_pulls += 1
         self.pulls_by[caller] = self.pulls_by.get(caller, 0) + 1
+        # a slice of every pull feeds the favor pool (never printed)
+        share = action.amount * self._favor_bps() // 10_000
+        if share > self.proceeds:
+            share = self.proceeds
+        self.proceeds -= share
+        self.favor_pool += share
+        self._earn_renown(caller, 10, ctx.block.timestamp)
+        self._grant_deed(caller, 0)
+        # the Weaver's favor: a chance to win back up to the pull price
+        if self.favor_pool > 0 and self.syscall.rng.randbelow(self._favor_odds()) == 0:
+            prize = self.pull_price if self.pull_price <= self.favor_pool else self.favor_pool
+            self.favor_pool -= prize
+            self.favor_owed[caller] = self.favor_owed.get(caller, 0) + prize
+            self.syscall.emit_event(
+                f'{{"event":"favor","amount":{prize}}}'.encode()
+            )
         self.syscall.emit_event(
             f'{{"event":"pull","tier":{tier},"token":"{card.hex()}"}}'.encode()
         )
@@ -290,6 +376,12 @@ class EmberfallArena(Blueprint):
         self.proceeds -= 1
         card = self._mint_card(new_tier, bonus)
         self.pending[card] = caller
+        self._earn_renown(caller, self._fuse_renown(tier), ctx.block.timestamp)
+        self._grant_deed(caller, 1)
+        if new_tier >= 2:
+            self._grant_deed(caller, 2)
+        if new_tier >= 3:
+            self._grant_deed(caller, 3)
         self.syscall.emit_event(
             f'{{"event":"fuse","tier":{new_tier},"token":"{card.hex()}"}}'.encode()
         )
@@ -348,6 +440,14 @@ class EmberfallArena(Blueprint):
         self.gems_ledger[winner] = self.gems_ledger.get(winner, 0) + pot - rake
         self.gems_ledger[self.owner] = self.gems_ledger.get(self.owner, 0) + rake
         self.wins[winner] = self.wins.get(winner, 0) + 1
+        # renown only when a fight actually happens (cannot be farmed by
+        # opening and cancelling); the winner takes a flat bonus on top
+        self._earn_renown(challenger, 5, ctx.block.timestamp)
+        self._earn_renown(caller, 5, ctx.block.timestamp)
+        self.renown[winner] = self.renown.get(winner, 0) + 10
+        self._grant_deed(winner, 4)
+        if self.wins[winner] >= 10:
+            self._grant_deed(winner, 5)
 
         self.pending[their_card] = challenger
         self.pending[my_card] = caller
@@ -356,6 +456,19 @@ class EmberfallArena(Blueprint):
             f'{{"event":"duel","id":{duel_id},"roll":{roll},"pa":{pa},"pb":{pb}}}'.encode()
         )
         return 0 if winner == challenger else 1
+
+    @public(allow_withdrawal=True)
+    def claim_favor(self, ctx: Context) -> None:
+        caller = ctx.get_caller_address()
+        if caller is None:
+            raise NCFail("only wallets can claim")
+        action = ctx.get_single_action(HATHOR_TOKEN_UID)
+        if not isinstance(action, NCWithdrawalAction):
+            raise NCFail("expected an HTR withdrawal")
+        owed = self.favor_owed.get(caller, 0)
+        if action.amount > owed:
+            raise NCFail(f"the Weaver owes you {owed}")
+        self.favor_owed[caller] = owed - action.amount
 
     @public
     def cancel_duel(self, ctx: Context, duel_id: int) -> None:
@@ -449,6 +562,30 @@ class EmberfallArena(Blueprint):
     @view
     def get_proceeds(self) -> Amount:
         return self.proceeds
+
+    @view
+    def get_renown(self, address: Address) -> int:
+        return self.renown.get(address, 0)
+
+    @view
+    def get_vigil_streak(self, address: Address) -> int:
+        return self.vigil_streak.get(address, 0)
+
+    @view
+    def get_vigil_day(self, address: Address) -> int:
+        return self.vigil_day.get(address, 0)
+
+    @view
+    def get_deed_flags(self, address: Address) -> int:
+        return self.deed_flags.get(address, 0)
+
+    @view
+    def get_favor_pool(self) -> Amount:
+        return self.favor_pool
+
+    @view
+    def get_favor_owed(self, address: Address) -> Amount:
+        return self.favor_owed.get(address, 0)
 
     # ------------------------------------------------------------------
     # Internal helpers
