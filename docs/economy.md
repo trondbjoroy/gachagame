@@ -76,12 +76,15 @@ We're adding progression in two steps, and the same iron rule governs
 both: **rewards are funded from real proceeds, never conjured from
 nothing.**
 
-**Live now — Deeds of Renown.** The Codex records twelve deeds — raise a
-host, forge a Highlord, win ten trials, and so on — each read straight
-from what the Ledger already knows about you. Completing deeds raises
-your **standing**: Wanderer, Footman, Man-at-Arms, Knight, Banneret,
-Highlord, and finally Sovereign's Hand. Standing is prestige, not power —
-it can't be bought, only earned.
+**Live now — Deeds of Renown.** The Codex records eighteen deeds — from
+your first muster up to commanding an army of forty and winning fifteen
+trials — each read straight from what the Ledger already knows about
+you. Deeds raise your **standing**, seven levels from Level 1 · Wanderer
+to Level 7 · Sovereign's Hand. The gaps widen as you climb: early levels
+come in an evening, but the last ones demand a real host, real coin
+spent summoning, and hours of champions toiling in the Mines. Level 7
+requires every deed in the book. Standing is prestige, not power — it
+can't be bought outright, only earned.
 
 **Arriving with the next update — Renown, the Vigil, and the Favor.**
 - **Renown**: every meaningful act earns points on the Ledger itself —

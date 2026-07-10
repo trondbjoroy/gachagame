@@ -155,20 +155,28 @@ function cardMeta(name) { return (window.CATALOG || {})[name]; }
 /* ---------------- deeds & standing (read from what the Ledger already knows) ---------------- */
 
 const TITLES = ['Wanderer', 'Footman', 'Man-at-Arms', 'Knight', 'Banneret', 'Highlord', "Sovereign's Hand"];
+// deeds witnessed → level; gaps widen so the last titles demand real time and coin
+const LEVEL_AT = [0, 2, 4, 7, 10, 14, 18];
 
 const DEEDS = [
   { id: 'first-muster', name: 'First Muster', desc: 'Have a champion sworn to your banner', test: s => s.owned.length >= 1 },
-  { id: 'warband', name: 'Raise a Warband', desc: 'Have five champions at once', test: s => s.owned.length >= 5 },
-  { id: 'host', name: 'Raise a Host', desc: 'Have ten champions at once', test: s => s.owned.length >= 10 },
-  { id: 'knighted', name: 'Knight of the Realm', desc: 'Have a champion of Knight station or higher', test: s => s.owned.some(c => c.tier >= 1) },
-  { id: 'high-court', name: 'Court of Highlords', desc: 'Have a Highlord in your host', test: s => s.owned.some(c => c.tier >= 2) },
-  { id: 'sovereign', name: "Sovereign's Own", desc: 'Have a Sovereign in your host', test: s => s.owned.some(c => c.tier >= 3) },
-  { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four stations at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
   { id: 'delver', name: 'Delver of the Deep', desc: 'Have a champion toiling in the Mines', test: s => s.staked >= 1 },
-  { id: 'gem-hoard', name: 'Gem-Hoarder', desc: 'Hold 1.00 gems or more', test: s => s.gems >= 100 },
+  { id: 'knighted', name: 'Knight of the Realm', desc: 'Have a champion of Knight station or higher', test: s => s.owned.some(c => c.tier >= 1) },
   { id: 'first-blood', name: 'First Blood', desc: 'Win a trial in the Pit', test: s => s.wins >= 1 },
-  { id: 'pit-champion', name: 'Pit Champion', desc: 'Win ten trials in the Pit', test: s => s.wins >= 10 },
-  { id: 'gathering-storm', name: 'The Gathering Storm', desc: 'Command 250 combined power', test: s => s.power >= 250 },
+  { id: 'warband', name: 'Raise a Warband', desc: 'Have five champions at once', test: s => s.owned.length >= 5 },
+  { id: 'gem-hoard', name: 'Gem-Hoarder', desc: 'Hold 2.00 gems or more', test: s => s.gems >= 200 },
+  { id: 'high-court', name: 'Court of Highlords', desc: 'Have a Highlord in your host', test: s => s.owned.some(c => c.tier >= 2) },
+  { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four stations at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
+  { id: 'host', name: 'Raise a Host', desc: 'Have twelve champions at once', test: s => s.owned.length >= 12 },
+  { id: 'pit-fighter', name: 'Pit Fighter', desc: 'Win five trials in the Pit', test: s => s.wins >= 5 },
+  { id: 'gathering-storm', name: 'The Gathering Storm', desc: 'Command 300 combined power', test: s => s.power >= 300 },
+  { id: 'mine-master', name: 'Master of the Mines', desc: 'Have five champions toiling at once', test: s => s.staked >= 5 },
+  { id: 'gem-baron', name: 'Gem-Baron', desc: 'Hold 10.00 gems or more', test: s => s.gems >= 1000 },
+  { id: 'sovereign', name: "Sovereign's Own", desc: 'Have a Sovereign in your host', test: s => s.owned.some(c => c.tier >= 3) },
+  { id: 'army', name: 'Raise an Army', desc: 'Have twenty-five champions at once', test: s => s.owned.length >= 25 },
+  { id: 'pit-champion', name: 'Pit Champion', desc: 'Win fifteen trials in the Pit', test: s => s.wins >= 15 },
+  { id: 'storm-banners', name: 'Storm of Banners', desc: 'Command 750 combined power', test: s => s.power >= 750 },
+  { id: 'legion', name: 'The Legion of Emberfall', desc: 'Have forty champions at once', test: s => s.owned.length >= 40 },
 ];
 
 function deedState() {
@@ -188,10 +196,13 @@ function computeDeeds() {
   return DEEDS.map(d => ({ ...d, done: S.addr ? !!d.test(s) : false }));
 }
 
-function titleFor(doneCount) {
-  // 12 deeds → 7 titles: 0, 1-2, 3-4, 5-6, 7-8, 9-10, 11-12
-  return TITLES[Math.min(Math.ceil(doneCount / 2), TITLES.length - 1)];
+function levelFor(doneCount) {
+  let lvl = 1;
+  for (let i = 0; i < LEVEL_AT.length; i++) if (doneCount >= LEVEL_AT[i]) lvl = i + 1;
+  return lvl; // 1..7
 }
+function titleFor(doneCount) { return TITLES[levelFor(doneCount) - 1]; }
+function standingLabel(doneCount) { return `Level ${levelFor(doneCount)} · ${titleFor(doneCount)}`; }
 
 function announceNewDeeds(deeds) {
   if (!S.addr) return;
@@ -268,15 +279,17 @@ function render() {
     ['Your gems in ledger', me(fmtGems(S.gemsLedger))],
     ['Your gems in hand', me(fmtGems(S.gemsWallet))],
     ['Your trials won', me(S.wins)],
-    ['Your standing', me(titleFor(deedsDone))],
+    ['Your standing', me(standingLabel(deedsDone))],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
   // deeds of renown (Codex)
-  const nextTitle = deedsDone >= DEEDS.length ? null : titleFor(Math.min(deedsDone + 1, DEEDS.length));
+  const lvl = levelFor(deedsDone);
+  const toNext = lvl >= TITLES.length ? 0 : LEVEL_AT[lvl] - deedsDone;
   $('deedsSummary').innerHTML = !S.addr
     ? 'Swear a wallet to your cause and your chronicle begins.'
-    : `You stand as <b>${titleFor(deedsDone)}</b> — ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
-      (nextTitle && nextTitle !== titleFor(deedsDone) ? ` The next deed makes you <b>${nextTitle}</b>.` : '');
+    : `You stand at <b>${standingLabel(deedsDone)}</b> — ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
+      (toNext > 0 ? ` ${toNext} more deed${toNext > 1 ? 's' : ''} and you rise to <b>Level ${lvl + 1} · ${TITLES[lvl]}</b>.`
+                  : ' No higher standing exists in the realm.');
   $('deedsGrid').innerHTML = deeds.map(d => `
     <div class="deed${d.done ? ' done' : ''}">
       <span class="deed-mark">${d.done ? '✦' : '·'}</span>
