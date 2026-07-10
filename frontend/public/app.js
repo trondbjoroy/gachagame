@@ -673,7 +673,9 @@ async function pull() {
   if (!hash) return;
   if (S.favorOwed > favorBefore)
     ribbon(`The Weaver smiles: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> returned to you`, 'level');
-  const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
+  // with overlapping summons, exclude cards already claimed by another reveal
+  const won = [...S.cards.values()].find(c =>
+    c.pending === S.addr && !before.has(c.uid) && !revealSeen.has(c.uid));
   if (!won) return;
   revealCard(won, TIERS[won.tier].name);
 }
@@ -748,9 +750,38 @@ function finishReveal(tier) {
   try { if (navigator.vibrate) navigator.vibrate([[20], [35], [15, 40, 60], [20, 40, 20, 40, 140]][tier] || [20]); } catch { }
 }
 
+/* reveals queue up: a new one waits until the current card is dismissed */
+const revealQueue = [];
+const revealSeen = new Set();
+let revealActive = false;
+
 function revealCard(won, tierLabel) {
+  revealSeen.add(won.uid);
+  revealQueue.push([won, tierLabel]);
+  pumpReveals();
+}
+
+function pumpReveals() {
+  if (revealActive || !revealQueue.length) return;
+  if (!$('overlay').hidden && $('stageReveal').hidden) {
+    // another stage (error, picker, …) is open; try again shortly
+    setTimeout(pumpReveals, 500);
+    return;
+  }
+  revealActive = true;
+  const [won, tierLabel] = revealQueue.shift();
+  showRevealNow(won, tierLabel);
+}
+
+function revealDismissed() {
+  revealActive = false;
+  if (revealQueue.length) setTimeout(pumpReveals, 350);
+}
+
+function showRevealNow(won, tierLabel) {
   const t = TIERS[won.tier] || TIERS[0];
   const tier = Math.max(0, Math.min(3, won.tier));
+  if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; }
   const pc = $('prizeCard');
   pc.style.setProperty('--rc', t.color);
   const meta = cardMeta(won.name);
@@ -774,7 +805,11 @@ function revealCard(won, tierLabel) {
       <div class="reveal-back"><img src="logo.png" alt=""></div>
       <div class="reveal-face${meta?.art ? '' : ' plain'}">${face}</div>
     </div>`;
-  $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  $('revealClaimBtn').onclick = () => {
+    $('overlay').hidden = true;
+    doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]);
+    revealDismissed();
+  };
   const stage = $('stageReveal');
   stage.classList.remove('revealed', 'tier-0', 'tier-1', 'tier-2', 'tier-3');
   stage.classList.add('sequencing', 'tier-' + tier);
@@ -1082,6 +1117,7 @@ $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel'])
   $(id).onclick = () => { $('overlay').hidden = true; };
+$('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
 // a click during the reveal build-up skips straight to the card
