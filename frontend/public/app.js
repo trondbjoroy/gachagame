@@ -401,6 +401,14 @@ async function waitForExecution(hash, onTick) {
   }
 }
 
+// wallet kind for analytics — never the address
+function walletKindOf(w) {
+  if (!w) return 'none';
+  if (w.mode === 'session') return 'session';
+  return (w.label || 'unknown').split(' ')[0].toLowerCase();
+}
+function walletKind() { return walletKindOf(S.wallet); }
+
 let txSeq = 0;
 async function doTx(label, method, args, actions, { target } = {}) {
   if (!S.wallet) return null;
@@ -417,6 +425,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
     sub.textContent = 'done';
+    track(method, { ok: true, target: target || 'game', wallet: walletKind() });
     setTimeout(() => el.remove(), 6000);
     await refresh();
     return hash;
@@ -427,6 +436,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
       msg = 'Your wallet is on a different Hathor network — switch it to testnet and try again.';
     }
     sub.textContent = msg;
+    track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
     el.insertAdjacentHTML('beforeend', '<button class="t-x">\u2715</button>');
     el.querySelector('.t-x').onclick = () => el.remove();
     setTimeout(() => el.remove(), 20000);
@@ -569,6 +579,7 @@ async function connectWallet(kind) {
     };
     S.addr = await (kind === 'wc' ? w.connect(onUri) : w.connect());
     S.wallet = w;
+    track('wallet_connect', { wallet: kind });
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
     await refresh();
@@ -648,6 +659,7 @@ async function startSession() {
     S.mainWallet = main;
     S.wallet = sw;
     S.addr = sw.address;
+    track('session_start', { funder: walletKindOf(main) });
     $('overlay').hidden = true;
     await refresh();
   } catch (e) {
@@ -702,6 +714,7 @@ async function endSession() {
     }
     sessionNote('Sweeping your champions and coin home\u2026');
     const r = await S.wallet.sweep();
+    track('session_end', { swept: r ? r.moved : 0 });
     sessionNote(r ? `Swept ${r.moved} holdings back to your wallet.` : 'Nothing to sweep.');
     await S.wallet.disconnect();
     try {
@@ -764,6 +777,7 @@ document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => conne
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
+  track('tab_view', { tab: el.dataset.tab });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
   for (const p of ['collection', 'farm', 'arena', 'market', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
