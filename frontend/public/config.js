@@ -11,6 +11,6 @@ window.GAME = {
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.
   // live economy (cents). Fusion fees are tiered by station in the v2.2 contract.
-  economy: { sessionFund: 100, fusionFees: [5, 10, 50, 100] },
+  economy: { sessionFund: 1000, fusionFees: [5, 10, 50, 100] },
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
 };
