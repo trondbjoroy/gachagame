@@ -36,6 +36,18 @@ class EmberfallArena(Blueprint):
       pool; each pull has a 1-in-25 chance to win back up to the pull
       price from that pool (never more than the pool holds).
       claim_favor() withdraws winnings.
+
+    v2.2 — aspects and the Rite of Tempering:
+    - every champion's power splits at birth into three aspects
+      (valor / bulwark / guile), packed into one int per card;
+      power always equals their sum.
+    - duels are best-of-three rounds, one per aspect, each resolved
+      by the same power-weighted roll as before.
+    - temper(): while a champion toils in the Mines, burn gems to
+      raise one chosen aspect by 1-3. Costs start near the fusion fee
+      and grow ~1.5x per tempering, capped per station. Half the fee
+      is burned, half goes to the Crown's ledger. Tempering does not
+      survive fusion (children re-roll fresh aspects).
     """
 
     owner: Address
@@ -69,6 +81,7 @@ class EmberfallArena(Blueprint):
     deed_flags: dict[Address, int]
     favor_pool: Amount
     favor_owed: dict[Address, Amount]
+    card_attrs: dict[TokenUid, int]
 
     @public(allow_deposit=True)
     def initialize(self, ctx: Context, owner: Address, pull_price: Amount,
@@ -112,6 +125,7 @@ class EmberfallArena(Blueprint):
         self.deed_flags = {}
         self.favor_pool = 0
         self.favor_owed = {}
+        self.card_attrs = {}
         # deposited HTR beyond the GEMS-creation collateral seeds the reserve
         self.proceeds = action.amount - 1
         self.gems_uid = self.syscall.create_deposit_token(
@@ -154,6 +168,46 @@ class EmberfallArena(Blueprint):
     # 3 forge a sovereign, 4 first trial won, 5 ten trials won
     def _deed_bounty(self, bit: int) -> Amount:
         return [10, 20, 50, 200, 25, 100][bit]
+
+    def _temper_base(self, tier: int) -> Amount:
+        # gems-cents for a card's first tempering, by station
+        return [10, 20, 80, 150][tier]
+
+    def _temper_cap(self, tier: int) -> int:
+        # how many times a card of this station may be tempered
+        return [3, 5, 8, 12][tier]
+
+    # ------------------------------------------------------------------
+    # Aspects (valor / bulwark / guile packed into one int + temper count)
+    # ------------------------------------------------------------------
+
+    def _attrs_pack(self, valor: int, bulwark: int, guile: int, tempers: int) -> int:
+        return valor | (bulwark << 12) | (guile << 24) | (tempers << 36)
+
+    def _attr_at(self, attrs: int, aspect: int) -> int:
+        return (attrs >> (aspect * 12)) & 0xFFF
+
+    def _attr_tempers(self, attrs: int) -> int:
+        return (attrs >> 36) & 0xFF
+
+    def _split_power(self, power: int) -> int:
+        # divide power into three aspects, each at least 1, summing to power
+        w1 = self.syscall.rng.randbelow(100) + 1
+        w2 = self.syscall.rng.randbelow(100) + 1
+        w3 = self.syscall.rng.randbelow(100) + 1
+        tot = w1 + w2 + w3
+        valor = 1 + (power - 3) * w1 // tot
+        bulwark = 1 + (power - 3) * w2 // tot
+        guile = power - valor - bulwark
+        return self._attrs_pack(valor, bulwark, guile, 0)
+
+    def _temper_cost(self, tier: int, tempers: int) -> Amount:
+        cost = self._temper_base(tier)
+        step = 0
+        while step < tempers:
+            cost = cost * 3 // 2
+            step += 1
+        return cost
 
     # ------------------------------------------------------------------
     # Progression internals
@@ -300,6 +354,46 @@ class EmberfallArena(Blueprint):
         del self.staked[card]
         del self.stake_since[card]
 
+    @public
+    def temper(self, ctx: Context, card: TokenUid, aspect: int) -> Amount:
+        """Raise one aspect of a champion toiling in the Mines, for a
+        gems fee that grows each tempering. Half burned, half to the
+        Crown."""
+        caller = ctx.get_caller_address()
+        if self.staked.get(card) != caller:
+            raise NCFail("temper a champion of yours while it toils in the Mines")
+        if aspect < 0 or aspect > 2:
+            raise NCFail("aspect must be 0 (valor), 1 (bulwark) or 2 (guile)")
+        tier = self.card_tier[card]
+        attrs = self.card_attrs[card]
+        tempers = self._attr_tempers(attrs)
+        if tempers >= self._temper_cap(tier):
+            raise NCFail("this champion can be tempered no further")
+        cost = self._temper_cost(tier, tempers)
+        balance = self.gems_ledger.get(caller, 0)
+        if balance < cost:
+            raise NCFail(f"tempering costs {cost} GEMS-cents")
+        self.gems_ledger[caller] = balance - cost
+        # half to the Crown; the other half simply ceases to exist
+        self.gems_ledger[self.owner] = self.gems_ledger.get(self.owner, 0) + cost // 2
+        bonus = 1 + self.syscall.rng.randbelow(3)
+        valor = self._attr_at(attrs, 0)
+        bulwark = self._attr_at(attrs, 1)
+        guile = self._attr_at(attrs, 2)
+        if aspect == 0:
+            valor += bonus
+        elif aspect == 1:
+            bulwark += bonus
+        else:
+            guile += bonus
+        self.card_attrs[card] = self._attrs_pack(valor, bulwark, guile, tempers + 1)
+        self.card_power[card] = self.card_power[card] + bonus
+        self._earn_renown(caller, 5, ctx.block.timestamp)
+        self.syscall.emit_event(
+            f'{{"event":"temper","aspect":{aspect},"bonus":{bonus},"cost":{cost}}}'.encode()
+        )
+        return cost
+
     @public(allow_withdrawal=True)
     def withdraw_gems(self, ctx: Context) -> None:
         caller = ctx.get_caller_address()
@@ -367,6 +461,7 @@ class EmberfallArena(Blueprint):
             del self.card_name[act.token_uid]
             del self.card_tier[act.token_uid]
             del self.card_power[act.token_uid]
+            del self.card_attrs[act.token_uid]
         self.proceeds += 2  # each 100-unit melt refunds 1 cent of collateral
         new_tier = tier + 1
         if len(self._templates(new_tier)) == 0:
@@ -430,10 +525,26 @@ class EmberfallArena(Blueprint):
 
         their_card = self.duel_card[duel_id]
         my_card = action.token_uid
-        pa = self.card_power[their_card]
-        pb = self.card_power[my_card]
-        roll = self.syscall.rng.randbelow(pa + pb)
-        winner = challenger if roll < pa else caller
+        attrs_a = self.card_attrs[their_card]
+        attrs_b = self.card_attrs[my_card]
+        # best of three rounds: valor, bulwark, guile — each a
+        # power-weighted roll between the matching aspects
+        rounds_a = 0
+        r0 = 0
+        r1 = 0
+        r2 = 0
+        for aspect in range(3):
+            pa = self._attr_at(attrs_a, aspect)
+            pb = self._attr_at(attrs_b, aspect)
+            won = 1 if self.syscall.rng.randbelow(pa + pb) < pa else 0
+            rounds_a += won
+            if aspect == 0:
+                r0 = won
+            elif aspect == 1:
+                r1 = won
+            else:
+                r2 = won
+        winner = challenger if rounds_a >= 2 else caller
 
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
@@ -453,7 +564,7 @@ class EmberfallArena(Blueprint):
         self.pending[my_card] = caller
         self.duel_open[duel_id] = False
         self.syscall.emit_event(
-            f'{{"event":"duel","id":{duel_id},"roll":{roll},"pa":{pa},"pb":{pb}}}'.encode()
+            f'{{"event":"duel","id":{duel_id},"valor":{r0},"bulwark":{r1},"guile":{r2}}}'.encode()
         )
         return 0 if winner == challenger else 1
 
@@ -587,6 +698,26 @@ class EmberfallArena(Blueprint):
     def get_favor_owed(self, address: Address) -> Amount:
         return self.favor_owed.get(address, 0)
 
+    @view
+    def get_card_aspects(self, card: TokenUid) -> str:
+        attrs = self.card_attrs.get(card)
+        if attrs is None:
+            return ""
+        return (f"{self._attr_at(attrs, 0)}|{self._attr_at(attrs, 1)}"
+                f"|{self._attr_at(attrs, 2)}|{self._attr_tempers(attrs)}")
+
+    @view
+    def get_temper_cost(self, card: TokenUid) -> Amount:
+        # next tempering cost for this card; 0 = capped or unknown card
+        attrs = self.card_attrs.get(card)
+        tier = self.card_tier.get(card)
+        if attrs is None or tier is None:
+            return 0
+        tempers = self._attr_tempers(attrs)
+        if tempers >= self._temper_cap(tier):
+            return 0
+        return self._temper_cost(tier, tempers)
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -671,6 +802,7 @@ class EmberfallArena(Blueprint):
         self.card_name[card] = name
         self.card_tier[card] = tier
         self.card_power[card] = power
+        self.card_attrs[card] = self._split_power(power)
         return card
 
     def _accrue(self, card: TokenUid, now: int) -> Amount:
