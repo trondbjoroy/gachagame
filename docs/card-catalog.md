@@ -56,237 +56,237 @@ SUBJECT: a large sinister black rat with matted fur and glowing pale eyes, stand
 
 SUBJECT: a ragged grinning street musician playing a bone flute, dozens of rat eyes glowing in the alley shadows around him
 
-**Cellar Toad** · Footman · Beast
+**Cellar Toad** · Footman · Beast **[art done]**
 > It has outlived four stewards, two sieges, and every cat sent down to argue with it.
 
 SUBJECT: an enormous warty toad squatting on a wine barrel in a torchlit cellar, throat sac glowing faintly gold, flies circling
 
-**Bramble Hare** · Footman · Beast
+**Bramble Hare** · Footman · Beast **[art done]**
 > Fast enough to escape anything but its own curiosity.
 
 SUBJECT: a lean wild hare with fur tangled in thorny bramble vines, ears pricked, frozen mid-turn in a moonlit hedgerow
 
-**Rook Fledgling** · Footman · Beast
+**Rook Fledgling** · Footman · Beast **[art done]**
 > Every message it ever carried was bad news. It has stopped taking it personally.
 
 SUBJECT: a scruffy young rook with ruffled black feathers and one bright amber eye, perched on a broken signpost in drizzle
 
-**Cart Mule** · Footman · Beast
+**Cart Mule** · Footman · Beast **[art done]**
 > The armies of five kings have marched on its back. None of them ever thanked it.
 
 SUBJECT: a sturdy grey mule laden with dented shields and rolled banners, standing patiently in churned mud, rain dripping from its ears
 
-**Mange Hound** · Footman · Beast
+**Mange Hound** · Footman · Beast **[art done]**
 > Loyal to whoever fed it last, which is more than can be said of most bannermen.
 
 SUBJECT: a gaunt scruffy hound with patchy fur and hopeful eyes, sitting alert beside a guttering campfire, gnawed bone at its paws
 
-**Chalk Lizard** · Footman · Beast
+**Chalk Lizard** · Footman · Beast **[art done]**
 > It suns itself on the graves of highlords. Rank means little to cold blood.
 
 SUBJECT: a pale white lizard with faint gold speckles basking on a crumbling carved tombstone, dust motes in a shaft of light
 
-**Tallow Cat** · Footman · Beast
+**Tallow Cat** · Footman · Beast **[art done]**
 > The castle mousers survived the Sundering without noticing it had happened.
 
 SUBJECT: a plump cream-colored cat with knowing half-closed eyes, curled beside a melted candle in a dark kitchen window
 
-**Pit Pony** · Footman · Beast
+**Pit Pony** · Footman · Beast **[art done]**
 > It has hauled gems out of the dark for so long it dreams in gold.
 
 SUBJECT: a small shaggy pony with a miner's lantern hung from its harness, coal dust on its coat, standing in a glittering mine tunnel
 
-**Thistle Goat** · Footman · Beast
+**Thistle Goat** · Footman · Beast **[art done]**
 > It eats what no one else will and goes where no one else can. The mountains respect this.
 
 SUBJECT: a wiry mountain goat with curved horns chewing a purple thistle, standing on an impossible cliff ledge in wind
 
-**Ditch Heron** · Footman · Beast
+**Ditch Heron** · Footman · Beast **[art done]**
 > It stands in the drowned fields where the battle was, patient as a tax collector.
 
 SUBJECT: a tall grey heron standing motionless in a flooded battlefield ditch, rusted helmet half-sunk in the water beside it, morning mist
 
-**Turnip Boar** · Footman · Beast
+**Turnip Boar** · Footman · Beast **[art done]**
 > The farmers call it a pest. The farmers have never tried to make it leave.
 
 SUBJECT: a fat bristly boar with muddy tusks standing defiant in a ruined turnip field, uprooted vegetables scattered around
 
-**Barn Owl** · Footman · Beast
+**Barn Owl** · Footman · Beast **[art done]**
 > It has watched a hundred midnight oaths sworn in its barn. It keeps them all.
 
 SUBJECT: a pale barn owl with a heart-shaped face staring directly forward from a dark rafter, gold eyes catching lantern light
 
-**Grain Weevil** · Footman · Vermin
+**Grain Weevil** · Footman · Vermin **[art done]**
 > Armies march on their stomachs. The weevil marches slightly ahead of them.
 
 SUBJECT: a giant beetle-like weevil with a long curved snout burrowing through a mountain of spilled golden grain in a dark granary
 
-**Grave Beetle** · Footman · Vermin
+**Grave Beetle** · Footman · Vermin **[art done]**
 > Every king ends his reign in its kingdom.
 
 SUBJECT: a large iridescent black beetle with a skull pattern on its carapace, crawling over old coins on packed grave earth
 
-**Corpse Fly** · Footman · Vermin
+**Corpse Fly** · Footman · Vermin **[art done]**
 > It arrives before the ravens, before the priests, before the grief. Punctuality is a virtue.
 
 SUBJECT: an oversized fly with tattered translucent wings and dull brass-colored body, perched on a fallen knight's gauntlet
 
-**Wall Louse** · Footman · Vermin
+**Wall Louse** · Footman · Vermin **[art done]**
 > The great curtain wall of the capital has two garrisons. Only one of them sleeps.
 
 SUBJECT: a plated grey insect the size of a fist clinging to ancient fortress stones, antennae raised, torchlight from an arrow slit
 
-**Chimney Bat** · Footman · Vermin
+**Chimney Bat** · Footman · Vermin **[art done]**
 > It hears every secret whispered by every fireside, and sells none of them. Yet.
 
 SUBJECT: a small bat with soot-black fur and ember-orange eyes hanging upside down inside a stone chimney, faint smoke curling
 
-**Larder Mouse** · Footman · Vermin
+**Larder Mouse** · Footman · Vermin **[art done]**
 > The steward hanged three servants for the missing cheese. Justice, like the mouse, went quietly.
 
 SUBJECT: a small brown mouse standing upright on a shelf clutching a stolen wedge of cheese, wary eyes shining in pantry gloom
 
-**Midden Crow** · Footman · Vermin
+**Midden Crow** · Footman · Vermin **[art done]**
 > It knows what the castle threw away, which is often more telling than what it kept.
 
 SUBJECT: a glossy black crow picking through a refuse heap outside castle walls, a torn banner scrap in its beak, grey dawn light
 
-**Bone Maggot** · Footman · Vermin
+**Bone Maggot** · Footman · Vermin **[art done]**
 > The maesters say nothing is ever truly gone from the Ledger. The maggot agrees, in its way.
 
 SUBJECT: a pale segmented grub coiled inside the eye socket of a weathered animal skull on dark soil, faint sickly glow
 
-**Scarecrow Sentry** · Footman · Construct
+**Scarecrow Sentry** · Footman · Construct **[art done]**
 > It has never deserted, never slept, and never asked for wages. The captains wish for a thousand more.
 
 SUBJECT: a scarecrow in a rusted helmet and rotting straw body lashed to a post, one glowing ember eye, crows circling a twilight field
 
-**Bucket Golem** · Footman · Construct
+**Bucket Golem** · Footman · Construct **[art done]**
 > Assembled from well buckets and barrel hoops by a bored hedge wizard. It has since put out eleven fires and started two.
 
 SUBJECT: a small clanking golem made of wooden buckets and iron barrel hoops, water sloshing from its head, standing in a village square
 
-**Millstone Shambler** · Footman · Construct
+**Millstone Shambler** · Footman · Construct **[art done]**
 > The mill kept grinding after the miller died. Eventually it wanted to see where the grain came from.
 
 SUBJECT: a hulking creature made of two great millstones and timber beams, flour dust drifting off it, lumbering down a country road at dusk
 
-**Gate Creaker** · Footman · Construct
+**Gate Creaker** · Footman · Construct **[art done]**
 > Every castle gate has a voice. This one grew opinions.
 
 SUBJECT: an animated iron portcullis face with rivet eyes and hinge jaw, embedded in a mossy gatehouse arch, chains hanging like hair
 
-**Straw Effigy** · Footman · Construct
+**Straw Effigy** · Footman · Construct **[art done]**
 > Burned every harvest festival to thank the Weaver. This one walked out of the fire and asked why.
 
 SUBJECT: a man-shaped straw effigy with charred edges and smoldering ember lines across its chest, standing in a harvest field at night
 
-**Clockwork Sparrow** · Footman · Construct
+**Clockwork Sparrow** · Footman · Construct **[art done]**
 > A Ledgerkeeper's toy that outlived the Ledgerkeepers. It still sings the hour, in a city with no bells left.
 
 SUBJECT: a small mechanical sparrow of brass and copper gears perched on a broken sundial, one wing open showing clockwork, verdigris patina
 
-**Kettle Hound** · Footman · Construct
+**Kettle Hound** · Footman · Construct **[art done]**
 > It boils when angry. The blacksmith's children have made a game of this.
 
 SUBJECT: a dog-shaped construct made of copper kettles and stove iron, steam hissing from its ears, tail a coiled spring, forge glow behind
 
-**Training Dummy** · Footman · Construct
+**Training Dummy** · Footman · Construct **[art done]**
 > Ten thousand sword blows taught it everything about knights. Mostly that they telegraph the overhead cut.
 
 SUBJECT: a battered wooden training dummy with a splintered shield arm and carved scowling face, standing in an empty castle yard, straw stuffing leaking
 
-**Bent Copper** · Footman · Relic
+**Bent Copper** · Footman · Relic **[art done]**
 > The realm's smallest coin has bought bread, silence, and once, by accident, a kingdom.
 
 SUBJECT: a single bent copper coin with a worn king's face, standing on edge in a shaft of light on a dark tavern table
 
-**Cracked Bell** · Footman · Relic
+**Cracked Bell** · Footman · Relic **[art done]**
 > It rang for coronations, weddings, and the Sundering. After that it declined to ring at all.
 
 SUBJECT: a great bronze bell with a jagged crack, half-buried in cathedral rubble, faint golden resonance glowing in the fissure
 
-**Widow's Thimble** · Footman · Relic
+**Widow's Thimble** · Footman · Relic **[art done]**
 > She sewed shrouds for every man the war sent home. The thimble remembers each stitch.
 
 SUBJECT: a tarnished silver thimble on a spool of black thread, resting on a moonlit windowsill beside a needle, ghostly faint glow
 
-**Pauper's Crown** · Footman · Relic
+**Pauper's Crown** · Footman · Relic **[art done]**
 > Woven from straw for a beggar-king in jest. He wore it better than the true king wore gold.
 
 SUBJECT: a crown woven from straw and bent wire resting on a wooden stool in a poor cottage, a single gold coin beneath it, candlelight
 
-**Mildewed Banner** · Footman · Relic
+**Mildewed Banner** · Footman · Relic **[art done]**
 > No one remembers the house it belonged to. It no longer matters which side you fell for.
 
 SUBJECT: a rotting war banner with a faded unrecognizable sigil, hanging from a broken lance planted in overgrown battlefield turf
 
-**Tavern Dice** · Footman · Relic
+**Tavern Dice** · Footman · Relic **[art done]**
 > Carved from a hanged cheat's knucklebones. They roll fair now, out of spite.
 
 SUBJECT: two yellowed bone dice mid-tumble above a rough tavern table, scattered copper coins and spilled ale, dramatic candlelight
 
-**Butcher's Cleaver** · Footman · Relic
+**Butcher's Cleaver** · Footman · Relic **[art done]**
 > During the siege it fed the city. During the sack it defended it. It does not distinguish between the two duties.
 
 SUBJECT: a heavy nicked butcher's cleaver embedded in a scarred chopping block, faint gold light along its edge, hanging herbs in shadow
 
-**Beggar's Bowl** · Footman · Relic
+**Beggar's Bowl** · Footman · Relic **[art done]**
 > Everything given to it was returned tenfold, the Weaver's arithmetic being strange.
 
 SUBJECT: a cracked wooden begging bowl holding three coins that glow faintly gold, sitting on rain-wet cobblestones by a wall
 
-**Chipped Chalice** · Footman · Relic
+**Chipped Chalice** · Footman · Relic **[art done]**
 > Poison, wine, and holy water — it has held them all, sometimes for the same drinker.
 
 SUBJECT: a dented pewter chalice with a chipped rim, dark red wine inside reflecting a single candle flame, on a stone altar edge
 
-**Hangman's Coil** · Footman · Relic
+**Hangman's Coil** · Footman · Relic **[art done]**
 > Thirteen knots, thirteen mercies. The gallows-men say it never frays on the innocent.
 
 SUBJECT: a coiled hangman's rope with thirteen knots hanging from a rusted iron hook on weathered gallows wood, cold grey sky
 
-**Pitchfork Militiaman** · Footman · Levy
+**Pitchfork Militiaman** · Footman · Levy **[art done]**
 > When the lords fled, the village stayed. The pitchfork learned new work.
 
 SUBJECT: a grim farmer in a leather apron gripping a pitchfork like a spear, standing before a burning barn at dusk
 
-**Shield Bearer** · Footman · Levy
+**Shield Bearer** · Footman · Levy **[art done]**
 > His shield has stopped four arrows and one avalanche of insults. Both counts are rising.
 
 SUBJECT: a stocky young soldier straining behind a tower shield studded with broken arrow shafts, mud-splattered, gritted teeth
 
-**Drummer Boy** · Footman · Levy
+**Drummer Boy** · Footman · Levy **[art done]**
 > The charge begins when he says it begins. Whole battles hang on a twelve-year-old's sense of rhythm.
 
 SUBJECT: a small boy in an oversized tabard beating a battered war drum, standing firm in campfire smoke, distant spears behind him
 
-**Torch Runner** · Footman · Levy
+**Torch Runner** · Footman · Levy **[art done]**
 > Between the walls at night runs a lit torch with legs, carrying the only warmth in the realm's worst job.
 
 SUBJECT: a lean runner sprinting along a dark castle rampart holding a blazing torch aloft, sparks streaming behind, night wind
 
-**Wall Watcher** · Footman · Levy
+**Wall Watcher** · Footman · Levy **[art done]**
 > Forty years watching the north road. Nothing came. This, he insists, is proof it works.
 
 SUBJECT: an old sentry wrapped in a patched cloak leaning on a spear atop a wall, staring into fog, frost on his beard
 
-**Gate Porter** · Footman · Levy
+**Gate Porter** · Footman · Levy **[art done]**
 > Kings, armies, and plagues have all knocked. The rules are the same for each: state your business.
 
 SUBJECT: a broad unimpressed man with a ring of huge iron keys, arms crossed before a massive banded gate, lantern overhead
 
-**Camp Cook** · Footman · Levy
+**Camp Cook** · Footman · Levy **[art done]**
 > Her stew has ended more mutinies than the gallows. The secret ingredient is having no alternative.
 
 SUBJECT: a stout woman stirring an enormous iron pot over a campfire with a ladle raised like a scepter, steam and firelight
 
-**Ladder Man** · Footman · Levy
+**Ladder Man** · Footman · Levy **[art done]**
 > First up the wall, first to learn what waits at the top. The guild of ladder men keeps no veterans.
 
 SUBJECT: a wild-eyed soldier climbing a siege ladder with a knife in his teeth, arrows whistling past, torchlit battlements above
 
-**Arrow Picker** · Footman · Levy
+**Arrow Picker** · Footman · Levy **[art done]**
 > After every battle the field grows iron. Someone must bring in the harvest.
 
 SUBJECT: a hooded figure with a wicker basket of salvaged arrows on their back, pulling a shaft from muddy ground among fallen shields, crows watching

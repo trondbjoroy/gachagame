@@ -172,7 +172,7 @@ async function refresh() {
 
 /* ---------------- rendering ---------------- */
 
-function slugOf(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+function slugOf(name) { return name.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, '-'); }
 function cardMeta(name) { return (window.CATALOG || {})[name]; }
 
 /* ---------------- deeds & standing (read from what the Ledger already knows) ---------------- */
