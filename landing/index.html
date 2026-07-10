@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Emberfall — Trading Card Game</title>
+<meta name="description" content="The throne of Emberfall sits empty. Summon one-of-a-kind champions, work the deep mines, face trial by combat, and trade in the Bazaar. Every deed is witnessed forever." />
+<link rel="icon" href="favicon.ico" sizes="48x48" />
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --gold: #d4a843; --gold-hi: #e8c56a;
+    --ink: #f0e9da; --ink-muted: #b5ab99; --ink-dim: #78705f;
+    --bg: #0b0a08; --panel: #141109;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Outfit', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative; min-height: 100svh;
+    display: grid; place-items: center; text-align: center;
+    overflow: hidden; isolation: isolate;
+  }
+  .hero-media {
+    position: absolute; inset: -6%; z-index: -2;
+    background: url('hero.jpg') center 30% / cover no-repeat;
+    animation: kenburns 36s ease-in-out infinite alternate;
+    filter: brightness(.6) saturate(.9);
+  }
+  .hero-media video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  @keyframes kenburns {
+    from { transform: scale(1) translateY(0); }
+    to { transform: scale(1.1) translateY(-2%); }
+  }
+  .hero::after {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background:
+      radial-gradient(90% 60% at 50% 42%, transparent 30%, rgba(11, 10, 8, .82) 100%),
+      linear-gradient(180deg, rgba(11, 10, 8, .55) 0%, transparent 28%, transparent 62%, var(--bg) 100%);
+  }
+  .hero-inner { padding: 8vh 24px 12vh; max-width: 900px; }
+  .hero .mark {
+    width: clamp(96px, 15vw, 150px); margin: 0 auto 8px;
+    filter: drop-shadow(0 0 34px rgba(212, 168, 67, .45));
+    animation: markPulse 3.2s ease-in-out infinite alternate;
+  }
+  .hero .mark img { width: 100%; display: block; }
+  @keyframes markPulse {
+    from { filter: drop-shadow(0 0 18px rgba(212, 168, 67, .3)); transform: scale(.99); }
+    to { filter: drop-shadow(0 0 44px rgba(212, 168, 67, .55)); transform: scale(1.015); }
+  }
+  .wordmark {
+    font-family: 'Cinzel', serif; font-weight: 800;
+    font-size: clamp(30px, 9.5vw, 104px); letter-spacing: .08em;
+    background: linear-gradient(100deg, #caa03f 15%, #f2dc9b 40%, #caa03f 60%, #a37e2c 85%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: sheen 7s ease-in-out infinite;
+    text-shadow: 0 0 80px rgba(212, 168, 67, .25);
+  }
+  @keyframes sheen { 0%, 100% { background-position: 0% 0; } 50% { background-position: 100% 0; } }
+  .tcg {
+    font-family: 'Cinzel', serif; font-weight: 600;
+    font-size: clamp(11px, 2.4vw, 22px); letter-spacing: .5em; text-indent: .5em;
+    color: var(--ink-muted); margin-top: 6px;
+  }
+  .verbs {
+    display: flex; justify-content: center; gap: clamp(14px, 3.5vw, 34px);
+    margin: 34px 0 40px; flex-wrap: wrap;
+  }
+  .verbs span {
+    font-family: 'Cinzel', serif; font-size: clamp(15px, 2.6vw, 22px);
+    letter-spacing: .22em; color: var(--gold);
+    opacity: 0; transform: translateY(10px);
+    animation: verbIn .7s ease forwards;
+  }
+  .verbs span:nth-child(1) { animation-delay: .3s; }
+  .verbs span:nth-child(2) { animation-delay: .55s; }
+  .verbs span:nth-child(3) { animation-delay: .8s; }
+  .verbs span:nth-child(4) { animation-delay: 1.05s; }
+  @keyframes verbIn { to { opacity: 1; transform: none; } }
+  .verbs .dot { color: var(--ink-dim); animation-delay: .42s !important; }
+
+  .launch {
+    display: inline-block; cursor: pointer; text-decoration: none;
+    font-family: 'Cinzel', serif; font-weight: 700;
+    font-size: clamp(16px, 2.4vw, 21px); letter-spacing: .16em;
+    color: #241703; padding: 18px 54px; border-radius: 14px;
+    background: linear-gradient(135deg, #caa03f, #e6bd5e);
+    box-shadow: 0 14px 50px -10px rgba(212, 168, 67, .55), inset 0 1px 0 rgba(255, 255, 255, .35);
+    transition: transform .15s ease, box-shadow .3s ease;
+  }
+  .launch:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 20px 70px -12px rgba(212, 168, 67, .75), inset 0 1px 0 rgba(255,255,255,.35); }
+  .launch:active { transform: scale(.98); }
+  .free-note { margin-top: 16px; font-size: 13px; color: var(--ink-dim); letter-spacing: .06em; }
+
+  .scroll-hint {
+    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+    color: var(--ink-dim); font-size: 22px; animation: bob 1.8s ease-in-out infinite;
+  }
+  @keyframes bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
+
+  /* embers */
+  .embers { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+  .ember {
+    position: absolute; bottom: -10px; border-radius: 50%;
+    background: radial-gradient(circle, #ffd77a, #d4a843 70%, transparent);
+    box-shadow: 0 0 10px rgba(255, 200, 100, .8);
+    opacity: 0; animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0% { opacity: 0; transform: translateY(0) translateX(0); }
+    8% { opacity: .9; }
+    100% { opacity: 0; transform: translateY(-105vh) translateX(var(--drift)); }
+  }
+
+  /* ---------- sections ---------- */
+  section { padding: 90px 24px; max-width: 1080px; margin: 0 auto; }
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  h2 {
+    font-family: 'Cinzel', serif; font-weight: 700; text-align: center;
+    font-size: clamp(26px, 4.6vw, 40px); letter-spacing: .06em; margin-bottom: 14px;
+  }
+  h2 .accent { color: var(--gold); }
+  .lede {
+    text-align: center; color: var(--ink-muted); font-size: clamp(15px, 2.2vw, 18px);
+    line-height: 1.8; max-width: 700px; margin: 0 auto 54px; text-wrap: pretty;
+  }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+  .feature {
+    border: 1px solid rgba(212, 168, 67, .18); border-radius: 18px; padding: 28px 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .008));
+    transition: transform .25s ease, border-color .25s ease;
+  }
+  .feature:hover { transform: translateY(-4px); border-color: rgba(212, 168, 67, .45); }
+  .feature .ico { font-size: 30px; margin-bottom: 14px; filter: drop-shadow(0 0 12px rgba(212,168,67,.4)); }
+  .feature h3 {
+    font-family: 'Cinzel', serif; font-size: 17px; letter-spacing: .14em;
+    color: var(--gold); margin-bottom: 10px;
+  }
+  .feature p { color: var(--ink-muted); font-size: 14.5px; line-height: 1.7; }
+
+  /* gallery */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .gcard {
+    position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 4 / 5;
+    border: 1px solid rgba(212, 168, 67, .22);
+    transform: perspective(800px); transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .gcard img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+  .gcard:hover { box-shadow: 0 18px 50px -14px rgba(212, 168, 67, .5); transform: perspective(800px) translateY(-6px) rotateX(2deg); }
+  .gcard:hover img { transform: scale(1.06); }
+  .gcard span {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px;
+    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: .1em; text-align: center;
+    background: linear-gradient(transparent, rgba(11, 10, 8, .92));
+  }
+
+  /* oath strip */
+  .oaths { display: flex; justify-content: center; gap: 14px 40px; flex-wrap: wrap; margin-top: 10px; }
+  .oaths div { color: var(--ink-muted); font-size: 14.5px; letter-spacing: .04em; }
+  .oaths b { color: var(--gold); font-weight: 600; }
+
+  footer { text-align: center; padding: 30px 24px 110px; }
+  footer .fine { margin-top: 26px; color: var(--ink-dim); font-size: 12px; letter-spacing: .06em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-media, .hero .mark, .wordmark, .scroll-hint { animation: none; }
+    .verbs span { animation: none; opacity: 1; transform: none; }
+    .ember { display: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-media" id="heroMedia"></div>
+  <div class="embers" id="embers"></div>
+  <div class="hero-inner">
+    <div class="mark"><img src="logo.png" alt="" /></div>
+    <h1 class="wordmark">EMBERFALL</h1>
+    <div class="tcg">TRADING CARD GAME</div>
+    <div class="verbs">
+      <span>SUMMON</span><span class="dot">·</span>
+      <span>MINE</span><span class="dot">·</span>
+      <span>FIGHT</span><span class="dot">·</span>
+      <span>TRADE</span>
+    </div>
+    <a class="launch" href="https://app.emberfall.fun" id="launchBtn">LAUNCH GAME</a>
+    <div class="free-note">free to play on the test realm · your cards are truly yours</div>
+  </div>
+  <div class="scroll-hint">⌄</div>
+</div>
+
+<section class="reveal">
+  <h2>The throne is <span class="accent">empty</span>.</h2>
+  <p class="lede">When the last Sovereign died without an heir, the realm's champions were
+  bound into soulstone and their fates written into the Great Ledger, a book no lord can
+  burn and no scribe can forge. Now the banners are yours to raise: summon champions no
+  one else will ever own, work them in the deep mines, prove them in the Pit, and trade
+  them for gold in the Bazaar. Every deed is witnessed forever.</p>
+  <div class="features">
+    <div class="feature">
+      <div class="ico">🔥</div>
+      <h3>SUMMON</h3>
+      <p>The Blind Weaver binds a champion into soulstone with every summoning — one of a
+      kind in all the realm, its station and power struck at birth. No two are alike, and
+      no one can conjure a copy.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">⛏️</div>
+      <h3>MINE</h3>
+      <p>Send champions into the deep mines, where soulstone sweats gems by the minute.
+      Gems forge greater bloodlines, temper your champions' aspects, and back every wager
+      in the Pit.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">⚔️</div>
+      <h3>FIGHT</h3>
+      <p>Trial by combat, best of three: valor, bulwark, and guile. Wager gems, read your
+      opponent's aspects, and let veterans carry their victories on the card forever.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">🪙</div>
+      <h3>TRADE</h3>
+      <p>Sell champions for coin or strike sworn trades in the Bazaar. A ten-victory
+      veteran is provably a ten-victory veteran — pedigree travels with the card.</p>
+    </div>
+  </div>
+</section>
+
+<section class="reveal">
+  <h2>Champions of the <span class="accent">realm</span></h2>
+  <p class="lede">One hundred and eighty champions across four stations, from moss snails
+  to firstborn flames. Fuse two of a station and forge the next — Sovereigns are one
+  summon in a hundred, or fourteen fusions of patience.</p>
+  <div class="gallery">
+    <div class="gcard"><img src="ember-fox.jpg" alt="Ember Fox" /><span>EMBER FOX</span></div>
+    <div class="gcard"><img src="dire-wolf.jpg" alt="Dire Wolf" /><span>DIRE WOLF</span></div>
+    <div class="gcard"><img src="shadow-dragon.jpg" alt="Shadow Dragon" /><span>SHADOW DRAGON</span></div>
+    <div class="gcard"><img src="void-kraken.jpg" alt="Void Kraken" /><span>VOID KRAKEN</span></div>
+    <div class="gcard"><img src="genesis-phoenix.jpg" alt="Genesis Phoenix" /><span>GENESIS PHOENIX</span></div>
+    <div class="gcard"><img src="the-winter-sovereign.jpg" alt="The Winter Sovereign" /><span>THE WINTER SOVEREIGN</span></div>
+  </div>
+</section>
+
+<section class="reveal">
+  <h2>Sworn on the <span class="accent">Ledger</span></h2>
+  <div class="oaths">
+    <div><b>Every champion one of a kind</b> — owned by you, not lent to you</div>
+    <div><b>Nothing conjured from air</b> — every reward traces to real play</div>
+    <div><b>Every deed witnessed forever</b> — fortunes no one can rig, not even us</div>
+  </div>
+</section>
+
+<footer class="reveal">
+  <a class="launch" href="https://app.emberfall.fun">LAUNCH GAME</a>
+  <div class="fine">EMBERFALL · a realm written in soulstone</div>
+</footer>
+
+<script>
+  // hero video, if hero.mp4 has been provided (graceful fallback to the still)
+  (function () {
+    var v = document.createElement('video');
+    v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+    v.setAttribute('playsinline', ''); v.poster = 'hero.jpg';
+    var s = document.createElement('source');
+    s.src = 'hero.mp4'; s.type = 'video/mp4';
+    s.onerror = function () { v.remove(); };
+    v.appendChild(s);
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      fetch('hero.mp4', { method: 'HEAD' }).then(function (r) {
+        if (r.ok) document.getElementById('heroMedia').appendChild(v);
+      }).catch(function () { });
+    }
+  })();
+
+  // drifting embers
+  (function () {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var box = document.getElementById('embers');
+    for (var i = 0; i < 26; i++) {
+      var e = document.createElement('span');
+      e.className = 'ember';
+      var size = 2 + Math.random() * 4;
+      e.style.width = e.style.height = size + 'px';
+      e.style.left = Math.random() * 100 + '%';
+      e.style.setProperty('--drift', (Math.random() * 160 - 80) + 'px');
+      e.style.animationDuration = (7 + Math.random() * 9) + 's';
+      e.style.animationDelay = (Math.random() * 12) + 's';
+      box.appendChild(e);
+    }
+  })();
+
+  // reveal on scroll
+  (function () {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: .12 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  })();
+
+  // anonymous analytics (same project as the game)
+  (function () {
+    var s = document.createElement('script');
+    s.src = 'https://eu-assets.i.posthog.com/static/array.js';
+    s.async = true; s.crossOrigin = 'anonymous';
+    s.onload = function () {
+      window.posthog.init('phc_A4YsHcVkk42FY7cscJiUnddJrvpk4uodDt5iuAx9CW92', {
+        api_host: 'https://eu.i.posthog.com', persistence: 'localStorage',
+        autocapture: false, disable_session_recording: true, person_profiles: 'identified_only',
+      });
+      document.querySelectorAll('.launch').forEach(function (a) {
+        a.addEventListener('click', function () {
+          try { window.posthog.capture('launch_game'); } catch (e) { }
+        });
+      });
+    };
+    document.head.appendChild(s);
+  })();
+</script>
+</body>
+</html>

@@ -1,10 +1,19 @@
-# Replace emberfall.fun with your domain (DNS A record -> this VPS).
+# DNS A records -> this VPS: emberfall.fun, www.emberfall.fun, app.emberfall.fun
 # Caddy provisions Let's Encrypt TLS automatically.
+
+# landing page (static)
 emberfall.fun {
-	reverse_proxy 127.0.0.1:8090
+	root * /opt/gacha/landing
+	file_server
 	encode gzip
 }
 
 www.emberfall.fun {
 	redir https://emberfall.fun{uri} permanent
+}
+
+# the game itself
+app.emberfall.fun {
+	reverse_proxy 127.0.0.1:8090
+	encode gzip
 }
