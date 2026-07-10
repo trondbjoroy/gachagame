@@ -20,9 +20,9 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-const NC = '00b1bddc439d8b4255c16fec70d9578f7cebdb989e277c2cca934ac7bb48dcbb';
-const MKT_NC = process.env.MARKET_NC || '006318ef0471d957345db139f9b5e0b1d830e596180de558ea37b289845d1391';
-const GEMS = '357ec146e2492361474c4d6d685a9e7747360b44a5ec829c856f020a10f834d5';
+const NC = '00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258';
+const MKT_NC = process.env.MARKET_NC || '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b';
+const GEMS = 'd99c0aae27eae400cd7eac85eed44064dfedafb47800a481ce90c3c01b0dbd15';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_GEMS = 100_000;   // gems-cents per single ledger move
 const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
@@ -73,6 +73,8 @@ const htrDep = a => a.type === 'deposit' && a.token === '00'
 const gemsAmt = a => Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_GEMS;
 const gemsDep = a => a.type === 'deposit' && a.token === GEMS && gemsAmt(a);
 const gemsWd = a => a.type === 'withdrawal' && a.token === GEMS && gemsAmt(a) && a.address === playerAddress;
+const htrWd = a => a.type === 'withdrawal' && a.token === '00'
+  && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR && a.address === playerAddress;
 const isHex64 = v => typeof v === 'string' && HEX64.test(v);
 const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_GEMS;
 
@@ -101,6 +103,8 @@ const METHODS = {
   create_duel:   { actions: [cardDep],         args: [isSmallInt] },
   accept_duel:   { actions: [cardDep],         args: [isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
+  temper:        { actions: [],                args: [isHex64, isSmallInt] },
+  claim_favor:   { actions: [htrWd],           args: [] },
 };
 
 function validExecute(body) {

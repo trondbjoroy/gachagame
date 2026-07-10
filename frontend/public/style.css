@@ -370,6 +370,21 @@ body::after {
 .lore p { color: var(--ink-muted); font-size: 14.5px; line-height: 1.75; margin: 0 0 14px; text-wrap: pretty; }
 .lore b { color: var(--ink); font-weight: 600; }
 
+/* aspects (valor / bulwark / guile) */
+.ac-aspects {
+  font-family: 'Fragment Mono', monospace; font-size: 11px; color: #cfc6b4;
+  letter-spacing: .02em; text-shadow: 0 1px 4px rgba(0, 0, 0, .8);
+}
+.card:not(.art-card) .ac-aspects { margin-top: 6px; color: var(--ink-muted); text-shadow: none; }
+.prize-card .ac-aspects { font-size: 13px; }
+.reveal-face.plain .ac-aspects { margin-top: 10px; }
+
+/* the Rite of Tempering */
+.temper-opts { display: flex; gap: 10px; justify-content: center; margin: 18px 0 14px; }
+.favor-note { margin-top: 10px; }
+.favor-note b { color: var(--acid); }
+.favor-note .mini-btn { margin-left: 10px; }
+
 /* ---------------- reveal theater ---------------- */
 .prize-card { perspective: 1200px; }
 .prize-card:not(.art-reveal) { min-height: 400px; }

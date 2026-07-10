@@ -25,10 +25,11 @@ const $ = id => document.getElementById(id);
 const S = {
   wallet: null, addr: null, htr: 0, gemsWallet: 0,
   pullPrice: null, totalPulls: 0,
-  cards: new Map(),      // uid -> {name,tier,power,pending,staker,mine,pendingGems}
+  cards: new Map(),      // uid -> {name,tier,power,aspects,wins,pending,staker,mine,pendingGems}
   gemsLedger: 0, wins: 0,
+  renown: 0, vigil: 0, favorOwed: 0, favorPool: 0,
   duels: [], selected: new Set(), busy: false, mainWallet: null,
-  listings: [], swaps: [], marketFunds: 0,
+  listings: [], swaps: [], marketFunds: 0, raffle: null,
 };
 
 /* ---------------- chain reads ---------------- */
@@ -69,23 +70,37 @@ async function loadContract() {
   }
   const live = uids.filter(u => (S.cards.get(u)?.tier ?? -1) >= 0);
   const dyn = await batchCalls(live.flatMap(u =>
-    [`get_pending_owner("${u}")`, `get_staker("${u}")`]));
+    [`get_pending_owner("${u}")`, `get_staker("${u}")`,
+     `get_card_aspects("${u}")`, `get_card_wins("${u}")`]));
   const now = Math.floor(Date.now() / 1000);
   for (const u of live) {
     const c = S.cards.get(u);
     c.pending = dyn[`get_pending_owner("${u}")`] ?? null;
     c.staker = dyn[`get_staker("${u}")`] ?? null;
+    const asp = dyn[`get_card_aspects("${u}")`] || '';
+    c.aspects = asp ? asp.split('|').map(Number) : null;  // [valor,bulwark,guile,tempers,hardened]
+    c.wins = dyn[`get_card_wins("${u}")`] || 0;
   }
   const stakedMine = live.filter(u => S.cards.get(u).staker === S.addr);
   if (stakedMine.length) {
-    const pg = await batchCalls(stakedMine.map(u => `get_pending_gems("${u}", ${now})`));
-    for (const u of stakedMine) S.cards.get(u).pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
+    const pg = await batchCalls(stakedMine.flatMap(u =>
+      [`get_pending_gems("${u}", ${now})`, `get_temper_cost("${u}")`]));
+    for (const u of stakedMine) {
+      S.cards.get(u).pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
+      S.cards.get(u).temperCost = pg[`get_temper_cost("${u}")`] || 0;
+    }
   }
 
   if (S.addr) {
-    const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`]);
+    const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
+      `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
+      'get_favor_pool()']);
     S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
     S.wins = me[`get_wins("${S.addr}")`] || 0;
+    S.renown = me[`get_renown("${S.addr}")`] || 0;
+    S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
+    S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
+    S.favorPool = me['get_favor_pool()'] || 0;
   }
 
   if (duelCount > 0) {
@@ -140,10 +155,18 @@ async function loadMine() {
   }
 }
 
+async function loadRaffle() {
+  try {
+    const r = await fetch('/raffle.json');
+    if (r.ok) S.raffle = await r.json();
+  } catch { /* raffle display is optional */ }
+}
+
 async function refresh() {
   await loadContract();
   await loadMarket().catch(() => {});
   await loadMine();
+  await loadRaffle();
   render();
 }
 
@@ -251,7 +274,7 @@ function pumpRibbons() {
 
 /* ---------------- stat count-ups ---------------- */
 
-const COUNTED_STATS = ['Souls summoned · realm', 'Your gems in ledger', 'Your gems in hand', 'Your trials won'];
+const COUNTED_STATS = ['Souls summoned · realm', 'Your gems in ledger', 'Your gems in hand', 'Your trials won', 'Your renown'];
 const statPrev = {};
 function animateStatEl(el, key) {
   const text = el.textContent;
@@ -277,6 +300,18 @@ function animateStatEl(el, key) {
   setTimeout(() => { done = true; el.textContent = text; }, dur + 120);
 }
 
+function aspectsRow(c) {
+  if (!c.aspects) return '';
+  const [v, b, g, t, h] = c.aspects;
+  const marks = (t > 0 ? ` · tempered ×${t}` : '') + (h > 0 ? ` · hardened ×${h}` : '');
+  return `<div class="ac-aspects" title="valor · bulwark · guile${marks}">
+    ⚔ ${v} &nbsp; 🛡 ${b} &nbsp; 🗡 ${g}</div>`;
+}
+
+function stationLine(c, t, meta) {
+  return `${t.name}${meta ? ' · ' + meta.type : ''}${c.wins > 0 ? ` · ★ ${c.wins}` : ''}`;
+}
+
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
@@ -287,7 +322,8 @@ function cardBox(c, buttonsHtml, selectable) {
       <div class="ac-scrim"></div>
       <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
       <div class="ac-bottom">
-        <div class="ac-station" style="color:${t.color}">${t.name} · ${meta.type}</div>
+        <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
+        ${aspectsRow(c)}
         <div class="ac-flavor">${meta.flavor}</div>
         ${buttonsHtml || ''}
       </div>
@@ -296,7 +332,8 @@ function cardBox(c, buttonsHtml, selectable) {
   return `<div class="card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
     <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
-    <div class="tier">${t.name} · ⚡${c.power}</div>
+    <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
+    ${aspectsRow(c)}
     ${buttonsHtml || ''}
   </div>`;
 }
@@ -342,8 +379,19 @@ function render() {
     ['Your gems in ledger', me(fmtGems(S.gemsLedger))],
     ['Your gems in hand', me(fmtGems(S.gemsWallet))],
     ['Your trials won', me(S.wins)],
+    ['Your renown', me(S.renown + (S.vigil > 1 ? ` · vigil ${S.vigil}d` : ''))],
     ['Your standing', me(standingLabel(deedsDone))],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // the Weaver's favor: claimable winnings under the summon button
+  const fn = $('favorNote');
+  if (fn) {
+    fn.hidden = !(S.addr && S.favorOwed > 0);
+    if (!fn.hidden) fn.innerHTML =
+      `The Weaver owes you <b>${fmtHtr(S.favorOwed)}</b> <button class="mini-btn" id="favorClaimBtn">CLAIM</button>`;
+    const fb = $('favorClaimBtn');
+    if (fb) fb.onclick = () => doTx("Claiming the Weaver's favor", 'claim_favor', [], [wdAct(HTR, S.favorOwed)]);
+  }
   $('statsRow').querySelectorAll('.stat').forEach(s =>
     animateStatEl(s.querySelector('.v'), s.querySelector('.k').textContent));
 
@@ -360,6 +408,20 @@ function render() {
       <span class="deed-mark">${d.done ? '✦' : '·'}</span>
       <div><b>${d.name}</b><div class="deed-desc">${d.desc}</div></div>
     </div>`).join('');
+
+  // the Weaver's weekly favor (drawn from renown earned this week)
+  const rl = $('raffleLine');
+  if (rl) {
+    if (S.raffle) {
+      const days = Math.max(0, Math.ceil((S.raffle.week_ends * 1000 - Date.now()) / 86400000));
+      const last = (S.raffle.winners || []).slice(-1)[0];
+      rl.hidden = false;
+      rl.innerHTML = `<b>The Weaver's weekly favor:</b> every point of renown earned this week is a
+        ticket in her weekly drawing. This week's pot holds <b>${fmtHtr(S.raffle.pool)}</b> from
+        summon proceeds; the Weaver draws in ${days} day${days === 1 ? '' : 's'}.` +
+        (last && last.winner ? ` Last week her favor fell on <span class="mono">${last.winner}</span> (${fmtHtr(last.prize)}).` : '');
+    } else rl.hidden = true;
+  }
 
   // collection
   const mine = [...S.cards.values()].filter(c => c.mine);
@@ -403,6 +465,7 @@ function render() {
     <div class="row-btns">
       <button class="mini-btn" data-claimgems="${c.uid}" ${c.pendingGems < 1 ? 'disabled' : ''}>CLAIM</button>
       <button class="mini-btn alt" data-unstake="${c.uid}">UNSTAKE</button>
+      ${c.temperCost > 0 ? `<button class="mini-btn alt" data-temper="${c.uid}">TEMPER</button>` : ''}
     </div>`)).join('');
   $('stakedEmpty').hidden = staked.length > 0;
 
@@ -489,6 +552,7 @@ function bindListActions() {
   bind('[data-stake]', u => doTx('Sending to the mines', 'stake', [], [depAct(u, CARD_AMT)]));
   bind('[data-unstake]', u => doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]));
   bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
+  bind('[data-temper]', u => openTemper(u));
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-cancelduel]', id => doTx('Withdrawing challenge', 'cancel_duel', [Number(id)], []));
@@ -594,6 +658,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
 
 async function pull() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
+  const favorBefore = S.favorOwed;
   $('machine').classList.add('shaking');
   spawnEmbers($('machine'), 6);
   const emberInt = REDUCED ? null : setInterval(() => spawnEmbers($('machine'), 6), 1500);
@@ -601,9 +666,46 @@ async function pull() {
   $('machine').classList.remove('shaking');
   if (emberInt) clearInterval(emberInt);
   if (!hash) return;
+  if (S.favorOwed > favorBefore)
+    ribbon(`The Weaver smiles: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> returned to you`, 'level');
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
   if (!won) return;
   revealCard(won, TIERS[won.tier].name);
+}
+
+/* ---------------- the Rite of Tempering ---------------- */
+
+let temperUid = null;
+function openTemper(uid) {
+  const c = S.cards.get(uid);
+  if (!c || !c.temperCost) return;
+  temperUid = uid;
+  const [v, b, g, t] = c.aspects || [0, 0, 0, 0];
+  $('temperInfo').innerHTML = `<b>${c.name}</b> · ⚔ ${v} · 🛡 ${b} · 🗡 ${g}<br>
+    Raise one aspect by 1–3 for <b>${fmtGems(c.temperCost)}</b> from your ledger.`;
+  showStage('stageTemper');
+}
+
+async function doTemper(aspect) {
+  const uid = temperUid;
+  temperUid = null;
+  $('overlay').hidden = true;
+  const c = S.cards.get(uid);
+  if (!c) return;
+  const beforeAsp = c.aspects ? [...c.aspects] : null;
+  if (!(await ensureLedgerGems(c.temperCost))) {
+    $('errTitle').textContent = 'Not enough gems';
+    $('errMsg').textContent = `Tempering costs ${fmtGems(c.temperCost)}. Earn more in the Mines.`;
+    showStage('stageError');
+    return;
+  }
+  const hash = await doTx('Tempering', 'temper', [uid, aspect], []);
+  if (!hash || !beforeAsp) return;
+  const after = S.cards.get(uid)?.aspects;
+  if (after) {
+    const gain = after[aspect] - beforeAsp[aspect];
+    if (gain > 0) ribbon(`Tempered: <b>+${gain} ${['Valor', 'Bulwark', 'Guile'][aspect]}</b> for ${c.name}`);
+  }
 }
 
 /* ---------------- reveal theater ---------------- */
@@ -654,12 +756,14 @@ function revealCard(won, tierLabel) {
     <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power">\u26a1${won.power}</span></div>
     <div class="ac-bottom">
       <div class="ac-station" style="color:${t.color}">${tierLabel} \u00b7 ${meta.type}</div>
+      ${aspectsRow(won)}
       <div class="ac-flavor">${meta.flavor}</div>
     </div>` : `
     <div class="prize-emoji">${artSvg(won.name, 'card-art prize-art')}</div>
     <div class="prize-tier">${tierLabel}</div>
     <div class="prize-name">${won.name}</div>
-    <div class="prize-power">\u26a1 POWER ${won.power}</div>`;
+    <div class="prize-power">\u26a1 POWER ${won.power}</div>
+    ${aspectsRow(won)}`;
   pc.innerHTML = `
     <div class="flip-inner">
       <div class="reveal-back"><img src="logo.png" alt=""></div>
@@ -786,7 +890,7 @@ async function connectWallet(kind) {
 /* ---------------- misc / boot ---------------- */
 
 function showStage(id) {
-  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick'])
+  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper'])
     $(s).hidden = s !== id;
   $('overlay').hidden = false;
 }
@@ -969,8 +1073,10 @@ $('headerSessionBtn').onclick = () => {
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
-for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
+for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel'])
   $(id).onclick = () => { $('overlay').hidden = true; };
+document.querySelectorAll('[data-aspectpick]').forEach(el =>
+  el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
 // a click during the reveal build-up skips straight to the card
 $('overlay').addEventListener('click', () => {
   const stage = $('stageReveal');

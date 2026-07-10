@@ -1,16 +1,16 @@
-// GachaArena deployment + wallet-connect configuration
+// EmberfallArena v2.2 deployment + wallet-connect configuration (testnet-india)
 window.GAME = {
   network: 'testnet', // hathor network name used by snap/walletconnect
-  blueprint: '00fd125434accb0f6eeb50936ea0a60b4f8f930e401d3095cb9fa77c2b88d7b5',
-  nc: '00b1bddc439d8b4255c16fec70d9578f7cebdb989e277c2cca934ac7bb48dcbb',
-  gems: '357ec146e2492361474c4d6d685a9e7747360b44a5ec829c856f020a10f834d5',
+  blueprint: '0078b201b50e228833ad6e526c6e0d5c89456502623b4f18807b3991ac3ce0bf',
+  nc: '00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258',
+  gems: 'd99c0aae27eae400cd7eac85eed44064dfedafb47800a481ce90c3c01b0dbd15',
   market: {
-    blueprint: '00ddf5d21557d3d6dd9d34e88c43abc1a399faeb1bd5088dc5af617ed5be8938',
-    nc: '006318ef0471d957345db139f9b5e0b1d830e596180de558ea37b289845d1391',
+    blueprint: '007498c9c4c667c973c2800948aabb34b2cd8eed60c1d801bce2bda2e96fd33b',
+    nc: '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b',
   },
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.
-  // live economy (cents). v2.1 target: sessionFund 50000, fusionFees [5,10,50,100]
-  economy: { sessionFund: 100, fusionFees: [5, 5, 5, 5] },
+  // live economy (cents). Fusion fees are tiered by station in the v2.2 contract.
+  economy: { sessionFund: 100, fusionFees: [5, 10, 50, 100] },
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
 };

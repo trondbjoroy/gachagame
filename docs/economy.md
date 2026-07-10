@@ -86,7 +86,7 @@ spent summoning, and hours of champions toiling in the Mines. Level 7
 requires every deed in the book. Standing is prestige, not power — it
 can't be bought outright, only earned.
 
-**Arriving with the next update — Renown, the Vigil, and the Favor.**
+**Live now on the Ledger — Renown, the Vigil, and the Favor.**
 - **Renown**: every meaningful act earns points on the Ledger itself —
   summons, fusions, and *settled* fights in the Pit (you can't farm
   renown by opening and cancelling challenges; only fights that happen
@@ -115,6 +115,11 @@ can't be bought outright, only earned.
   but only from wagered fights against an equal or stronger foe, and
   only up to a modest cap. Glory earned against weaklings teaches
   nothing.
+- **The weekly favor**: every point of renown you earn in a week is a
+  ticket in the Weaver's weekly drawing; the pot is 5% of the week's
+  summon proceeds. For now the draw runs on a published, deterministic
+  algorithm over public Ledger data (anyone can re-run it and check the
+  winner); a future update moves the draw itself into the contract.
 
 ## Why "funded from proceeds, never printed"?
 
