@@ -370,6 +370,24 @@ body::after {
 .lore p { color: var(--ink-muted); font-size: 14.5px; line-height: 1.75; margin: 0 0 14px; text-wrap: pretty; }
 .lore b { color: var(--ink); font-weight: 600; }
 
+/* codex collapsible sections */
+.codex-sec {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .015); margin-bottom: 14px;
+}
+.codex-sec summary {
+  cursor: pointer; list-style: none; padding: 16px 18px; user-select: none;
+  font-size: 16px; letter-spacing: .06em; color: var(--ink-muted); font-weight: 600;
+}
+.codex-sec summary::-webkit-details-marker { display: none; }
+.codex-sec summary::before {
+  content: '›'; display: inline-block; margin-right: 12px;
+  color: var(--acid); transition: transform .18s ease;
+}
+.codex-sec[open] summary::before { transform: rotate(90deg); }
+.codex-sec summary:hover { color: var(--ink); }
+.codex-sec .sec-body { padding: 2px 18px 18px; }
+
 /* deeds of renown */
 .deeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .deed {

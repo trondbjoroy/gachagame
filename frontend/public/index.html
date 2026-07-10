@@ -127,7 +127,9 @@
 
 
   <section class="shelf tabpane" id="pane-learn" hidden>
-    <h2>The chronicle of Emberfall</h2>
+    <details class="codex-sec" data-sec="chronicle">
+    <summary>The chronicle of Emberfall</summary>
+    <div class="sec-body">
     <div class="lore">
       <p>When the last Sovereign died without an heir, the great houses tore the realm
       apart rather than let a rival sit the throne. The maesters call it the Sundering.
@@ -147,11 +149,20 @@
       <p>The throne of Emberfall stays empty. But a host must still be raised, and
       every deed you do is witnessed forever.</p>
     </div>
-    <h2 class="mt">Deeds of renown</h2>
+    </div>
+    </details>
+
+    <details class="codex-sec" data-sec="deeds">
+    <summary>Deeds of renown</summary>
+    <div class="sec-body">
     <div class="lore"><p id="deedsSummary"></p></div>
     <div class="deeds" id="deedsGrid"></div>
+    </div>
+    </details>
 
-    <h2 class="mt">How to play</h2>
+    <details class="codex-sec" data-sec="guide">
+    <summary>How to play</summary>
+    <div class="sec-body">
     <ol class="guide">
       <li>
         <h3>Connect a wallet</h3>
@@ -210,8 +221,12 @@
         market contract &mdash; claim your side from the escrow shelf after it settles.</p>
       </li>
     </ol>
+    </div>
+    </details>
 
-    <h2 class="mt">Questions</h2>
+    <details class="codex-sec" data-sec="faq">
+    <summary>Questions</summary>
+    <div class="sec-body">
     <div class="faq">
       <div class="qa"><h4>Why do actions take a few seconds to land?</h4>
         <p>Every move is a real blockchain transaction. It confirms when the next
@@ -260,6 +275,8 @@
         two epics. Two epics take four rares; four rares take eight commons &mdash;
         a guaranteed legendary from 14 fusions&rsquo; worth of cards.</p></div>
     </div>
+    </div>
+    </details>
   </section>
 
 </main>

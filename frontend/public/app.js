@@ -856,6 +856,21 @@ $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
+// codex sections: collapsed by default, open/closed state remembered
+const CODEX_LS = 'emberfall_codex';
+document.querySelectorAll('.codex-sec').forEach(d => {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(CODEX_LS) || '{}'); } catch { }
+  if (saved[d.dataset.sec]) d.open = true;
+  d.addEventListener('toggle', () => {
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(CODEX_LS) || '{}'); } catch { }
+    s[d.dataset.sec] = d.open;
+    localStorage.setItem(CODEX_LS, JSON.stringify(s));
+    if (d.open) track('codex_open', { section: d.dataset.sec });
+  });
+});
+
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   track('tab_view', { tab: el.dataset.tab });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
