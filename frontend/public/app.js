@@ -469,8 +469,11 @@ function render() {
     </div>`)).join('');
   $('stakedEmpty').hidden = staked.length > 0;
 
-  // arena
-  $('duelList').innerHTML = S.duels.map(d => {
+  // arena: spectators see only open challenges; settled history needs a sworn wallet
+  $('newDuelBtn').disabled = !S.addr;
+  $('newDuelBtn').title = S.addr ? '' : 'Swear a wallet to your cause to issue a challenge';
+  const duelsShown = S.addr ? S.duels : S.duels.filter(d => d.status === 'open');
+  $('duelList').innerHTML = duelsShown.map(d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
@@ -486,11 +489,13 @@ function render() {
           ? (cancellable
             ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
             : '<span class="duel-done">yours · main wallet</span>')
-          : `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`)
+          : (S.addr
+            ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
+            : '<span class="duel-done">awaiting a challenger</span>'))
         : '<span class="duel-done">settled</span>'}
     </div>`;
   }).join('');
-  $('duelEmpty').hidden = S.duels.length > 0;
+  $('duelEmpty').hidden = duelsShown.length > 0;
 
   if (MKT) {
     $('marketFunds').textContent = `Sale proceeds: ${fmtHtr(S.marketFunds)}`;
