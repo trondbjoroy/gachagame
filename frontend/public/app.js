@@ -887,6 +887,8 @@ async function connectWallet(kind) {
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
     await refresh();
+    // first time in the realm: walk them through it
+    if (!localStorage.getItem('emberfall_tutorial_seen')) startTutorial();
   } catch (e) {
     $('connectMsg').textContent = e.message || String(e);
   }
