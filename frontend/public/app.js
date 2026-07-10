@@ -207,11 +207,74 @@ function standingLabel(doneCount) { return `Level ${levelFor(doneCount)} · ${ti
 function announceNewDeeds(deeds) {
   if (!S.addr) return;
   const key = 'emberfall_deeds_' + S.addr;
-  let seen = [];
-  try { seen = JSON.parse(localStorage.getItem(key) || '[]'); } catch { }
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(key)); } catch { }
+  const first = saved == null;  // first sync: record silently, no ribbon storm
+  const seen = Array.isArray(saved) ? saved : (saved && saved.deeds) || [];
+  const prevLevel = Array.isArray(saved) ? null : saved && saved.level;
   const done = deeds.filter(d => d.done).map(d => d.id);
-  for (const id of done) if (!seen.includes(id)) track('deed_complete', { deed: id });
-  localStorage.setItem(key, JSON.stringify(done));
+  for (const id of done) if (!seen.includes(id)) {
+    track('deed_complete', { deed: id });
+    if (!first) {
+      const d = DEEDS.find(x => x.id === id);
+      ribbon(`⚜ Deed witnessed — <b>${d ? d.name : id}</b>`);
+    }
+  }
+  const lvl = levelFor(done.length);
+  if (!first && prevLevel != null && lvl > prevLevel)
+    ribbon(`You rise to <b>Level ${lvl} · ${TITLES[lvl - 1]}</b>`, 'level');
+  localStorage.setItem(key, JSON.stringify({ deeds: done, level: lvl }));
+}
+
+/* ---------------- ribbons (deed / level announcements) ---------------- */
+
+const ribbonQ = [];
+let ribbonBusy = false;
+function ribbon(html, cls) {
+  ribbonQ.push([html, cls]);
+  pumpRibbons();
+}
+function pumpRibbons() {
+  if (ribbonBusy || !ribbonQ.length) return;
+  ribbonBusy = true;
+  const [html, cls] = ribbonQ.shift();
+  const el = document.createElement('div');
+  el.className = 'ribbon' + (cls ? ' ' + cls : '');
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 30);
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => { el.remove(); ribbonBusy = false; pumpRibbons(); }, 500);
+  }, 3600);
+}
+
+/* ---------------- stat count-ups ---------------- */
+
+const COUNTED_STATS = ['Souls summoned · realm', 'Your gems in ledger', 'Your gems in hand', 'Your trials won'];
+const statPrev = {};
+function animateStatEl(el, key) {
+  const text = el.textContent;
+  const prev = statPrev[key];
+  statPrev[key] = text;
+  if (REDUCED || prev == null || prev === text || !COUNTED_STATS.includes(key)) return;
+  const m = text.match(/-?\d+(?:\.\d+)?/), pm = prev.match(/-?\d+(?:\.\d+)?/);
+  if (!m || !pm) return;
+  const to = parseFloat(m[0]), from = parseFloat(pm[0]);
+  if (!(to > from)) return;  // only count upward — losses shouldn't linger
+  const decimals = (m[0].split('.')[1] || '').length;
+  const pre = text.slice(0, m.index), post = text.slice(m.index + m[0].length);
+  const t0 = performance.now(), dur = 650;
+  let done = false;
+  function step(now) {
+    if (done) return;
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = pre + (from + (to - from) * e).toFixed(decimals) + post;
+    if (p < 1) requestAnimationFrame(step); else done = true;
+  }
+  requestAnimationFrame(step);
+  // rAF is suspended in hidden tabs — always land on the true value
+  setTimeout(() => { done = true; el.textContent = text; }, dur + 120);
 }
 
 function cardBox(c, buttonsHtml, selectable) {
@@ -281,6 +344,8 @@ function render() {
     ['Your trials won', me(S.wins)],
     ['Your standing', me(standingLabel(deedsDone))],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  $('statsRow').querySelectorAll('.stat').forEach(s =>
+    animateStatEl(s.querySelector('.v'), s.querySelector('.k').textContent));
 
   // deeds of renown (Codex)
   const lvl = levelFor(deedsDone);
@@ -530,21 +595,60 @@ async function doTx(label, method, args, actions, { target } = {}) {
 async function pull() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   $('machine').classList.add('shaking');
+  spawnEmbers($('machine'), 6);
+  const emberInt = REDUCED ? null : setInterval(() => spawnEmbers($('machine'), 6), 1500);
   const hash = await doTx('Summoning', 'pull', [], [depAct(HTR, S.pullPrice)]);
   $('machine').classList.remove('shaking');
+  if (emberInt) clearInterval(emberInt);
   if (!hash) return;
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
   if (!won) return;
   revealCard(won, TIERS[won.tier].name);
 }
 
+/* ---------------- reveal theater ---------------- */
+
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REVEAL_MS = [700, 1100, 1700, 2600];  // anticipation, by station
+
+function spawnEmbers(host, n, big) {
+  if (REDUCED || !host) return;
+  const box = document.createElement('div');
+  box.className = 'embers';
+  for (let i = 0; i < n; i++) {
+    const e = document.createElement('span');
+    e.className = 'ember-p' + (big && Math.random() < .3 ? ' big' : '');
+    e.style.left = (5 + Math.random() * 90) + '%';
+    e.style.setProperty('--dx', (Math.random() * 70 - 35) + 'px');
+    e.style.animationDelay = (Math.random() * .8) + 's';
+    e.style.animationDuration = (1.2 + Math.random() * 1.4) + 's';
+    box.appendChild(e);
+  }
+  host.appendChild(box);
+  setTimeout(() => box.remove(), 3800);
+}
+
+let revealTimer = null;
+function finishReveal(tier) {
+  if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; }
+  const stage = $('stageReveal');
+  if (!stage.classList.contains('sequencing')) return;
+  stage.classList.remove('sequencing');
+  stage.classList.add('revealed');
+  if (tier >= 2) { $('overlay').classList.add('quake'); setTimeout(() => $('overlay').classList.remove('quake'), 600); }
+  if (tier >= 3) { $('overlay').classList.add('goldflash'); setTimeout(() => $('overlay').classList.remove('goldflash'), 950); }
+  spawnEmbers($('prizeCard'), [8, 14, 24, 44][tier] || 8, tier >= 2);
+  try { if (navigator.vibrate) navigator.vibrate([[20], [35], [15, 40, 60], [20, 40, 20, 40, 140]][tier] || [20]); } catch { }
+}
+
 function revealCard(won, tierLabel) {
   const t = TIERS[won.tier] || TIERS[0];
+  const tier = Math.max(0, Math.min(3, won.tier));
   const pc = $('prizeCard');
   pc.style.setProperty('--rc', t.color);
   const meta = cardMeta(won.name);
   pc.classList.toggle('art-reveal', !!meta?.art);
-  pc.innerHTML = meta?.art ? `
+  const face = meta?.art ? `
     <img class="ac-img" src="cards/${slugOf(won.name)}.jpg" alt="">
     <div class="ac-scrim"></div>
     <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power">\u26a1${won.power}</span></div>
@@ -556,8 +660,19 @@ function revealCard(won, tierLabel) {
     <div class="prize-tier">${tierLabel}</div>
     <div class="prize-name">${won.name}</div>
     <div class="prize-power">\u26a1 POWER ${won.power}</div>`;
+  pc.innerHTML = `
+    <div class="flip-inner">
+      <div class="reveal-back"><img src="logo.png" alt=""></div>
+      <div class="reveal-face${meta?.art ? '' : ' plain'}">${face}</div>
+    </div>`;
   $('revealClaimBtn').onclick = () => { $('overlay').hidden = true; doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]); };
+  const stage = $('stageReveal');
+  stage.classList.remove('revealed', 'tier-0', 'tier-1', 'tier-2', 'tier-3');
+  stage.classList.add('sequencing', 'tier-' + tier);
+  S.revealTier = tier;
   showStage('stageReveal');
+  if (REDUCED) finishReveal(tier);
+  else revealTimer = setTimeout(() => finishReveal(tier), REVEAL_MS[tier]);
 }
 
 async function fuse() {
@@ -856,6 +971,15 @@ $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
+// a click during the reveal build-up skips straight to the card
+$('overlay').addEventListener('click', () => {
+  const stage = $('stageReveal');
+  if (!stage.hidden && stage.classList.contains('sequencing')) {
+    track('reveal_skip', { tier: S.revealTier });
+    finishReveal(S.revealTier);
+  }
+});
+
 // codex sections: collapsed by default, open/closed state remembered
 const CODEX_LS = 'emberfall_codex';
 document.querySelectorAll('.codex-sec').forEach(d => {
