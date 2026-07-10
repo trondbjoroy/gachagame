@@ -100,6 +100,21 @@ can't be bought outright, only earned.
   the Weaver smiles and returns up to the summon's full price. The prize
   comes from the favor pool that summons themselves fill — the pot grows
   when the realm is busy and never pays out more than it holds.
+- **Aspects**: every champion's power splits at birth into **valor,
+  bulwark, and guile**, and trials in the Pit become best-of-three —
+  one round per aspect. A balanced champion fights steadily; a
+  specialist crushes one round and gambles the rest.
+- **The Rite of Tempering**: while a champion toils in the Mines, you
+  may pay gems to raise one chosen aspect. Each tempering costs half
+  again as much as the last, with a hard cap by station — a tempered
+  Footman deepens, but never outgrows a Knight. Half of every fee is
+  destroyed forever (good for everyone's gems), half goes to the Crown.
+- **Battle-hardened**: champions remember their victories — every duel
+  won is written on the card itself, and veterans will carry that
+  pedigree into the Bazaar. A winner also grows: +1 to a random aspect,
+  but only from wagered fights against an equal or stronger foe, and
+  only up to a modest cap. Glory earned against weaklings teaches
+  nothing.
 
 ## Why "funded from proceeds, never printed"?
 
