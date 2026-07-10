@@ -48,6 +48,12 @@ class EmberfallArena(Blueprint):
       and grow ~1.5x per tempering, capped per station. Half the fee
       is burned, half goes to the Crown's ledger. Tempering does not
       survive fusion (children re-roll fresh aspects).
+    - battle-hardened: every duel win is counted on the card
+      (provenance). The winner also gains +1 to a random aspect, but
+      only if the fight was wagered (>= the winner's fusion fee) and
+      the defeated champion was at least as powerful — so hardening
+      cannot be farmed against weaklings or free fights. Capped at
+      about half of tempering's ceiling per station.
     """
 
     owner: Address
@@ -82,6 +88,7 @@ class EmberfallArena(Blueprint):
     favor_pool: Amount
     favor_owed: dict[Address, Amount]
     card_attrs: dict[TokenUid, int]
+    card_wins: dict[TokenUid, int]
 
     @public(allow_deposit=True)
     def initialize(self, ctx: Context, owner: Address, pull_price: Amount,
@@ -126,6 +133,7 @@ class EmberfallArena(Blueprint):
         self.favor_pool = 0
         self.favor_owed = {}
         self.card_attrs = {}
+        self.card_wins = {}
         # deposited HTR beyond the GEMS-creation collateral seeds the reserve
         self.proceeds = action.amount - 1
         self.gems_uid = self.syscall.create_deposit_token(
@@ -181,14 +189,23 @@ class EmberfallArena(Blueprint):
     # Aspects (valor / bulwark / guile packed into one int + temper count)
     # ------------------------------------------------------------------
 
-    def _attrs_pack(self, valor: int, bulwark: int, guile: int, tempers: int) -> int:
-        return valor | (bulwark << 12) | (guile << 24) | (tempers << 36)
+    def _attrs_pack(self, valor: int, bulwark: int, guile: int,
+                    tempers: int, hardened: int) -> int:
+        return (valor | (bulwark << 12) | (guile << 24)
+                | (tempers << 36) | (hardened << 44))
 
     def _attr_at(self, attrs: int, aspect: int) -> int:
         return (attrs >> (aspect * 12)) & 0xFFF
 
     def _attr_tempers(self, attrs: int) -> int:
         return (attrs >> 36) & 0xFF
+
+    def _attr_hardened(self, attrs: int) -> int:
+        return (attrs >> 44) & 0xFF
+
+    def _harden_cap(self, tier: int) -> int:
+        # about half of the tempering ceiling per station
+        return [2, 3, 4, 6][tier]
 
     def _split_power(self, power: int) -> int:
         # divide power into three aspects, each at least 1, summing to power
@@ -199,7 +216,7 @@ class EmberfallArena(Blueprint):
         valor = 1 + (power - 3) * w1 // tot
         bulwark = 1 + (power - 3) * w2 // tot
         guile = power - valor - bulwark
-        return self._attrs_pack(valor, bulwark, guile, 0)
+        return self._attrs_pack(valor, bulwark, guile, 0, 0)
 
     def _temper_cost(self, tier: int, tempers: int) -> Amount:
         cost = self._temper_base(tier)
@@ -386,7 +403,8 @@ class EmberfallArena(Blueprint):
             bulwark += bonus
         else:
             guile += bonus
-        self.card_attrs[card] = self._attrs_pack(valor, bulwark, guile, tempers + 1)
+        self.card_attrs[card] = self._attrs_pack(
+            valor, bulwark, guile, tempers + 1, self._attr_hardened(attrs))
         self.card_power[card] = self.card_power[card] + bonus
         self._earn_renown(caller, 5, ctx.block.timestamp)
         self.syscall.emit_event(
@@ -462,6 +480,8 @@ class EmberfallArena(Blueprint):
             del self.card_tier[act.token_uid]
             del self.card_power[act.token_uid]
             del self.card_attrs[act.token_uid]
+            if act.token_uid in self.card_wins:
+                del self.card_wins[act.token_uid]
         self.proceeds += 2  # each 100-unit melt refunds 1 cent of collateral
         new_tier = tier + 1
         if len(self._templates(new_tier)) == 0:
@@ -545,6 +565,33 @@ class EmberfallArena(Blueprint):
             else:
                 r2 = won
         winner = challenger if rounds_a >= 2 else caller
+        winner_card = their_card if winner == challenger else my_card
+        loser_card = my_card if winner == challenger else their_card
+        # provenance: every settled victory is counted on the card
+        self.card_wins[winner_card] = self.card_wins.get(winner_card, 0) + 1
+        # battle-hardened: +1 to a random aspect, only for wagered fights
+        # against an equal-or-stronger champion, capped per station
+        hardened_gain = 0
+        w_attrs = self.card_attrs[winner_card]
+        w_tier = self.card_tier[winner_card]
+        if (wager >= self._fusion_fee(w_tier)
+                and self.card_power[loser_card] >= self.card_power[winner_card]
+                and self._attr_hardened(w_attrs) < self._harden_cap(w_tier)):
+            hardened_gain = 1
+            which = self.syscall.rng.randbelow(3)
+            valor = self._attr_at(w_attrs, 0)
+            bulwark = self._attr_at(w_attrs, 1)
+            guile = self._attr_at(w_attrs, 2)
+            if which == 0:
+                valor += 1
+            elif which == 1:
+                bulwark += 1
+            else:
+                guile += 1
+            self.card_attrs[winner_card] = self._attrs_pack(
+                valor, bulwark, guile, self._attr_tempers(w_attrs),
+                self._attr_hardened(w_attrs) + 1)
+            self.card_power[winner_card] = self.card_power[winner_card] + 1
 
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
@@ -564,7 +611,8 @@ class EmberfallArena(Blueprint):
         self.pending[my_card] = caller
         self.duel_open[duel_id] = False
         self.syscall.emit_event(
-            f'{{"event":"duel","id":{duel_id},"valor":{r0},"bulwark":{r1},"guile":{r2}}}'.encode()
+            f'{{"event":"duel","id":{duel_id},"valor":{r0},"bulwark":{r1},'
+            f'"guile":{r2},"hardened":{hardened_gain}}}'.encode()
         )
         return 0 if winner == challenger else 1
 
@@ -704,7 +752,12 @@ class EmberfallArena(Blueprint):
         if attrs is None:
             return ""
         return (f"{self._attr_at(attrs, 0)}|{self._attr_at(attrs, 1)}"
-                f"|{self._attr_at(attrs, 2)}|{self._attr_tempers(attrs)}")
+                f"|{self._attr_at(attrs, 2)}|{self._attr_tempers(attrs)}"
+                f"|{self._attr_hardened(attrs)}")
+
+    @view
+    def get_card_wins(self, card: TokenUid) -> int:
+        return self.card_wins.get(card, 0)
 
     @view
     def get_temper_cost(self, card: TokenUid) -> Amount:
