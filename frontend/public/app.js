@@ -217,7 +217,7 @@ function announceNewDeeds(deeds) {
     track('deed_complete', { deed: id });
     if (!first) {
       const d = DEEDS.find(x => x.id === id);
-      ribbon(`⚜ Deed witnessed — <b>${d ? d.name : id}</b>`);
+      ribbon(`⚜ Deed witnessed: <b>${d ? d.name : id}</b>`);
     }
   }
   const lvl = levelFor(done.length);
@@ -312,7 +312,7 @@ function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
-  $('walletHtr').title = S.addr ? 'Balance on your main address only — your wallet shows the full total' : '';
+  $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
   $('walletHint').textContent = S.addr ? (S.wallet?.mode === 'session' ? 'session' : 'this address') : '';
   const hsb = $('headerSessionBtn');
   hsb.hidden = !S.addr;
@@ -330,7 +330,7 @@ function render() {
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
-    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR — <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
+    S.htr < (S.pullPrice ?? 0) ? `Not enough HTR: <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
     'Speak, and the Weaver answers within moments.';
 
   const me = v => S.addr ? v : '—';
@@ -352,7 +352,7 @@ function render() {
   const toNext = lvl >= TITLES.length ? 0 : LEVEL_AT[lvl] - deedsDone;
   $('deedsSummary').innerHTML = !S.addr
     ? 'Swear a wallet to your cause and your chronicle begins.'
-    : `You stand at <b>${standingLabel(deedsDone)}</b> — ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
+    : `You stand at <b>${standingLabel(deedsDone)}</b> with ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
       (toNext > 0 ? ` ${toNext} more deed${toNext > 1 ? 's' : ''} and you rise to <b>Level ${lvl + 1} · ${TITLES[lvl]}</b>.`
                   : ' No higher standing exists in the realm.');
   $('deedsGrid').innerHTML = deeds.map(d => `
@@ -383,10 +383,10 @@ function render() {
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
   const canPayFuse = S.gemsLedger + S.gemsWallet >= fuseFee;
-  $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station —'
+  $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station.'
     : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
        : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
-       : `Fusion costs ${fmtGems(fuseFee)} — you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
+       : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
@@ -529,7 +529,7 @@ async function waitForExecution(hash, onTick) {
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
-    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate — try again');
+    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate; try again');
     if (!meta.first_block) continue;
     const logs = await node(`/nano_contract/logs?id=${hash}`);
     if (logs.nc_execution === 'success') return;
@@ -578,7 +578,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     el.classList.add('fail');
     let msg = e.message || String(e);
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
-      msg = 'Your wallet is on a different Hathor network — switch it to testnet and try again.';
+      msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
@@ -711,7 +711,7 @@ function openPick(kind, ref) {
   }
   const mine = [...S.cards.values()].filter(c => c.mine);
   if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
-  $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge — choose your champion & wager' : `Answer challenge #${ref} — choose your champion`;
+  $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge: choose your champion & wager' : `Answer challenge #${ref}: choose your champion`;
   $('pickWagerRow').hidden = kind !== 'create';
   if (kind === 'accept') {
     const d = S.duels.find(x => x.id === ref);
@@ -751,8 +751,8 @@ async function submitPick(uid) {
     if (!hash) return;
     const won = S.wins > winsBefore;
     $('duelResult').innerHTML = won
-      ? '<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. Your champion returns — claim them under Your Host.</div>'
-      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives — claim them under Your Host.</div>';
+      ? '<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. Your champion returns; claim them under Your Host.</div>'
+      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives; claim them under Your Host.</div>';
     showStage('stageDuel');
     $('overlay').hidden = false;
   }
@@ -811,7 +811,7 @@ function syncSessionBox() {
   $('disconnectBtn').hidden = !S.addr || inSession;
   if (!S.sessionStarting) {
     $('sessionInfo').textContent = inSession
-      ? 'Session active — every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
+      ? 'Session active: every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
       : 'Fund a session key held in this browser and play without approving every deed. Sweep everything back to your wallet whenever you like.';
   }
 }
@@ -840,7 +840,7 @@ async function startSession() {
       waitRounds = 150; // 5 minutes for a human-driven transfer
       $('sessionInfo').innerHTML = (autoFund ? 'Automatic funding failed in your wallet. ' : '')
         + `Send <b>${fmtHtr(ECON.sessionFund)}</b> (or more) to the session address below from your `
-        + 'wallet\u2019s normal send screen \u2014 the game will detect it.<br>'
+        + 'wallet\u2019s normal send screen; the game will detect it.<br>'
         + `<span class="mono" style="word-break:break-all">${sw.address}</span> `
         + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${sw.address}')">COPY ADDRESS</button>`;
       sessionNote('Waiting for the funding transfer\u2026');
@@ -849,7 +849,7 @@ async function startSession() {
       if (await sw.htrBalance() >= ECON.sessionFund) break;
       await new Promise(r => setTimeout(r, 2000));
     }
-    if (await sw.htrBalance() < ECON.sessionFund) throw new Error('funding never arrived \u2014 try again');
+    if (await sw.htrBalance() < ECON.sessionFund) throw new Error('funding never arrived; try again');
     localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address }));
     S.mainWallet = main;
     S.wallet = sw;
@@ -871,7 +871,7 @@ async function topUpSession() {
     $('sessionTopupBtn').disabled = true;
     sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' top-up in your wallet\u2026');
     await S.mainWallet.sendHtr(S.wallet.address, ECON.sessionFund);
-    sessionNote('Top-up sent \u2014 it lands within seconds.');
+    sessionNote('Top-up sent; it lands within seconds.');
     setTimeout(() => refresh().catch(() => {}), 4000);
   } catch (e) {
     sessionNote(e.message || String(e));

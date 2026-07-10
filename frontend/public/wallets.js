@@ -80,7 +80,7 @@ class SnapWallet {
       if (/unsupported method|method not found|does not exist|not supported/i.test(msg)) {
         throw new Error('This browser wallet cannot run MetaMask Snaps. ' +
           'Use the MetaMask browser extension (v11+) on desktop Chrome/Firefox, and if you have ' +
-          'several wallet extensions, disable the others — Snaps do not work in MetaMask Mobile.');
+          'several wallet extensions, disable the others; Snaps do not work in MetaMask Mobile.');
       }
       throw e;
     }
@@ -136,7 +136,7 @@ class WcWallet {
 
   async connect(onUri) {
     if (!window.GAME.wcProjectId) {
-      throw new Error('WalletConnect needs a (free) Reown Cloud project id — set wcProjectId in config.js');
+      throw new Error('WalletConnect needs a (free) Reown Cloud project id; set wcProjectId in config.js');
     }
     const { SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle');
     this.client = await SignClient.init({
