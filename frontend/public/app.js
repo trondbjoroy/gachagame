@@ -648,6 +648,10 @@ async function doTx(label, method, args, actions, { target } = {}) {
     let msg = e.message || String(e);
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
       msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
+    } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
+      msg = 'Your purse cannot cover this deed right now. If you just made another move, '
+        + 'wait a few heartbeats for your coin to settle and try again; if the purse is '
+        + 'truly empty, the faucet linked in the Codex pays free coin.';
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
