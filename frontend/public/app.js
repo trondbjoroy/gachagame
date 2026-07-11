@@ -176,6 +176,12 @@ const autoClaimed = new Set();
 let autoClaimBusy = false;
 async function maybeAutoClaim() {
   if (S.wallet?.mode !== 'session' || autoClaimBusy || !S.addr) return;
+  // a claimed card can become pending again (e.g. returning from a duel):
+  // clear the attempted-mark once a card is no longer pending for us
+  for (const uid of [...autoClaimed]) {
+    const c = S.cards.get(uid);
+    if (!c || (c.pending !== S.addr && c.marketPending !== S.addr)) autoClaimed.delete(uid);
+  }
   const next = [...S.cards.values()].find(c => c.tier >= 0
     && (c.pending === S.addr || c.marketPending === S.addr) && !autoClaimed.has(c.uid));
   if (!next) return;
