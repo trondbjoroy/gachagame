@@ -441,72 +441,72 @@ SUBJECT: a single iron-rimmed wooden cartwheel rolling by itself down a moonlit 
 
 SUBJECT: a ragged travel cloak hanging on a wooden peg, faint golden thread glinting in the moth holes, humble inn wall
 
-**Splintered Oar** · Footman · Relic
+**Splintered Oar** · Footman · Relic **[art done]**
 > One oar came back from the fleet that didn't. The rowers' guild keeps it, and keeps the count.
 
 SUBJECT: a broken ship's oar mounted on a tavern wall among candles, salt-bleached wood, rows of small notches carved in the blade
 
-**Marching Boots** · Footman · Relic
+**Marching Boots** · Footman · Relic **[art done]**
 > Their last four owners deserted, in the same direction. The quartermaster has begun to suspect the boots.
 
 SUBJECT: a pair of worn leather army boots standing alone on a moonlit road facing away from a distant campfire, laces neatly tied
 
-**Rusted Key** · Footman · Relic
+**Rusted Key** · Footman · Relic **[art done]**
 > No lock in the realm fits it, which the locksmiths find more alarming, not less.
 
 SUBJECT: an ornate old key of flaking rust hanging from a nail, faint gold glow deep in the corrosion, cellar stone wall
 
-**Apprentice Fletcher** · Footman · Levy
+**Apprentice Fletcher** · Footman · Levy **[art done]**
 > Every arrow in the last battle passed through her hands first. Aim is the archer's craft; arrival is hers.
 
 SUBJECT: a focused young woman binding fletching to an arrow shaft, bundles of feathers and finished arrows on her workbench, oil lamp
 
-**Bellows Boy** · Footman · Levy
+**Bellows Boy** · Footman · Levy **[art done]**
 > The forge's fire has a heartbeat, and it is him.
 
 SUBJECT: a soot-covered boy straining at huge leather forge bellows twice his size, shower of sparks, smithy darkness
 
-**Palisade Builder** · Footman · Levy
+**Palisade Builder** · Footman · Levy **[art done]**
 > The wall was to be stone, someday. His timber has held for thirty years of somedays.
 
 SUBJECT: a weathered carpenter driving a sharpened stake with a heavy mallet, timber palisade line stretching into evening mist
 
-**Horn Blower** · Footman · Levy
+**Horn Blower** · Footman · Levy **[art done]**
 > One note for danger, two for retreat, three for victory. He has practiced the third in secret all his life.
 
 SUBJECT: a soldier on a hilltop blowing a long curved war horn, cheeks bulging, banner snapping beside him, valley below in shadow
 
-**Rat Catcher** · Footman · Levy
+**Rat Catcher** · Footman · Levy **[art done]**
 > The city pays him by the tail. He is rich, which the city prefers not to think about.
 
 SUBJECT: a wiry man in a leather coat hung with traps and cages, a lantern in one hand and a wriggling sack in the other, night alley
 
-**Night Carter** · Footman · Levy
+**Night Carter** · Footman · Levy **[art done]**
 > His cart goes out empty every dusk and comes back heavy every dawn. No one asks, and he charges accordingly.
 
 SUBJECT: a hooded man leading a creaking covered cart pulled by a black nag through empty midnight streets, single swinging lantern
 
-**Ford Washerwoman** · Footman · Levy
+**Ford Washerwoman** · Footman · Levy **[art done]**
 > She washes the war's linen in the river. When she washes a lord's shirt unasked, lords take to their beds.
 
 SUBJECT: an old woman kneeling at a river ford scrubbing a white shirt, red tint swirling downstream, dawn mist on the water
 
-**Tea-Leaf Aunt** · Footman · Mystic
+**Tea-Leaf Aunt** · Footman · Mystic **[art done]**
 > Every village has one. Between them they know everything, which is why the kings fear no guild more.
 
 SUBJECT: a cheerful plump old woman peering into a teacup, golden leaf shapes floating above the rim, cluttered cottage kitchen
 
-**Threshold Blesser** · Footman · Mystic
+**Threshold Blesser** · Footman · Mystic **[art done]**
 > No plague, thief, or ghost may cross a door she has marked. Husbands are not covered under the standard blessing.
 
 SUBJECT: a brisk middle-aged woman painting a glowing golden swirl on a farmhouse door lintel with her thumb, family watching from within
 
-**Echo Listener** · Footman · Mystic
+**Echo Listener** · Footman · Mystic **[art done]**
 > Wells remember every wish dropped into them. He collects on behalf of the management.
 
 SUBJECT: a thin man leaning deep into a stone well, one ear turned down into the dark, faint golden whispers rising as light
 
-**Crossroads Palmist** · Footman · Mystic
+**Crossroads Palmist** · Footman · Mystic **[art done]**
 > She reads the road's palm, not yours. Every traveler is just a line the road is thinking about.
 
 SUBJECT: a mysterious woman seated at a night crossroads reading the crossing paths like lines in a hand, lantern on a stick, gold dust drifting
@@ -543,242 +543,242 @@ SUBJECT: a stern forest ranger with a longbow of pale living wood, drawing an ar
 
 SUBJECT: a serene priestess in charcoal-grey robes with glowing ember patterns, holding a bowl of sacred fire, ash falling like snow
 
-**Moor Stag** · Knight · Beast
+**Moor Stag** · Knight · Beast **[art done]**
 > The old kings hunted it for four hundred years. It attended each of their funerals.
 
 SUBJECT: a great stag with moss growing on its antlers standing on misty moorland at dawn, breath steaming, ancient standing stones behind
 
-**Iron-Tusk Boar** · Knight · Beast
+**Iron-Tusk Boar** · Knight · Beast **[art done]**
 > Spears break on it. Lances bend. The master of hunt now recommends apologizing.
 
 SUBJECT: a massive scarred boar with tusks of dark iron, pawing the ground before a splintered hunting spear, dark forest clearing
 
-**Cliff Eagle** · Knight · Beast
+**Cliff Eagle** · Knight · Beast **[art done]**
 > It has stolen lambs, hats, and once the crown off a royal progress. The mountains found this funny.
 
 SUBJECT: a huge golden-brown eagle perched on a wind-carved cliff spire clutching a glittering stolen circlet, valley far below
 
-**Ash Panther** · Knight · Beast
+**Ash Panther** · Knight · Beast **[art done]**
 > It hunts in the burnt lands where nothing lives. Something must, or it would not stay so fat.
 
 SUBJECT: a sleek black panther with grey ash-dusted fur and gold eyes, prowling low over charred ground, dead trees in haze
 
-**Frost Lynx** · Knight · Beast
+**Frost Lynx** · Knight · Beast **[art done]**
 > Winter sends it ahead, the way a lord sends a herald.
 
 SUBJECT: a pale spotted lynx with frost-tipped ears standing on fresh snow, cold breath, icicled pines behind, low winter sun
 
-**Blackbriar Bear** · Knight · Beast
+**Blackbriar Bear** · Knight · Beast **[art done]**
 > The briars grew over it while it slept. Now the wood walks, and it is hungry from a long nap.
 
 SUBJECT: a huge bear with thorny black briars grown through its fur, small red berries in the vines, rearing in dense dark forest
 
-**Unbroken Destrier** · Knight · Beast
+**Unbroken Destrier** · Knight · Beast **[art done]**
 > It has thrown seven famous knights. Ballads exist about four of the landings.
 
 SUBJECT: a magnificent wild black warhorse rearing, no saddle or rider, broken reins trailing, dust and gold twilight in a tourney ground
 
-**River Serpent** · Knight · Beast
+**River Serpent** · Knight · Beast **[art done]**
 > The ferry costs a copper. The serpent's toll is negotiable, which is worse.
 
 SUBJECT: a long green-scaled serpent arching out of a dark river beside a rope ferry, lantern light on wet scales, reeds and night mist
 
-**Sewer Baron** · Knight · Vermin
+**Sewer Baron** · Knight · Vermin **[art done]**
 > Below the capital sits a court older than the one above, and considerably more honest about what it is.
 
 SUBJECT: an enormous corpulent rat in a tattered velvet cloak and copper ring crown, seated on a throne of refuse in torchlit sewers
 
-**Locust Cloud** · Knight · Vermin
+**Locust Cloud** · Knight · Vermin **[art done]**
 > The harvest was promised to the crown, the church, and the moneylenders. The locusts held the eldest claim.
 
 SUBJECT: a dense swirling swarm of golden-brown locusts forming a vaguely crowned face shape over a devastated wheat field, stormy light
 
-**Furnace Knight** · Knight · Construct
+**Furnace Knight** · Knight · Construct **[art done]**
 > Armor with no man inside, only the memory of heat. It still holds the door it died holding.
 
 SUBJECT: an empty suit of blackened plate armor with furnace fire glowing through every joint and visor slit, guarding a scorched doorway
 
-**Waking Gargoyle** · Knight · Construct
+**Waking Gargoyle** · Knight · Construct **[art done]**
 > Four hundred years of watching taught it patience. The pigeons taught it wrath.
 
 SUBJECT: a stone gargoyle mid-transformation from statue to living creature, cracks glowing amber, crouched on a cathedral ledge in rain
 
-**Ram Engine** · Knight · Construct
+**Ram Engine** · Knight · Construct **[art done]**
 > The gates it broke are forgotten. The engine remembers each one like a name in a prayer.
 
 SUBJECT: a battering ram with a snarling iron ram's head, animated and straining against its own timber frame, siege camp fires behind
 
-**Ledger Automaton** · Knight · Construct
+**Ledger Automaton** · Knight · Construct **[art done]**
 > It tallied the realm's debts until the realm ended. It has continued, out of professionalism.
 
 SUBJECT: a brass and ivory clockwork scribe seated at a desk, quill in articulated hand, surrounded by towers of ledgers, single candle
 
-**Wickerwork Giant** · Knight · Construct
+**Wickerwork Giant** · Knight · Construct **[art done]**
 > Built for the fire festival and never burned. Every year it stands a little less still.
 
 SUBJECT: a towering man of woven wicker and rope standing in a harvest field at night, small flames flickering inside its chest cage
 
-**Portcullis Warden** · Knight · Construct
+**Portcullis Warden** · Knight · Construct **[art done]**
 > The castle fell a century ago. The gate does not accept this.
 
 SUBJECT: a hulking construct of gate iron and chain with a portcullis for a chest, barring a ruined archway, ivy and old battle wreckage
 
-**Oathblade** · Knight · Relic
+**Oathblade** · Knight · Relic **[art done]**
 > Swords forget nothing. This one has been trying.
 
 SUBJECT: a beautiful longsword driven into a stone floor, faint golden script flowing down the blade, kneeling knight's silhouette in shadow behind
 
-**Sealed Decree** · Knight · Relic
+**Sealed Decree** · Knight · Relic **[art done]**
 > The king's last order, never opened. Both sides of the war claim it says what they hoped.
 
 SUBJECT: a rolled parchment scroll with a heavy black wax seal glowing faintly gold, resting on a war table map between toppled banner markers
 
-**Weeping Shield** · Knight · Relic
+**Weeping Shield** · Knight · Relic **[art done]**
 > It has stopped every blow aimed at its bearers. It weeps for the ones who stood beside them.
 
 SUBJECT: a battered kite shield with a woman's face embossed in the steel, water streaking from her eyes down the metal, propped on a cairn
 
-**Ledger Quill** · Knight · Relic
+**Ledger Quill** · Knight · Relic **[art done]**
 > Whatever it writes becomes owed. The Ledgerkeepers kept it locked in glass, and wrote nothing.
 
 SUBJECT: a white feather quill suspended upright above an open massive tome, ink glowing gold as it writes by itself, dark archive vault
 
-**Household Guard** · Knight · Levy
+**Household Guard** · Knight · Levy **[art done]**
 > Three generations of her family have died for the same door. It is a very good door.
 
 SUBJECT: a disciplined woman in immaculate house livery and half-plate, halberd crossed before a gilded door, expression of absolute calm
 
-**Banner Sergeant** · Knight · Levy
+**Banner Sergeant** · Knight · Levy **[art done]**
 > The banner has fallen nine times in his keeping. So have nine men who touched it.
 
 SUBJECT: a scarred veteran holding a tall war banner one-handed, sword drawn in the other, standing on a corpse-strewn ridge in wind
 
-**Crossbow Captain** · Knight · Levy
+**Crossbow Captain** · Knight · Levy **[art done]**
 > She counts to three before every volley. The enemy has learned to dread arithmetic.
 
 SUBJECT: a stern woman in a breastplate aiming a heavy crossbow from a battlement, rank of crossbowmen leveled behind her, dawn fog
 
-**Outrider** · Knight · Levy
+**Outrider** · Knight · Levy **[art done]**
 > He arrives a day before every battle and leaves an hour before every defeat. Follow his horse.
 
 SUBJECT: a lean rider in a dust-grey cloak on a lathered horse, spyglass in hand, silhouetted on a hill against a distant burning town
 
-**Sapper** · Knight · Levy
+**Sapper** · Knight · Levy **[art done]**
 > Walls are only slow doors. Give her a week and a shovel.
 
 SUBJECT: a soot-faced woman in leathers crouched in a torchlit tunnel beneath massive foundation stones, pickaxe and powder kegs beside her
 
-**Master-at-Arms** · Knight · Levy
+**Master-at-Arms** · Knight · Levy **[art done]**
 > He has trained a thousand knights and buried a hundred. The lesson he teaches hardest is which number to be in.
 
 SUBJECT: a grizzled broad-shouldered instructor holding two training swords crossed, worn armor, weapon racks of a castle yard behind
 
-**Longbow Veteran** · Knight · Levy
+**Longbow Veteran** · Knight · Levy **[art done]**
 > His shoulders are crooked from forty years of the draw. So are the odds, when he looses.
 
 SUBJECT: an old archer with a massive yew longbow at full draw, crooked muscled shoulders, arrow fletching by his ear, hilltop grey sky
 
-**Shieldwall Breaker** · Knight · Levy
+**Shieldwall Breaker** · Knight · Levy **[art done]**
 > Somewhere a wall of shields is being taught about doors.
 
 SUBJECT: a huge man mid-charge with a two-handed war maul, chainmail and fury, splintered shields flying around him
 
-**Storm Caller** · Knight · Mystic
+**Storm Caller** · Knight · Mystic **[art done]**
 > The sky owes her family a debt from before the Sundering. She has begun collecting.
 
 SUBJECT: a wind-whipped woman on a headland with arms raised, lightning gathering into a sphere between storm clouds and her hands
 
-**Grave Singer** · Knight · Mystic
+**Grave Singer** · Knight · Mystic **[art done]**
 > Her songs let the dead rest. Her silences wake them. Pray she is paid on time.
 
 SUBJECT: a pale singer in mourning black standing among tilted gravestones, mouth open in song, faint golden spirits sinking peacefully into the earth
 
-**Rune Carver** · Knight · Mystic
+**Rune Carver** · Knight · Mystic **[art done]**
 > Every rune is a bargain with something. He carves slowly, and reads the terms twice.
 
 SUBJECT: a burly tattooed man chiseling a glowing amber rune into a standing stone, wood shavings and tools, northern twilight
 
-**Mirror Monk** · Knight · Mystic
+**Mirror Monk** · Knight · Mystic **[art done]**
 > His order renounced speech, gold, and reflections. What looks back from his mirror now is anyone's guess.
 
 SUBJECT: a bald monk in rough robes holding up a hand mirror that reflects golden light instead of his hooded dark face, stone cell
 
-**Plague Doctor** · Knight · Mystic
+**Plague Doctor** · Knight · Mystic **[art done]**
 > Behind the beak mask, no one knows if there is still a man. The cures work either way.
 
 SUBJECT: a tall figure in a leather beaked plague mask and wide-brimmed hat, holding a censer of glowing embers, fog-filled medieval street
 
-**Ash Confessor** · Knight · Mystic
+**Ash Confessor** · Knight · Mystic **[art done]**
 > Tell him what you did. The ashes already know, and they are less forgiving.
 
 SUBJECT: a gaunt priest in grey robes marking a kneeling knight's forehead with glowing ash, ruined chapel, drifting cinders
 
-**Wolf Speaker** · Knight · Mystic
+**Wolf Speaker** · Knight · Mystic **[art done]**
 > The packs of the north accepted her as one of their own. Her reports back to mankind have grown infrequent.
 
 SUBJECT: a fur-clad woman kneeling nose to nose with a great grey wolf, more wolves emerging from snowy trees around them, dusk
 
-**Tide Augur** · Knight · Mystic
+**Tide Augur** · Knight · Mystic **[art done]**
 > He reads the sea's ledgers. Lately every tide comes in owing more than it brings.
 
 SUBJECT: a weathered old man ankle-deep in surf reading patterns in glowing foam, drowned ship masts on the horizon, storm light
 
-**Vault Whisperer** · Knight · Mystic
+**Vault Whisperer** · Knight · Mystic **[art done]**
 > Locks tell her their secrets. The treasury guild pays her handsomely to stand very far away.
 
 SUBJECT: a sly hooded woman pressing her ear to a massive circular vault door, golden lock mechanisms glowing and turning by themselves
 
-**Moon Abbess** · Knight · Mystic
+**Moon Abbess** · Knight · Mystic **[art done]**
 > Her abbey keeps the old calendar, where the year has thirteen months and one of them is missing.
 
 SUBJECT: a serene abbess in silver-trimmed white robes holding an astrolabe under a huge full moon, abbey cloister at night
 
-**Chained Shade** · Knight · Undead
+**Chained Shade** · Knight · Undead **[art done]**
 > The chains are not to keep it in. They are all it kept.
 
 SUBJECT: a translucent dark spirit wrapped in heavy spectral chains, dragging them across a dungeon floor, each link faintly glowing
 
-**Tomb Herald** · Knight · Undead
+**Tomb Herald** · Knight · Undead **[art done]**
 > He announces the dead to the dead. The etiquette below is stricter than above.
 
 SUBJECT: a skeletal herald in a rotted tabard raising a tarnished trumpet, standing before great stone doors in a candlelit crypt
 
-**Drowned Bride** · Knight · Undead
+**Drowned Bride** · Knight · Undead **[art done]**
 > The river returned everything thrown to it during the war, save one. She is looking.
 
 SUBJECT: a ghostly bride in a waterlogged wedding gown walking out of a dark river at night, veil floating, pale glow on the water
 
-**Gallows Knight** · Knight · Undead
+**Gallows Knight** · Knight · Undead **[art done]**
 > Hanged for treason he did not commit, he serves on. Loyalty this stubborn frightens even its beneficiaries.
 
 SUBJECT: an undead knight in noose and rusted armor kneeling in fealty, spectral rope still around his neck, gallows hill under storm clouds
 
-**Cinder Drakeling** · Knight · Drake
+**Cinder Drakeling** · Knight · Drake **[art done]**
 > A dragon the size of a hound, with a dragon's opinion of its own size.
 
 SUBJECT: a small fierce drake with cooling-lava scales puffing a tiny jet of flame, perched possessively on a knight's helmet, camp fire glow
 
-**Marsh Wyrm** · Knight · Drake
+**Marsh Wyrm** · Knight · Drake **[art done]**
 > The fens bubble where it passes. The frogs have declared it a god, which it tolerates.
 
 SUBJECT: a long moss-green wyrm with lantern-like eyes coiling through misty swamp water, only head and back arches above surface, ruins behind
 
-**Pit Bear** · Knight · Beast
+**Pit Bear** · Knight · Beast **[art done]**
 > Seven years undefeated in the fighting pits. Freed by decree, it returns nightly anyway. It likes the applause.
 
 SUBJECT: a scarred brown bear with a broken chain collar standing upright in a torchlit fighting pit, raked sand, empty benches
 
-**Tourney Champion** · Knight · Levy
+**Tourney Champion** · Knight · Levy **[art done]**
 > Undefeated in the lists, untested in the war. He suspects, correctly, that everyone is wondering.
 
 SUBJECT: a gleaming knight in ornate tourney armor with gilded laurels on his helm, lance couched, empty tilting yard, long shadows
 
-**Chapel Organ** · Knight · Construct
+**Chapel Organ** · Knight · Construct **[art done]**
 > It played its own requiem when the congregation stopped coming. It has since moved on to angrier composers.
 
 SUBJECT: a massive cathedral pipe organ come alive, pipes rearing like serpents, keys pressing themselves, golden sound visible in dusty light
 
-**Beacon Keeper** · Knight · Mystic
+**Beacon Keeper** · Knight · Mystic **[art done]**
 > Her tower's flame calls ships home and other things away. Both duties come with the post, and the pay reflects neither.
 
 SUBJECT: a windswept woman tending a great flaming brazier atop a cliff tower at night, dark sea below, pale shapes turning away in the water
@@ -805,82 +805,82 @@ SUBJECT: an enormous scarred grey wolf with bared fangs and pale gold eyes, snar
 
 SUBJECT: a regal undead king in corroded ancient armor and a tarnished crown, hollow glowing eyes, rising from a burial mound in mist
 
-**Crag Behemoth** · Highlord · Beast
+**Crag Behemoth** · Highlord · Beast **[art done]**
 > The shepherds call the mountain Old Grandfather. On certain nights, Old Grandfather stands up.
 
 SUBJECT: a mountainous four-legged beast of stone-grey hide with boulders and pines growing on its back, rising from a mountainside at dusk
 
-**Storm Roc** · Highlord · Beast
+**Storm Roc** · Highlord · Beast **[art done]**
 > Its wingbeats are counted in shipwrecks. Sailors pray for it to stay fed and inland.
 
 SUBJECT: a gargantuan bird of prey with storm-grey feathers spanning the sky, lightning webbing between its wingtips, tiny ships on the sea below
 
-**Spectral Stag** · Highlord · Beast
+**Spectral Stag** · Highlord · Beast **[art done]**
 > To see it means a king will die. It has been seen every night this year.
 
 SUBJECT: a majestic translucent stag glowing pale gold, walking through a dark forest, trees faintly visible through its body
 
-**Ledger Colossus** · Highlord · Construct
+**Ledger Colossus** · Highlord · Construct **[art done]**
 > The Great Ledger's final guardian. It weighs all who approach, and it has never once been wrong.
 
 SUBJECT: a giant bronze colossus with balance scales built into its chest, seated on a ruined archive throne, golden script orbiting its head
 
-**Forge Titan** · Highlord · Construct
+**Forge Titan** · Highlord · Construct **[art done]**
 > The Firstborn's forges needed a smith who would not burn. They made one, and it is still filling orders.
 
 SUBJECT: a giant humanoid of cooling slag and rivets with a molten glowing core, raising a house-sized hammer over an anvil, forge sparks
 
-**The Cracked Crown** · Highlord · Relic
+**The Cracked Crown** · Highlord · Relic **[art done]**
 > It broke on the last king's brow the day of the Sundering. Both halves still claim the realm.
 
 SUBJECT: a magnificent golden crown split in two floating halves, glowing fracture between them, hovering above an empty throne in darkness
 
-**The Weaver's Hand** · Highlord · Mystic
+**The Weaver's Hand** · Highlord · Mystic **[art done]**
 > She rolled dice with the Blind Weaver and lost everything, then won it back doubled. Neither has stopped playing.
 
 SUBJECT: a regal woman with a blindfold of golden cloth casting glowing dice that hang in the air, threads of fate radiating from her fingers
 
-**Storm Matriarch** · Highlord · Mystic
+**Storm Matriarch** · Highlord · Mystic **[art done]**
 > The coastal villages pay her tribute in candles and quiet. The sea pays her more.
 
 SUBJECT: an imperious old woman standing on a cliff in billowing storm robes, the hurricane bending around her like a curtain, lightning crown
 
-**Mirror Queen** · Highlord · Mystic
+**Mirror Queen** · Highlord · Mystic **[art done]**
 > Her court exists only in reflections. Increasingly, so does she — and glass, unlike ambition, is everywhere.
 
 SUBJECT: an elegant queen visible only inside a tall cracked mirror, reaching out with her palm against the glass from within, dark throne room
 
-**The Drowned Admiral** · Highlord · Undead
+**The Drowned Admiral** · Highlord · Undead **[art done]**
 > His fleet lies on the seafloor in perfect formation. On storm nights, they hold maneuvers.
 
 SUBJECT: an undead admiral in a barnacled greatcoat and bicorne standing on a ghostly ship deck, spectral drowned fleet in formation behind
 
-**Vale Banshee** · Highlord · Undead
+**Vale Banshee** · Highlord · Undead **[art done]**
 > Her scream has emptied three castles. She is not angry, the maesters insist. She is grieving. This is not better.
 
 SUBJECT: a spectral woman in tattered white mid-scream floating above a moonlit valley, sound rippling the mist, black hair storming around her
 
-**Storm Drake** · Highlord · Drake
+**Storm Drake** · Highlord · Drake **[art done]**
 > It rides the hurricanes it hatches. The coast has learned to read its moods like weather, because they are.
 
 SUBJECT: a powerful blue-grey dragon banking through a hurricane wall, rain streaming off its wings, lightning reflected in its scales
 
-**Bone Drake** · Highlord · Drake
+**Bone Drake** · Highlord · Drake **[art done]**
 > The dragon graveyards guard themselves.
 
 SUBJECT: a skeletal dragon with tattered wing membranes rearing among giant dragon bones in a desert of white dust, cold blue fire in its ribcage
 
-**The Pale Whale** · Highlord · Leviathan
+**The Pale Whale** · Highlord · Leviathan **[art done]**
 > Every captain who hunted it retired rich in stories and poor in ships.
 
 SUBJECT: an immense ghost-white whale breaching beside a tiny whaling ship, old harpoons and flags studding its scarred hide, grey-gold sea
 
-**Maelstrom Matron** · Highlord · Leviathan
+**Maelstrom Matron** · Highlord · Leviathan **[art done]**
 > The whirlpool is her front door. Sailors who knock politely are, occasionally, answered.
 
 SUBJECT: a titanic crowned sea-serpent coiled in the eye of a vast whirlpool, water walls spiraling around her, drowned cargo circling
 
-**The Free Captain** · Highlord · Levy
+**The Free Captain** · Highlord · Levy **[art done]**
 > Her company has never lost a war. Her secret is unremarkable: she reads the contract, and then the ground.
 
 SUBJECT: a commanding mercenary captain in gilded half-plate on a map table strewn with coins, banner of a broken chain behind her, war tent braziers
@@ -897,27 +897,27 @@ SUBJECT: a majestic phoenix of white-gold fire rising with wings fully spread, f
 
 SUBJECT: a tall spectral monarch in ice-blue regalia and a frost crown, frozen breath, seated on an iron throne rimed with hoarfrost
 
-**The Blind Weaver** · Sovereign · Firstborn
+**The Blind Weaver** · Sovereign · Firstborn **[art done]**
 > Every summoning, every duel, every turn of fortune passes through its hands. It has never seen a single one.
 
 SUBJECT: a vast androgynous god-figure with bandaged eyes weaving a loom of golden threads that dissolve into falling dice and embers, cosmic darkness
 
-**The Great Ledger** · Sovereign · Firstborn
+**The Great Ledger** · Sovereign · Firstborn **[art done]**
 > Every debt, every deed, every summoned soul, written. It is not a book about the realm. The realm is a book about it.
 
 SUBJECT: a colossal open tome hovering in a dark void, pages of golden light turning by themselves, script rising off the pages like embers, chains dangling broken
 
-**The Ember Tyrant** · Sovereign · Drake
+**The Ember Tyrant** · Sovereign · Drake **[art done]**
 > The mountain kings paid it tribute for a thousand years. The mountain kings are gone. The tribute, it notes, is late.
 
 SUBJECT: an ancient tyrant dragon of black scale and rivers of magma, crowned with fused gold crowns of dead kings, atop a volcano hoard
 
-**The Silent Deep** · Sovereign · Leviathan
+**The Silent Deep** · Sovereign · Leviathan **[art done]**
 > Below the last fish, below the last light, something listens. Sailors say nothing important above the waves.
 
 SUBJECT: an abyssal leviathan of impossible scale barely visible in black water, one colossal pale eye opening, a tiny rowboat silhouetted far above
 
-**The Last King** · Sovereign · Undead
+**The Last King** · Sovereign · Undead **[art done]**
 > The barrow-kings wait for him. The throne waits for him. He waits, in turn, for the realm to be worth returning to.
 
 SUBJECT: a majestic undead king in shattered regal armor standing at the edge of a barrow field, crown held in his hands rather than worn, golden mist dawn
