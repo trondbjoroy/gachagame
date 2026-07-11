@@ -265,12 +265,12 @@ function announceNewDeeds(deeds) {
     track('deed_complete', { deed: id });
     if (!first) {
       const d = DEEDS.find(x => x.id === id);
-      ribbon(`⚜ Deed witnessed: <b>${d ? d.name : id}</b>`);
+      ribbon(`⚜ Deed witnessed: <b>${d ? d.name : id}</b>`, null, 'deed');
     }
   }
   const lvl = levelFor(done.length);
   if (!first && prevLevel != null && lvl > prevLevel)
-    ribbon(`You rise to <b>Level ${lvl} · ${TITLES[lvl - 1]}</b>`, 'level');
+    ribbon(`You rise to <b>Level ${lvl} · ${TITLES[lvl - 1]}</b>`, 'level', 'deed');
   localStorage.setItem(key, JSON.stringify({ deeds: done, level: lvl }));
 }
 
@@ -278,18 +278,19 @@ function announceNewDeeds(deeds) {
 
 const ribbonQ = [];
 let ribbonBusy = false;
-function ribbon(html, cls) {
-  ribbonQ.push([html, cls]);
+function ribbon(html, cls, sound) {
+  ribbonQ.push([html, cls, sound]);
   pumpRibbons();
 }
 function pumpRibbons() {
   if (ribbonBusy || !ribbonQ.length) return;
   ribbonBusy = true;
-  const [html, cls] = ribbonQ.shift();
+  const [html, cls, sound] = ribbonQ.shift();
   const el = document.createElement('div');
   el.className = 'ribbon' + (cls ? ' ' + cls : '');
   el.innerHTML = html;
   document.body.appendChild(el);
+  if (sound) window.sfx?.(sound);
   setTimeout(() => el.classList.add('show'), 30);
   setTimeout(() => {
     el.classList.remove('show');
@@ -415,7 +416,10 @@ function render() {
     if (!fn.hidden) fn.innerHTML =
       `The Weaver owes you <b>${fmtHtr(S.favorOwed)}</b> <button class="mini-btn" id="favorClaimBtn">CLAIM</button>`;
     const fb = $('favorClaimBtn');
-    if (fb) fb.onclick = () => doTx("Claiming the Weaver's favor", 'claim_favor', [], [wdAct(HTR, S.favorOwed)]);
+    if (fb) fb.onclick = async () => {
+      const h = await doTx("Claiming the Weaver's favor", 'claim_favor', [], [wdAct(HTR, S.favorOwed)]);
+      if (h) window.sfx?.('coin');
+    };
   }
   $('statsRow').querySelectorAll('.stat').forEach(s =>
     animateStatEl(s.querySelector('.v'), s.querySelector('.k').textContent));
@@ -708,6 +712,7 @@ async function pull() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   const favorBefore = S.favorOwed;
   $('machine').classList.add('shaking');
+  window.sfx?.('summon');
   spawnEmbers($('machine'), 6);
   const emberInt = REDUCED ? null : setInterval(() => spawnEmbers($('machine'), 6), 1500);
   const hash = await doTx('Summoning', 'pull', [], [depAct(HTR, S.pullPrice)]);
@@ -715,7 +720,7 @@ async function pull() {
   if (emberInt) clearInterval(emberInt);
   if (!hash) return;
   if (S.favorOwed > favorBefore)
-    ribbon(`The Weaver smiles: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> returned to you`, 'level');
+    ribbon(`The Weaver smiles: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> returned to you`, 'level', 'favor');
   // with overlapping summons, exclude cards already claimed by another reveal
   const won = [...S.cards.values()].find(c =>
     c.pending === S.addr && !before.has(c.uid) && !revealSeen.has(c.uid));
@@ -751,6 +756,7 @@ async function doTemper(aspect) {
   }
   const hash = await doTx('Tempering', 'temper', [uid, aspect], []);
   if (!hash || !beforeAsp) return;
+  window.sfx?.('fuse', { rate: 1.15, volume: .8 });
   const after = S.cards.get(uid)?.aspects;
   if (after) {
     const gain = after[aspect] - beforeAsp[aspect];
@@ -820,6 +826,7 @@ function crashLand(uid, tier) {
     el.style.animationDuration = dur + 'ms';
     el.classList.add('crash-landing');
     setTimeout(() => {  // impact moment (~55% of the drop)
+      window.sfx?.('reveal-footman', { rate: [1, .88, .74, .6][tier], volume: [.8, .9, 1, 1][tier] });
       const rect = el.getBoundingClientRect();
       spawnDust(rect, tier);
       document.body.style.setProperty('--quake-amp', [2, 4, 7, 12][tier] + 'px');
@@ -851,6 +858,7 @@ function finishReveal(tier) {
   if (!stage.classList.contains('sequencing')) return;
   stage.classList.remove('sequencing');
   stage.classList.add('revealed');
+  window.sfx?.(['reveal-footman', 'reveal-knight', 'reveal-highlord', 'reveal-sovereign'][tier]);
   if (tier >= 2) { $('overlay').classList.add('quake'); setTimeout(() => $('overlay').classList.remove('quake'), 600); }
   if (tier >= 3) { $('overlay').classList.add('goldflash'); setTimeout(() => $('overlay').classList.remove('goldflash'), 950); }
   spawnEmbers($('prizeCard'), [8, 14, 24, 44][tier] || 8, tier >= 2);
@@ -945,6 +953,7 @@ async function fuse() {
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
   const hash = await doTx('Forging the Rite of Union', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
+  window.sfx?.('fuse');
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
   if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
 }
@@ -1013,6 +1022,8 @@ async function submitPick(uid) {
     $('duelResult').innerHTML = won
       ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
       : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`;
+    window.sfx?.('clash');
+    setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
     showStage('stageDuel');
     $('overlay').hidden = false;
   }
@@ -1266,10 +1277,14 @@ document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   for (const p of ['collection', 'farm', 'arena', 'market', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
 $('wdGemsBtn')?.addEventListener('click', () => {});
-document.addEventListener('click', e => {
-  if (e.target.id === 'wdGemsBtn') doTx('Drawing gems from the ledger', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)]);
+document.addEventListener('click', async e => {
+  if (e.target.id === 'wdGemsBtn') {
+    if (await doTx('Drawing gems from the ledger', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)])) window.sfx?.('coin');
+  }
   if (e.target.id === 'depGemsBtn') doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
-  if (e.target.id === 'wdFundsBtn') doTx('Collecting your coin', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT });
+  if (e.target.id === 'wdFundsBtn') {
+    if (await doTx('Collecting your coin', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT })) window.sfx?.('coin');
+  }
 });
 
 (async () => {
