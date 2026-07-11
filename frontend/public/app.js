@@ -168,6 +168,25 @@ async function refresh() {
   await loadMine();
   await loadRaffle();
   render();
+  maybeAutoClaim();
+}
+
+/* in promptless sessions, claimable champions walk home by themselves */
+const autoClaimed = new Set();
+let autoClaimBusy = false;
+async function maybeAutoClaim() {
+  if (S.wallet?.mode !== 'session' || autoClaimBusy || !S.addr) return;
+  const next = [...S.cards.values()].find(c => c.tier >= 0
+    && (c.pending === S.addr || c.marketPending === S.addr) && !autoClaimed.has(c.uid));
+  if (!next) return;
+  autoClaimBusy = true;
+  autoClaimed.add(next.uid);
+  const fromMarket = next.marketPending === S.addr && next.pending !== S.addr;
+  const h = await doTx('Champion coming home', 'claim_card', [], [wdAct(next.uid, CARD_AMT)],
+    fromMarket ? { target: MKT } : {});
+  autoClaimBusy = false;
+  if (h) crashLand(next.uid, next.tier);
+  maybeAutoClaim();
 }
 
 /* ---------------- rendering ---------------- */
@@ -434,9 +453,12 @@ function render() {
     </div>`, true)).join('');
   $('collectionEmpty').hidden = mine.length > 0;
 
+  const inSession = S.wallet?.mode === 'session';
   const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.pending === S.addr);
   $('pendingCards').innerHTML = pend.map(c =>
-    cardBox(c, `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
+    cardBox(c, inSession
+      ? '<div class="pending-gems">coming home…</div>'
+      : `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
   $('pendingEmpty').hidden = pend.length > 0;
 
   const selCount = S.selected.size;
@@ -532,7 +554,9 @@ function render() {
     $('swapEmpty').hidden = S.swaps.length > 0;
     const mpend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.marketPending === S.addr);
     $('marketPendingCards').innerHTML = mpend.map(c =>
-      cardBox(c, `<button class="claim-mini" data-mclaim="${c.uid}">CLAIM</button>`)).join('');
+      cardBox(c, S.wallet?.mode === 'session'
+        ? '<div class="pending-gems">coming home…</div>'
+        : `<button class="claim-mini" data-mclaim="${c.uid}">CLAIM</button>`)).join('');
   }
 
   bindListActions();
@@ -779,8 +803,10 @@ function crashLand(uid, tier) {
   // the card renders after the claim's refresh; give the DOM a moment
   let tries = 0;
   (function seek() {
+    // don't play the landing behind an open overlay (reveal still up, etc.)
+    if (!$('overlay').hidden) { if (++tries < 80) setTimeout(seek, 400); return; }
     const el = document.querySelector(`#collectionCards [data-select="${uid}"]`);
-    if (!el) { if (++tries < 10) setTimeout(seek, 200); return; }
+    if (!el) { if (++tries < 80) setTimeout(seek, 200); return; }
     if (REDUCED) { el.scrollIntoView({ block: 'center' }); return; }
     el.scrollIntoView({ block: 'center', behavior: 'instant' });
     const dur = [500, 600, 750, 900][tier];
@@ -879,12 +905,17 @@ function showRevealNow(won, tierLabel) {
       <div class="reveal-back"><img src="logo.png" alt=""></div>
       <div class="reveal-face${meta?.art ? '' : ' plain'}">${face}</div>
     </div>`;
-  $('revealClaimBtn').onclick = async () => {
-    $('overlay').hidden = true;
-    revealDismissed();
-    const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]);
-    if (h) crashLand(won.uid, won.tier);
-  };
+  const sessionMode = S.wallet?.mode === 'session';
+  $('revealClaimBtn').textContent = sessionMode ? 'ONWARD' : 'CLAIM TO WALLET';
+  $('revealCloseBtn').hidden = sessionMode;  // auto-claim brings it home anyway
+  $('revealClaimBtn').onclick = sessionMode
+    ? () => { $('overlay').hidden = true; revealDismissed(); }
+    : async () => {
+      $('overlay').hidden = true;
+      revealDismissed();
+      const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]);
+      if (h) crashLand(won.uid, won.tier);
+    };
   const stage = $('stageReveal');
   stage.classList.remove('revealed', 'tier-0', 'tier-1', 'tier-2', 'tier-3');
   stage.classList.add('sequencing', 'tier-' + tier);
