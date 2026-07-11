@@ -1000,9 +1000,12 @@ async function submitPick(uid) {
     const hash = await doTx('Trial by combat', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
     if (!hash) return;
     const won = S.wins > winsBefore;
+    const home = S.wallet?.mode === 'session'
+      ? 'Your champion is already on the way home.'
+      : 'Your champion returns; claim them under Your Host.';
     $('duelResult').innerHTML = won
-      ? '<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. Your champion returns; claim them under Your Host.</div>'
-      : '<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives; claim them under Your Host.</div>';
+      ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
+      : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`;
     showStage('stageDuel');
     $('overlay').hidden = false;
   }
