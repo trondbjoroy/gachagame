@@ -9,7 +9,55 @@ const SFX_VOL = {
 
 let sfxMuted = localStorage.getItem('emberfall_muted') === '1';
 let sfxUnlocked = false;
-document.addEventListener('pointerdown', () => { sfxUnlocked = true; }, { once: true, capture: true });
+document.addEventListener('pointerdown', () => {
+  sfxUnlocked = true;
+  startMusic();
+}, { once: true, capture: true });
+
+/* background music: gapless WebAudio loop, fades in softly after the
+   first interaction; own toggle, persisted */
+let musicOff = localStorage.getItem('emberfall_music_off') === '1';
+let musicCtx = null;
+let musicGain = null;
+const MUSIC_VOL = 0.18;
+
+async function startMusic() {
+  try {
+    if (musicOff || musicCtx) return;
+    musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const raw = await (await fetch('sounds/music.mp3')).arrayBuffer();
+    const buf = await musicCtx.decodeAudioData(raw);
+    const src = musicCtx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    musicGain = musicCtx.createGain();
+    musicGain.gain.setValueAtTime(0, musicCtx.currentTime);
+    musicGain.gain.linearRampToValueAtTime(MUSIC_VOL, musicCtx.currentTime + 5);
+    src.connect(musicGain).connect(musicCtx.destination);
+    src.start();
+  } catch { /* music must never break the game */ }
+}
+
+function syncMusicBtn() {
+  const b = $('musicBtn');
+  if (!b) return;
+  b.textContent = '🎵';
+  b.style.opacity = musicOff ? '.35' : '1';
+  b.title = musicOff ? 'Music off' : 'Music on';
+}
+$('musicBtn').onclick = () => {
+  musicOff = !musicOff;
+  localStorage.setItem('emberfall_music_off', musicOff ? '1' : '0');
+  syncMusicBtn();
+  if (musicOff) {
+    if (musicCtx) musicCtx.suspend().catch(() => { });
+  } else if (musicCtx) {
+    musicCtx.resume().catch(() => { });
+  } else {
+    startMusic();
+  }
+};
+syncMusicBtn();
 
 const sfxCache = {};
 window.sfx = function sfx(name, opts) {
