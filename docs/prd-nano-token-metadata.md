@@ -36,3 +36,9 @@ all. Per-token manual curation cannot work here: every summon creates a new toke
 4. Works on testnet and mainnet; melting the token behaves unchanged.
 5. Emberfall test: a card summoned on testnet-india shows its illustration in the
    Hathor mobile wallet.
+6. Wallets display a token carrying this data as **one item** (like manually created
+   NFTs), not as a decimal balance. Context: contract-minted game assets may use a
+   supply above 1 base unit out of necessity — melting charges a minimum fee of 1
+   base unit, so a 1-unit token can never be melted (Emberfall cards are 100 units
+   for this reason, moved only as a whole). Rendering "1.00" instead of "1 item"
+   breaks the NFT presentation for exactly the tokens this PRD enables.
