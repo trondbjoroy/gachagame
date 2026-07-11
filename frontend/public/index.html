@@ -44,25 +44,22 @@
 
   <section class="machine-panel">
     <div class="machine-col">
-      <div class="machine" id="machine">
-        <img id="heroImg" alt="A scene from the realm of Emberfall" />
+      <div class="machine showcase" id="machine" title="Summon">
+        <img class="show-img" id="showA" alt="" />
+        <img class="show-img" id="showB" alt="" />
+        <div class="show-scrim"></div>
+        <div class="show-chip">UNBOUND</div>
+        <div class="show-cap">
+          <div class="show-name" id="showName"></div>
+          <div class="show-station" id="showStation"></div>
+        </div>
       </div>
-      <script>
-        // one hero, picked at random each visit; only the chosen file downloads
-        (function () {
-          var heroes = ['hero.jpg', 'hero-2.jpg', 'hero-3.jpg', 'hero-4.jpg', 'hero-5.jpg',
-                        'hero-6.jpg', 'hero-7.jpg', 'hero-8.jpg', 'hero-9.jpg', 'hero-10.jpg'];
-          document.getElementById('heroImg').src = heroes[Math.floor(Math.random() * heroes.length)];
-        })();
-      </script>
     </div>
     <div class="pull-col">
       <h1>The throne is empty.<br/><span class="accent">Raise your host.</span></h1>
-      <p class="sub">The Blind Weaver binds a champion into soulstone with every summoning:
-      each one unique in all the realm, its power struck at birth. Send them to the deep
-      mines for <b>GEMS</b>, forge two of a station into a greater bloodline, and stake
-      gems on trial by combat in the Pit. Every deed is witnessed on the Great Ledger.
-      No lord, no luck-twisting, no take-backs.</p>
+      <p class="sub">One hundred and eighty champions wait in the soulstone. Every summoning
+      binds one that no other lord will ever own.</p>
+      <div class="whisper"><span id="whisperText"></span></div>
       <div class="odds" id="odds"></div>
       <button id="pullBtn" class="pull-btn" disabled>
         <span class="pull-label">SUMMON</span>

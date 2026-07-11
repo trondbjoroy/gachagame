@@ -1287,6 +1287,75 @@ document.addEventListener('click', async e => {
   }
 });
 
+/* the unbound: champions cycling through the summoning stone */
+const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
+(function initShowcase() {
+  if (!$('showA') || !window.CATALOG) return;
+  const names = Object.keys(CATALOG);
+  for (let i = names.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [names[i], names[j]] = [names[j], names[i]];
+  }
+  let idx = 0, front = false;
+  function next() {
+    const name = names[idx % names.length];
+    idx++;
+    const meta = CATALOG[name];
+    const t = TIERS[STATION_TIER[meta.station] ?? 0];
+    const incoming = $(front ? 'showA' : 'showB');
+    incoming.src = 'cards/' + slugOf(name) + '.jpg';
+    incoming.onload = () => {
+      $('showA').classList.toggle('on', front);
+      $('showB').classList.toggle('on', !front);
+      $('showName').textContent = name;
+      const st = $('showStation');
+      st.textContent = `${meta.station} · ${meta.type}`;
+      st.style.color = t.color;
+      $('machine').style.setProperty('--rc', t.color);
+      front = !front;
+    };
+  }
+  next();
+  if (!REDUCED) setInterval(next, 6000);
+  $('machine').onclick = () => {
+    if (!$('pullBtn').disabled) pull();
+    else if (!S.addr) $('walletBtn').click();
+  };
+})();
+
+/* whispers of the realm: live, mildly envy-inducing facts */
+(function initWhispers() {
+  const el = $('whisperText');
+  if (!el) return;
+  let lastPulls = null, realmStirred = false, wi = 0;
+  function messages() {
+    const m = [];
+    if (realmStirred) m.push('fresh souls were summoned only moments ago…');
+    if (S.totalPulls > 0) m.push(`${S.totalPulls} souls summoned across the realm, and the Weaver never sleeps`);
+    if (S.favorPool > 0) m.push(`the Weaver's favor pool holds ${fmtHtr(S.favorPool)}: one summoning in twenty-five wins it back`);
+    if (S.raffle && S.raffle.pool > 0) {
+      const days = Math.max(0, Math.ceil((S.raffle.week_ends * 1000 - Date.now()) / 86400000));
+      m.push(`this week's favor pot holds ${fmtHtr(S.raffle.pool)}, drawn in ${days} day${days === 1 ? '' : 's'}`);
+    }
+    m.push('a Sovereign answers one summons in a hundred');
+    m.push('every champion is one of a kind; the one you skip belongs to someone else tomorrow');
+    return m;
+  }
+  function tick() {
+    if (lastPulls != null && S.totalPulls > lastPulls) realmStirred = true;
+    lastPulls = S.totalPulls;
+    const m = messages();
+    el.classList.remove('in');
+    setTimeout(() => {
+      el.textContent = m[wi % m.length];
+      wi++;
+      el.classList.add('in');
+    }, 400);
+  }
+  setTimeout(tick, 800);
+  setInterval(tick, 6500);
+})();
+
 (async () => {
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   render();

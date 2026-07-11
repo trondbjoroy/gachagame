@@ -370,6 +370,58 @@ body::after {
 .lore p { color: var(--ink-muted); font-size: 14.5px; line-height: 1.75; margin: 0 0 14px; text-wrap: pretty; }
 .lore b { color: var(--ink); font-weight: 600; }
 
+/* the unbound showcase */
+.machine.showcase {
+  position: relative; height: 440px; cursor: pointer;
+  border-radius: var(--r-md); overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rc, #d4a843) 35%, transparent);
+  transition: border-color 1.2s ease;
+}
+.show-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transform: scale(1);
+  transition: opacity 1.1s ease, transform 7s ease-out;
+}
+.show-img.on { opacity: 1; transform: scale(1.07); }
+.show-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(11, 10, 8, .3) 0%, transparent 25%, transparent 60%, rgba(11, 10, 8, .92) 100%);
+}
+.show-chip {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 9px; letter-spacing: .26em; font-weight: 700;
+  color: var(--acid); border: 1px solid rgba(212, 168, 67, .45);
+  padding: 5px 9px 4px 11px; border-radius: 999px;
+  background: rgba(11, 10, 8, .55); backdrop-filter: blur(3px);
+  animation: chipPulse 2.4s ease-in-out infinite alternate;
+}
+@keyframes chipPulse { from { opacity: .65; } to { opacity: 1; } }
+.show-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; pointer-events: none; }
+.show-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 19px; color: #f4efe6; text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
+.show-station { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; margin-top: 4px; }
+.machine.showcase:hover { border-color: var(--rc, #d4a843); }
+
+/* whispers of the realm */
+.whisper {
+  min-height: 22px; margin: 14px 0 4px;
+  font-style: italic; font-size: 13.5px; color: rgba(212, 168, 67, .75);
+}
+.whisper span { opacity: 0; transition: opacity .45s ease; }
+.whisper span.in { opacity: 1; }
+
+/* the summon button breathes */
+.pull-btn:not(:disabled) { animation: summonPulse 2.8s ease-in-out infinite; }
+@keyframes summonPulse {
+  0%, 100% { box-shadow: 0 12px 40px -10px rgba(212, 168, 67, .4); }
+  50% { box-shadow: 0 12px 58px -6px rgba(212, 168, 67, .75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .show-img { transition: opacity .3s; transform: none; }
+  .show-img.on { transform: none; }
+  .show-chip { animation: none; }
+  .pull-btn:not(:disabled) { animation: none; }
+}
+
 /* guided tour */
 .tour-btn { padding: 8px 12px; font-weight: 700; flex-shrink: 0; }
 #tourDim { display: none; position: fixed; inset: 0; z-index: 90; }
