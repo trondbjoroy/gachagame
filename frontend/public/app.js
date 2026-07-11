@@ -448,8 +448,9 @@ function render() {
     } else rl.hidden = true;
   }
 
-  // collection
-  const mine = [...S.cards.values()].filter(c => c.mine);
+  // collection, mightiest first
+  const mine = [...S.cards.values()].filter(c => c.mine)
+    .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
   $('collectionCards').innerHTML = mine.map(c => cardBox(c, `
     <div class="row-btns">
       <button class="mini-btn alt" data-stake="${c.uid}">MINE</button>
