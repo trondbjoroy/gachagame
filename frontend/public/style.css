@@ -179,7 +179,8 @@ footer a { color: var(--cyan); text-decoration: none; }
 /* overlay */
 .overlay {
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
-  background: rgba(2, 5, 18, .88); backdrop-filter: blur(8px);
+  align-items: safe center; justify-items: safe center;
+  overflow-y: auto; background: rgba(2, 5, 18, .88); backdrop-filter: blur(8px);
 }
 .overlay[hidden], .stage[hidden] { display: none; }
 .overlay-inner { text-align: center; padding: 24px; }
@@ -736,5 +737,51 @@ body.land-flash::before {
 /* below this the header genuinely can't fit one row — stack cleanly instead of clipping */
 @media (max-width: 700px) {
   header.top { flex-wrap: wrap; }
-  .wallet-area { flex-basis: 100%; justify-content: flex-start; }
+  .wallet-area { flex-basis: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+}
+
+/* ---------------- phones ---------------- */
+button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.temper-opts { flex-wrap: wrap; }
+.duel-info { flex: 1; min-width: 0; }
+.pick-cards { width: 100%; }
+
+@media (max-width: 600px) {
+  main { padding-left: 14px; padding-right: 14px; }
+  .netline { display: none; }
+  .brand { gap: 10px; }
+  .brand .mark, .brand .mark img { width: 34px; height: 34px; }
+  .wordmark { font-size: 18px; }
+  .tour-btn { padding: 7px 10px; font-size: 11px; }
+  .header-session { font-size: 11px; padding: 7px 10px; }
+
+  .machine-panel { padding: 22px 16px 26px; gap: 22px; margin-top: 24px; }
+  .pull-col h1 { font-size: 30px; }
+  .machine.showcase { height: 380px; max-width: 270px; }
+
+  .tabs {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; gap: 2px; margin-top: 30px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; padding: 12px 11px; font-size: 13px; letter-spacing: .06em; }
+
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stats-row .stat { border-left: 1px solid var(--line); border-top: 1px solid var(--line); padding: 12px 14px; }
+  .stats-row .stat:nth-child(odd) { border-left: none; }
+  .stats-row .stat:nth-child(-n+2) { border-top: none; }
+  .stat .v { font-size: 16px; }
+
+  .duel { flex-wrap: wrap; padding: 12px 14px; gap: 12px; }
+  .duel .mini-btn, .duel .duel-done { margin-left: auto; }
+
+  .toasts { left: 12px; right: 12px; max-width: none; }
+
+  .overlay-inner { padding: 18px 12px; width: 100%; }
+  .prize-card { width: min(300px, 86vw); }
+  .prize-card:not(.art-reveal) { min-height: 360px; }
+
+  .shelf { padding: 18px 0 0; }
+  .lore { padding-left: 14px; }
+  .sec-body { padding: 2px 12px 14px; }
 }
