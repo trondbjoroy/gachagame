@@ -12,9 +12,9 @@ the same way manually minted NFT media is.
 ## Motivation
 
 Emberfall (https://emberfall.fun, testnet-india) mints every game card as a unique
-1-of-1 token from inside the `GachaArena` contract
-(`00b1bddc439d8b4255c16fec70d9578f7cebdb989e277c2cca934ac7bb48dcbb`, blueprint
-`00fd125434accb0f6eeb50936ea0a60b4f8f930e401d3095cb9fa77c2b88d7b5`). These tokens are
+1-of-1 token from inside the `EmberfallArena` contract
+(`00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258`, blueprint
+`0078b201b50e228833ad6e526c6e0d5c89456502623b4f18807b3991ac3ce0bf`). These tokens are
 real player-owned assets — summoned, traded, and swept between wallets — but in the
 Hathor wallet they appear only as a bare symbol ("G3"), because `create_deposit_token`
 accepts no media and the NFT standard's data output only exists on wallet-built token
