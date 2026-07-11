@@ -553,7 +553,11 @@ function bindListActions() {
   });
   const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el =>
     el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
-  bind('[data-claim]', u => doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-claim]', async u => {
+    const tier = S.cards.get(u)?.tier ?? 0;
+    const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
+    if (h) crashLand(u, tier);
+  });
   bind('[data-stake]', u => doTx('Sending to the mines', 'stake', [], [depAct(u, CARD_AMT)]));
   bind('[data-unstake]', u => doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]));
   bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
@@ -571,7 +575,11 @@ function bindListActions() {
   bind('[data-trade]', u => openPick('want', u));
   bind('[data-cancellisting]', id => doTx('Leaving the stall', 'cancel_listing', [Number(id)], [], { target: MKT }));
   bind('[data-cancelswap]', id => doTx('Recanting the trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
-  bind('[data-mclaim]', u => doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT }));
+  bind('[data-mclaim]', async u => {
+    const tier = S.cards.get(u)?.tier ?? 0;
+    const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT });
+    if (h) crashLand(u, tier);
+  });
   document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () =>
     doTx('Buying champion', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
   document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () =>
@@ -741,6 +749,68 @@ function spawnEmbers(host, n, big) {
   setTimeout(() => box.remove(), 3800);
 }
 
+/* crash landing: a claimed champion slams into Your Host */
+
+function spawnDust(rect, tier) {
+  if (REDUCED) return;
+  const box = document.createElement('div');
+  box.className = 'dustbox';
+  const n = [8, 14, 24, 40][tier] || 8;
+  for (let i = 0; i < n; i++) {
+    const puff = Math.random() < .35;
+    const e = document.createElement('span');
+    e.className = puff ? 'dust-puff' : 'grit';
+    e.style.left = (rect.left + rect.width * (0.15 + Math.random() * 0.7)) + 'px';
+    e.style.top = (rect.bottom - 6 - Math.random() * 10) + 'px';
+    e.style.setProperty('--dx', (Math.random() * 160 - 80) * (1 + tier * .4) + 'px');
+    e.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    e.style.animationDuration = (0.5 + Math.random() * 0.6) + 's';
+    e.style.animationDelay = (Math.random() * 0.08) + 's';
+    box.appendChild(e);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 1400);
+}
+
+function crashLand(uid, tier) {
+  tier = Math.max(0, Math.min(3, tier));
+  const collTab = document.querySelector('.tab[data-tab="collection"]');
+  if (collTab && !collTab.classList.contains('active')) collTab.click();
+  // the card renders after the claim's refresh; give the DOM a moment
+  let tries = 0;
+  (function seek() {
+    const el = document.querySelector(`#collectionCards [data-select="${uid}"]`);
+    if (!el) { if (++tries < 10) setTimeout(seek, 200); return; }
+    if (REDUCED) { el.scrollIntoView({ block: 'center' }); return; }
+    el.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const dur = [500, 600, 750, 900][tier];
+    el.style.animationDuration = dur + 'ms';
+    el.classList.add('crash-landing');
+    setTimeout(() => {  // impact moment (~55% of the drop)
+      const rect = el.getBoundingClientRect();
+      spawnDust(rect, tier);
+      document.body.style.setProperty('--quake-amp', [2, 4, 7, 12][tier] + 'px');
+      document.body.classList.add('page-quake');
+      setTimeout(() => document.body.classList.remove('page-quake'), 550);
+      if (tier >= 2) {
+        const ring = document.createElement('div');
+        ring.className = 'impact-ring';
+        ring.style.left = (rect.left + rect.width / 2) + 'px';
+        ring.style.top = (rect.bottom - 8) + 'px';
+        document.body.appendChild(ring);
+        setTimeout(() => ring.remove(), 700);
+      }
+      if (tier >= 3) {
+        $('overlay').classList.remove('goldflash');
+        document.body.classList.add('land-flash');
+        setTimeout(() => document.body.classList.remove('land-flash'), 800);
+      }
+      try { if (navigator.vibrate) navigator.vibrate([[15], [25], [15, 30, 50], [20, 30, 20, 30, 110]][tier]); } catch { }
+    }, dur * 0.55);
+    setTimeout(() => { el.classList.remove('crash-landing'); el.style.animationDuration = ''; }, dur + 100);
+  })();
+}
+
 let revealTimer = null;
 function finishReveal(tier) {
   if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; }
@@ -809,10 +879,11 @@ function showRevealNow(won, tierLabel) {
       <div class="reveal-back"><img src="logo.png" alt=""></div>
       <div class="reveal-face${meta?.art ? '' : ' plain'}">${face}</div>
     </div>`;
-  $('revealClaimBtn').onclick = () => {
+  $('revealClaimBtn').onclick = async () => {
     $('overlay').hidden = true;
-    doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]);
     revealDismissed();
+    const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(won.uid, CARD_AMT)]);
+    if (h) crashLand(won.uid, won.tier);
   };
   const stage = $('stageReveal');
   stage.classList.remove('revealed', 'tier-0', 'tier-1', 'tier-2', 'tier-3');

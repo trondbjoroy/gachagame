@@ -455,6 +455,65 @@ body::after {
 #stageReveal.sequencing .skip-hint { opacity: .65; }
 #stageReveal.revealed .skip-hint { display: none; }
 
+/* crash landing */
+.card.crash-landing { animation: cardCrash both cubic-bezier(.4, 0, .7, 1); z-index: 4; }
+@keyframes cardCrash {
+  0% { transform: translateY(-75vh) scale(1.14); opacity: 0; }
+  12% { opacity: 1; }
+  55% { transform: translateY(0) scale(1); }
+  68% { transform: scale(1.07, .9); }
+  84% { transform: scale(.97, 1.04); }
+  100% { transform: none; }
+}
+body.page-quake main { animation: pquake .5s ease-in-out; }
+@keyframes pquake {
+  0%, 100% { transform: none; }
+  20% { transform: translate(calc(var(--quake-amp, 4px) * -1), calc(var(--quake-amp, 4px) * .6)); }
+  40% { transform: translate(var(--quake-amp, 4px), calc(var(--quake-amp, 4px) * -.7)); }
+  60% { transform: translate(calc(var(--quake-amp, 4px) * -.7), calc(var(--quake-amp, 4px) * -.4)); }
+  80% { transform: translate(calc(var(--quake-amp, 4px) * .5), calc(var(--quake-amp, 4px) * .5)); }
+}
+.dustbox { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.dust-puff {
+  position: fixed; width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(140, 120, 90, .5), rgba(90, 78, 60, 0) 70%);
+  filter: blur(2px); opacity: 0;
+  animation: puffOut ease-out forwards;
+}
+@keyframes puffOut {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  15% { opacity: .85; }
+  100% { opacity: 0; transform: translate(var(--dx, 0), -26px) scale(2.6); }
+}
+.grit {
+  position: fixed; width: 4px; height: 4px; border-radius: 2px;
+  background: #8c7a5a; opacity: 0;
+  animation: gritFly ease-out forwards;
+}
+@keyframes gritFly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--dx, 0), 46px) rotate(var(--rot, 180deg)); }
+}
+.impact-ring {
+  position: fixed; width: 12px; height: 12px; border-radius: 50%;
+  transform: translate(-50%, -50%); pointer-events: none; z-index: 60;
+  border: 3px solid rgba(212, 168, 67, .7);
+  animation: ringOut .65s ease-out forwards;
+}
+@keyframes ringOut {
+  to { width: 340px; height: 340px; border-width: 1px; opacity: 0; }
+}
+body.land-flash::before {
+  content: ''; position: fixed; inset: 0; z-index: 59; pointer-events: none;
+  background: radial-gradient(circle at 50% 60%, rgba(255, 219, 120, .4), transparent 65%);
+  animation: goldfade .8s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card.crash-landing { animation: none; }
+  body.page-quake main { animation: none; }
+  .dust-puff, .grit, .impact-ring { display: none; }
+}
+
 /* embers */
 .embers { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .ember-p {
