@@ -134,7 +134,8 @@ class WcWallet {
     this.chain = `hathor:${window.GAME.network}`;
   }
 
-  async connect(onUri) {
+  async initClient() {
+    if (this.client) return this.client;
     if (!window.GAME.wcProjectId) {
       throw new Error('WalletConnect needs a (free) Reown Cloud project id; set wcProjectId in config.js');
     }
@@ -148,6 +149,29 @@ class WcWallet {
         icons: [`${window.location.origin}/icon.png`],
       },
     });
+    this.client.on('session_delete', e => {
+      if (this.session && e.topic === this.session.topic) this.session = null;
+    });
+    return this.client;
+  }
+
+  // adopt a still-valid pairing from a previous visit, if one exists
+  async restore() {
+    await this.initClient();
+    const live = this.client.session.getAll().filter(s =>
+      s.namespaces?.hathor && s.expiry * 1000 > Date.now() + 60_000);
+    const s = live.sort((a, b) => b.expiry - a.expiry)[0];
+    if (!s) return null;
+    this.session = s;
+    const accounts = s.namespaces.hathor?.accounts ?? [];
+    this.address = accounts[0]?.split(':')[2] || null;
+    return this.address;
+  }
+
+  async connect(onUri) {
+    await this.initClient();
+    const restored = await this.restore().catch(() => null);
+    if (restored) return restored;
     const { uri, approval } = await this.client.connect({
       requiredNamespaces: {
         hathor: {

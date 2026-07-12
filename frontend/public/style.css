@@ -740,6 +740,12 @@ body.land-flash::before {
   .wallet-area { flex-basis: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
 }
 
+/* walletconnect: deep link + mobile layout */
+.wc-open { display: inline-block; text-decoration: none; margin: 12px 0 4px; padding: 11px 22px; }
+@media (pointer: coarse) and (max-width: 700px) {
+  #wcQr { display: none; }  /* the wallet is on this device; a QR helps nobody */
+}
+
 /* walletconnect uri: tap to copy */
 #wcUri { cursor: pointer; }
 #wcUri:active { border-color: var(--acid); }

@@ -1038,6 +1038,10 @@ async function connectWallet(kind) {
     const onUri = async uri => {
       $('wcPair').hidden = false;
       $('wcUri').value = uri;
+      // on touch devices the wallet lives on this phone: offer a direct jump
+      const open = $('wcOpenBtn');
+      open.href = uri;
+      open.hidden = !matchMedia('(pointer: coarse)').matches;
       try {
         const QR = (await import('https://esm.sh/qrcode@1.5.4?bundle')).default;
         await QR.toCanvas($('wcQr'), uri, { width: 220, margin: 1 });
@@ -1382,5 +1386,20 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   render();
   await resumeSession();
+  // silently resume a prior WalletConnect pairing (sessions persist for days);
+  // only load the WC library if its storage says there was ever a pairing here
+  if (!S.wallet && window.GAME.wcProjectId
+      && Object.keys(localStorage).some(k => k.startsWith('wc@2'))) {
+    try {
+      const w = new window.WALLETS.WcWallet();
+      const addr = await w.restore();
+      if (addr) {
+        S.wallet = w;
+        S.addr = addr;
+        track('wallet_connect', { wallet: 'wc-restored' });
+        await refresh();
+      }
+    } catch { /* no valid session; the player connects manually */ }
+  }
 })();
 setInterval(() => refresh().catch(() => {}), 45000);
