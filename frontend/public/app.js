@@ -1101,7 +1101,12 @@ async function startSession() {
   try {
     $('sessionStartBtn').disabled = true;
     sessionNote('Forging a session key in this browser\u2026');
-    const words = await window.WALLETS.SessionWallet.create();
+    // reuse an unfinished session key if one is saved: coin may already be on
+    // its way (or sitting) at that address, and a fresh key would orphan it
+    let prior = null;
+    try { prior = JSON.parse(localStorage.getItem(SESSION_LS)); } catch { }
+    const reusing = !!(prior && prior.funding && prior.words);
+    const words = reusing ? prior.words : await window.WALLETS.SessionWallet.create();
     const sw = await window.WALLETS.SessionWallet.open(words, main.address);
     // persist the key BEFORE any coin can move: if the tab reloads while the
     // player is off in their wallet app (common on iOS), funds must never be
@@ -1112,19 +1117,28 @@ async function startSession() {
     // the mobile wallet's sendTransaction over WalletConnect fails post-approval
     // on custom networks, so WalletConnect goes straight to the manual transfer
     const autoFund = main.mode !== 'wc';
-    try {
-      if (!autoFund) throw new Error('manual funding for WalletConnect');
-      sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
-      await main.sendHtr(sw.address, ECON.sessionFund);
-      sessionNote('Waiting for the funding to arrive\u2026');
-    } catch (e) {
-      // wallet could not build the transfer (some wallets' sendTransaction
-      // over WalletConnect is flaky) — fall back to a manual send
-      waitRounds = 600; // half an hour for a human-driven transfer
-      showFundingUI(sw, ECON.sessionFund, autoFund ? 'Automatic funding failed in your wallet. ' : '');
-      sessionNote('Waiting for the transfer\u2026 safe to switch apps or even reload this page.');
+    // coin already waiting at a reused key: skip funding entirely
+    const alreadyFunded = reusing
+      && (await sw.htrBalance().catch(() => 0)) >= ECON.sessionFund;
+    if (alreadyFunded) {
+      sessionNote('Your earlier transfer is already here; finishing the setup\u2026');
+    } else {
+      try {
+        if (!autoFund) throw new Error('manual funding for WalletConnect');
+        sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
+        await main.sendHtr(sw.address, ECON.sessionFund);
+        sessionNote('Waiting for the funding to arrive\u2026');
+      } catch (e) {
+        // wallet could not build the transfer (some wallets' sendTransaction
+        // over WalletConnect is flaky): fall back to a manual send
+        waitRounds = 600; // half an hour for a human-driven transfer
+        showFundingUI(sw, ECON.sessionFund,
+          (autoFund ? 'Automatic funding failed in your wallet. ' : '')
+          + (reusing ? 'Reusing your earlier session key. ' : ''));
+        sessionNote('Waiting for the transfer\u2026 safe to switch apps or even reload this page.');
+      }
     }
-    const funded = await awaitFunding(sw, waitRounds, ECON.sessionFund);
+    const funded = alreadyFunded || await awaitFunding(sw, waitRounds, ECON.sessionFund);
     if (!funded) {
       if (fundingCancelled) return;
       throw new Error('No coin seen yet. Your session key is saved in this browser: '
@@ -1251,22 +1265,8 @@ async function resumeSession() {
     const saved = JSON.parse(raw);
     const sw = await window.WALLETS.SessionWallet.open(saved.words, saved.mainAddr);
     if (saved.funding) {
-      // a session that was still waiting for its funding when the page went away
-      const need = saved.funding;
-      if ((await sw.htrBalance().catch(() => 0)) < need) {
-        S.sessionStarting = true;
-        showStage('stageConnect');
-        $('sessionBox').hidden = false;
-        showFundingUI(sw, need, 'Found your unfinished session. ');
-        sessionNote('Still waiting for the funding transfer…');
-        const ok = await awaitFunding(sw, 600, need);
-        S.sessionStarting = false;
-        if (!ok) return;  // stays saved; the next visit resumes the wait again
-        $('overlay').hidden = true;
-      }
-      localStorage.setItem(SESSION_LS, JSON.stringify(
-        { words: saved.words, mainAddr: saved.mainAddr }));
-      track('session_start', { funder: 'resumed-funding' });
+      resumeFundingWait(sw, saved);  // background: never blocks boot or wallet restore
+      return;
     }
     S.wallet = sw;
     S.addr = sw.address;
@@ -1274,6 +1274,25 @@ async function resumeSession() {
   } catch (e) {
     console.warn('session resume failed:', e);
   }
+}
+
+async function resumeFundingWait(sw, saved) {
+  const need = saved.funding;
+  if ((await sw.htrBalance().catch(() => 0)) < need) {
+    ribbon('An unfinished session key awaits funding: open \u26a1 Promptless Play to finish or discard it');
+    const ok = await awaitFunding(sw, 600, need);
+    if (!ok) return;  // the key stays saved; the next visit tries again
+  }
+  if (S.wallet && S.wallet.mode === 'session') return;  // finished elsewhere
+  localStorage.setItem(SESSION_LS, JSON.stringify(
+    { words: saved.words, mainAddr: saved.mainAddr }));
+  if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
+  S.wallet = sw;
+  S.addr = sw.address;
+  track('session_start', { funder: 'resumed-funding' });
+  ribbon('The funding arrived: your session is ready', 'level', 'coin');
+  $('overlay').hidden = true;
+  await refresh();
 }
 
 async function disconnectWallet() {

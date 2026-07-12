@@ -192,7 +192,13 @@ http.createServer(async (req, res) => {
     if (!f.startsWith(PUB) || !fs.existsSync(f) || !fs.statSync(f).isFile()) {
       res.writeHead(404); return res.end('not found');
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
+    const ext = path.extname(f);
+    // code must never go stale on players' phones; heavy assets may cache briefly
+    const heavy = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.ico': 1, '.mp3': 1, '.svg': 1 };
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': heavy[ext] ? 'public, max-age=3600' : 'no-cache',
+    });
     fs.createReadStream(f).pipe(res);
   } catch (e) {
     deny(res, 502, String(e));
