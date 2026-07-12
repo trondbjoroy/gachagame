@@ -632,6 +632,17 @@ body.land-flash::before {
 }
 
 /* codex collapsible sections */
+.codex-link {
+  display: block; margin-bottom: 14px; padding: 16px 18px;
+  border: 1px solid rgba(212, 168, 67, .35); border-radius: var(--r-md);
+  background: rgba(212, 168, 67, .05); text-decoration: none;
+  font-size: 16px; letter-spacing: .06em; color: var(--acid); font-weight: 600;
+}
+.codex-link span {
+  display: block; margin-top: 2px; font-size: 13px; font-weight: 400;
+  letter-spacing: .02em; color: var(--ink-muted);
+}
+.codex-link:hover { border-color: var(--acid); background: rgba(212, 168, 67, .1); }
 .codex-sec {
   border: 1px solid var(--line); border-radius: var(--r-md);
   background: rgba(255, 255, 255, .015); margin-bottom: 14px;

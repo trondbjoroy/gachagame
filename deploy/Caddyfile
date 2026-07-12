@@ -1,4 +1,4 @@
-# DNS A records -> this VPS: emberfall.fun, www.emberfall.fun, app.emberfall.fun
+# DNS A records -> this VPS: emberfall.fun, www.emberfall.fun, app.emberfall.fun, docs.emberfall.fun
 # Caddy provisions Let's Encrypt TLS automatically.
 
 # landing page (static)
@@ -15,5 +15,12 @@ www.emberfall.fun {
 # the game itself
 app.emberfall.fun {
 	reverse_proxy 127.0.0.1:8090
+	encode gzip
+}
+
+# the game guide (static)
+docs.emberfall.fun {
+	root * /opt/gacha/guide
+	file_server
 	encode gzip
 }
