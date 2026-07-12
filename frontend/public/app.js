@@ -373,6 +373,7 @@ function rowArt(c) {
 
 function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
+  $('walletBtn').classList.toggle('beckon', !S.addr);
   $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
