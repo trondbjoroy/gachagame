@@ -1251,6 +1251,31 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
+// no wallet yet? point at the right store for this device
+(function initGetWallet() {
+  const el = $('getWallet');
+  if (!el) return;
+  const ua = navigator.userAgent;
+  const PLAY = 'https://play.google.com/store/apps/details?id=network.hathor.wallet';
+  const APPSTORE = 'https://apps.apple.com/app/hathor-crypto-wallet/id1465041963';
+  let links;
+  if (/android/i.test(ua)) {
+    links = `<a href="${PLAY}" target="_blank" rel="noopener">Get the Hathor wallet on Google Play</a>`;
+  } else if (/iphone|ipad|ipod/i.test(ua)) {
+    links = `<a href="${APPSTORE}" target="_blank" rel="noopener">Get the Hathor wallet on the App Store</a>`;
+  } else {
+    links = `<a href="https://metamask.io/download" target="_blank" rel="noopener">Get MetaMask</a>
+      <span class="gw-note">(the Hathor Snap installs on first connect)</span>
+      · Hathor wallet for your phone:
+      <a href="${PLAY}" target="_blank" rel="noopener">Google Play</a> ·
+      <a href="${APPSTORE}" target="_blank" rel="noopener">App Store</a>`;
+  }
+  el.innerHTML = `<span class="gw-lead">New to the realm and walletless?</span> ${links}`;
+  el.addEventListener('click', e => {
+    if (e.target.tagName === 'A') track('get_wallet_click', { href: e.target.href });
+  });
+})();
+
 // tapping the WalletConnect URI copies it (mobile pairing without the QR)
 $('wcUri').addEventListener('click', async () => {
   const ta = $('wcUri');
