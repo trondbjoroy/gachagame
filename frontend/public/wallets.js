@@ -285,6 +285,9 @@ class SessionWallet {
 
   async tokenBalance(uid) { return this.handle.balance(uid); }
   async htrBalance() { return this.handle.balance('00'); }
+  // balance straight from the node over HTTP: immune to the wallet's live
+  // sync sleeping through a transfer while the tab is suspended (phones)
+  async chainHtr() { return addrBalance(this.address, '00'); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
 }

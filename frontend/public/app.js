@@ -1039,10 +1039,6 @@ async function connectWallet(kind) {
     const onUri = async uri => {
       $('wcPair').hidden = false;
       $('wcUri').value = uri;
-      // on touch devices the wallet lives on this phone: offer a direct jump
-      const open = $('wcOpenBtn');
-      open.href = uri;
-      open.hidden = !matchMedia('(pointer: coarse)').matches;
       try {
         const QR = (await import('https://esm.sh/qrcode@1.5.4?bundle')).default;
         await QR.toCanvas($('wcQr'), uri, { width: 220, margin: 1 });
@@ -1107,7 +1103,7 @@ async function startSession() {
     try { prior = JSON.parse(localStorage.getItem(SESSION_LS)); } catch { }
     const reusing = !!(prior && prior.funding && prior.words);
     const words = reusing ? prior.words : await window.WALLETS.SessionWallet.create();
-    const sw = await window.WALLETS.SessionWallet.open(words, main.address);
+    let sw = await window.WALLETS.SessionWallet.open(words, main.address);
     // persist the key BEFORE any coin can move: if the tab reloads while the
     // player is off in their wallet app (common on iOS), funds must never be
     // stranded at an address whose key only lived in memory
@@ -1119,7 +1115,7 @@ async function startSession() {
     const autoFund = main.mode !== 'wc';
     // coin already waiting at a reused key: skip funding entirely
     const alreadyFunded = reusing
-      && (await sw.htrBalance().catch(() => 0)) >= ECON.sessionFund;
+      && (await sw.chainHtr().catch(() => 0)) >= ECON.sessionFund;
     if (alreadyFunded) {
       sessionNote('Your earlier transfer is already here; finishing the setup\u2026');
     } else {
@@ -1143,6 +1139,13 @@ async function startSession() {
       if (fundingCancelled) return;
       throw new Error('No coin seen yet. Your session key is saved in this browser: '
         + 'the moment the transfer lands, reopening the game finishes the setup.');
+    }
+    if ((await sw.htrBalance().catch(() => 0)) < ECON.sessionFund) {
+      // the wallet's live sync slept through the transfer (phones suspend the
+      // tab while the player is in their wallet app): re-open for a full scan
+      sessionNote('Coin sighted on the Ledger; waking the session key…');
+      await sw.disconnect().catch(() => {});
+      sw = await window.WALLETS.SessionWallet.open(words, main.address);
     }
     localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address }));
     S.mainWallet = main;
@@ -1237,7 +1240,7 @@ function showFundingUI(sw, need, lead) {
     + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${sw.address}')">COPY ADDRESS</button> `
     + `<button class="mini-btn alt" style="margin-top:8px" id="fundCancelBtn">CANCEL</button>`;
   $('fundCancelBtn').onclick = async () => {
-    const bal = await sw.htrBalance().catch(() => 0);
+    const bal = await sw.chainHtr().catch(() => 0);
     if (bal > 0) {
       sessionNote('Coin already arrived at this key; finishing the setup…');
       return;
@@ -1252,10 +1255,10 @@ async function awaitFunding(sw, rounds, need) {
   fundingCancelled = false;
   for (let i = 0; i < rounds; i++) {
     if (fundingCancelled) return false;
-    if (await sw.htrBalance().catch(() => 0) >= need) return true;
+    if (await sw.chainHtr().catch(() => 0) >= need) return true;
     await new Promise(r => setTimeout(r, 3000));
   }
-  return (await sw.htrBalance().catch(() => 0)) >= need;
+  return (await sw.chainHtr().catch(() => 0)) >= need;
 }
 
 async function resumeSession() {
@@ -1284,6 +1287,11 @@ async function resumeFundingWait(sw, saved) {
     if (!ok) return;  // the key stays saved; the next visit tries again
   }
   if (S.wallet && S.wallet.mode === 'session') return;  // finished elsewhere
+  if ((await sw.htrBalance().catch(() => 0)) < need) {
+    // live sync missed the transfer while suspended: re-open for a full scan
+    await sw.disconnect().catch(() => {});
+    sw = await window.WALLETS.SessionWallet.open(saved.words, saved.mainAddr);
+  }
   localStorage.setItem(SESSION_LS, JSON.stringify(
     { words: saved.words, mainAddr: saved.mainAddr }));
   if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
