@@ -1247,6 +1247,28 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
+// tapping the WalletConnect URI copies it (mobile pairing without the QR)
+$('wcUri').addEventListener('click', async () => {
+  const ta = $('wcUri');
+  if (!ta.value) return;
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);  // iOS needs an explicit range
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    ok = true;
+  } catch {
+    try { ok = document.execCommand('copy'); } catch { }
+  }
+  if (ok) {
+    const note = $('wcCopied');
+    note.classList.add('show');
+    clearTimeout(note._t);
+    note._t = setTimeout(() => note.classList.remove('show'), 2200);
+    window.sfx?.('coin', { volume: .5 });
+  }
+});
+
 // a click during the reveal build-up skips straight to the card
 $('overlay').addEventListener('click', () => {
   const stage = $('stageReveal');
