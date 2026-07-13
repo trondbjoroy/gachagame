@@ -1038,7 +1038,7 @@ async function connectWallet(kind) {
     const w = kind === 'snap' ? new window.WALLETS.SnapWallet() : new window.WALLETS.WcWallet();
     const onUri = async uri => {
       $('wcPair').hidden = false;
-      $('wcUri').value = uri;
+      $('wcCopyBtn').dataset.uri = uri;
       try {
         const QR = (await import('https://esm.sh/qrcode@1.5.4?bundle')).default;
         await QR.toCanvas($('wcQr'), uri, { width: 220, margin: 1 });
@@ -1103,51 +1103,55 @@ async function startSession() {
     try { prior = JSON.parse(localStorage.getItem(SESSION_LS)); } catch { }
     const reusing = !!(prior && prior.funding && prior.words);
     const words = reusing ? prior.words : await window.WALLETS.SessionWallet.create();
-    let sw = await window.WALLETS.SessionWallet.open(words, main.address);
+    // address 0 is derived offline (no sync, nothing to fail); the full
+    // wallet only has to wake AFTER the coin is safely at this address
+    const addr = await window.WALLETS.SessionWallet.addressFor(words);
     // persist the key BEFORE any coin can move: if the tab reloads while the
     // player is off in their wallet app (common on iOS), funds must never be
     // stranded at an address whose key only lived in memory
     localStorage.setItem(SESSION_LS, JSON.stringify(
-      { words, mainAddr: main.address, funding: ECON.sessionFund }));
+      { words, mainAddr: main.address, addr, funding: ECON.sessionFund }));
     let waitRounds = 100; // 5 minutes on the automatic path
     // the mobile wallet's sendTransaction over WalletConnect fails post-approval
     // on custom networks, so WalletConnect goes straight to the manual transfer
     const autoFund = main.mode !== 'wc';
     // coin already waiting at a reused key: skip funding entirely
     const alreadyFunded = reusing
-      && (await sw.chainHtr().catch(() => 0)) >= ECON.sessionFund;
+      && (await window.WALLETS.addrHtr(addr).catch(() => 0)) >= ECON.sessionFund;
     if (alreadyFunded) {
       sessionNote('Your earlier transfer is already here; finishing the setup\u2026');
     } else {
       try {
         if (!autoFund) throw new Error('manual funding for WalletConnect');
         sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
-        await main.sendHtr(sw.address, ECON.sessionFund);
+        await main.sendHtr(addr, ECON.sessionFund);
         sessionNote('Waiting for the funding to arrive\u2026');
       } catch (e) {
         // wallet could not build the transfer (some wallets' sendTransaction
         // over WalletConnect is flaky): fall back to a manual send
         waitRounds = 600; // half an hour for a human-driven transfer
-        showFundingUI(sw, ECON.sessionFund,
+        showFundingUI(addr, ECON.sessionFund,
           (autoFund ? 'Automatic funding failed in your wallet. ' : '')
           + (reusing ? 'Reusing your earlier session key. ' : ''));
         sessionNote('Waiting for the transfer\u2026 safe to switch apps or even reload this page.');
       }
     }
-    const funded = alreadyFunded || await awaitFunding(sw, waitRounds, ECON.sessionFund);
+    const funded = alreadyFunded || await awaitFunding(addr, waitRounds, ECON.sessionFund);
     if (!funded) {
       if (fundingCancelled) return;
       throw new Error('No coin seen yet. Your session key is saved in this browser: '
         + 'the moment the transfer lands, reopening the game finishes the setup.');
     }
-    if ((await sw.htrBalance().catch(() => 0)) < ECON.sessionFund) {
-      // the wallet's live sync slept through the transfer (phones suspend the
-      // tab while the player is in their wallet app): re-open for a full scan
-      sessionNote('Coin sighted on the Ledger; waking the session key…');
-      await sw.disconnect().catch(() => {});
-      sw = await window.WALLETS.SessionWallet.open(words, main.address);
+    // only now wake the full wallet: the coin is already safe at the address,
+    // so even a failed sync loses nothing (reopening the game retries)
+    sessionNote('Coin secured; waking the session key\u2026');
+    let sw;
+    try { sw = await openSessionWallet(words, main.address); }
+    catch {
+      throw new Error('Your coin is safe at the session address, but the key '
+        + 'could not sync yet. Reload the game to finish the setup.');
     }
-    localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address }));
+    localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address, addr }));
     S.mainWallet = main;
     S.wallet = sw;
     S.addr = sw.address;
@@ -1231,18 +1235,18 @@ async function endSession() {
 /* funding helpers: the wait survives app switches, reloads, and patience */
 let fundingCancelled = false;
 
-function showFundingUI(sw, need, lead) {
+function showFundingUI(addr, need, lead) {
   $('sessionInfo').innerHTML = (lead || '')
     + `Send <b>${fmtHtr(need)}</b> (or more) to the session address below from your `
-    + 'wallet’s normal send screen; the game will detect it, even if you switch '
+    + 'wallet\u2019s normal send screen; the game will detect it, even if you switch '
     + 'apps or reload this page.<br>'
-    + `<span class="mono" style="word-break:break-all">${sw.address}</span> `
-    + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${sw.address}')">COPY ADDRESS</button> `
+    + `<span class="mono" style="word-break:break-all">${addr}</span> `
+    + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${addr}')">COPY ADDRESS</button> `
     + `<button class="mini-btn alt" style="margin-top:8px" id="fundCancelBtn">CANCEL</button>`;
   $('fundCancelBtn').onclick = async () => {
-    const bal = await sw.chainHtr().catch(() => 0);
+    const bal = await window.WALLETS.addrHtr(addr).catch(() => 0);
     if (bal > 0) {
-      sessionNote('Coin already arrived at this key; finishing the setup…');
+      sessionNote('Coin already arrived at this key; finishing the setup\u2026');
       return;
     }
     localStorage.removeItem(SESSION_LS);
@@ -1251,14 +1255,14 @@ function showFundingUI(sw, need, lead) {
   };
 }
 
-async function awaitFunding(sw, rounds, need) {
+async function awaitFunding(addr, rounds, need) {
   fundingCancelled = false;
   for (let i = 0; i < rounds; i++) {
     if (fundingCancelled) return false;
-    if (await sw.chainHtr().catch(() => 0) >= need) return true;
+    if (await window.WALLETS.addrHtr(addr).catch(() => 0) >= need) return true;
     await new Promise(r => setTimeout(r, 3000));
   }
-  return (await sw.chainHtr().catch(() => 0)) >= need;
+  return (await window.WALLETS.addrHtr(addr).catch(() => 0)) >= need;
 }
 
 async function resumeSession() {
@@ -1266,11 +1270,11 @@ async function resumeSession() {
   if (!raw) return;
   try {
     const saved = JSON.parse(raw);
-    const sw = await window.WALLETS.SessionWallet.open(saved.words, saved.mainAddr);
     if (saved.funding) {
-      resumeFundingWait(sw, saved);  // background: never blocks boot or wallet restore
+      resumeFundingWait(saved);  // background: never blocks boot or wallet restore
       return;
     }
+    const sw = await openSessionWallet(saved.words, saved.mainAddr);
     S.wallet = sw;
     S.addr = sw.address;
     await refresh();
@@ -1279,28 +1283,43 @@ async function resumeSession() {
   }
 }
 
-async function resumeFundingWait(sw, saved) {
-  const need = saved.funding;
-  if ((await sw.htrBalance().catch(() => 0)) < need) {
-    ribbon('An unfinished session key awaits funding: open \u26a1 Promptless Play to finish or discard it');
-    const ok = await awaitFunding(sw, 600, need);
-    if (!ok) return;  // the key stays saved; the next visit tries again
+async function resumeFundingWait(saved) {
+  try {
+    const need = saved.funding;
+    const addr = saved.addr
+      || await window.WALLETS.SessionWallet.addressFor(saved.words);
+    if ((await window.WALLETS.addrHtr(addr).catch(() => 0)) < need) {
+      ribbon('An unfinished session key awaits funding: open \u26a1 Promptless Play to finish or discard it');
+      const ok = await awaitFunding(addr, 600, need);
+      if (!ok) return;  // the key stays saved; the next visit tries again
+    }
+    if (S.sessionStarting || (S.wallet && S.wallet.mode === 'session')) return;
+    const sw = await openSessionWallet(saved.words, saved.mainAddr);
+    localStorage.setItem(SESSION_LS, JSON.stringify(
+      { words: saved.words, mainAddr: saved.mainAddr, addr }));
+    if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
+    S.wallet = sw;
+    S.addr = sw.address;
+    track('session_start', { funder: 'resumed-funding' });
+    ribbon('The funding arrived: your session is ready', 'level', 'coin');
+    $('overlay').hidden = true;
+    await refresh();
+  } catch (e) {
+    // the record stays saved; syncing is retried on the next visit
+    ribbon('Your funded session key is safe; reload the game to finish the setup');
+    console.warn('resume funding failed:', e);
   }
-  if (S.wallet && S.wallet.mode === 'session') return;  // finished elsewhere
-  if ((await sw.htrBalance().catch(() => 0)) < need) {
-    // live sync missed the transfer while suspended: re-open for a full scan
-    await sw.disconnect().catch(() => {});
-    sw = await window.WALLETS.SessionWallet.open(saved.words, saved.mainAddr);
+}
+
+// waking a session wallet does a full network sync, which can fail on flaky
+// mobile connections: try a few times before giving up (the key stays saved)
+async function openSessionWallet(words, mainAddr) {
+  let last = null;
+  for (let i = 0; i < 3; i++) {
+    try { return await window.WALLETS.SessionWallet.open(words, mainAddr); }
+    catch (e) { last = e; await new Promise(r => setTimeout(r, 2500)); }
   }
-  localStorage.setItem(SESSION_LS, JSON.stringify(
-    { words: saved.words, mainAddr: saved.mainAddr }));
-  if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
-  S.wallet = sw;
-  S.addr = sw.address;
-  track('session_start', { funder: 'resumed-funding' });
-  ribbon('The funding arrived: your session is ready', 'level', 'coin');
-  $('overlay').hidden = true;
-  await refresh();
+  throw last;
 }
 
 async function disconnectWallet() {
@@ -1357,18 +1376,24 @@ document.querySelectorAll('[data-aspectpick]').forEach(el =>
   });
 })();
 
-// tapping the WalletConnect URI copies it (mobile pairing without the QR)
-$('wcUri').addEventListener('click', async () => {
-  const ta = $('wcUri');
-  if (!ta.value) return;
-  ta.select();
-  ta.setSelectionRange(0, ta.value.length);  // iOS needs an explicit range
+// the button hands the WalletConnect pairing code to the clipboard
+$('wcCopyBtn').addEventListener('click', async () => {
+  const uri = $('wcCopyBtn').dataset.uri;
+  if (!uri) return;
   let ok = false;
   try {
-    await navigator.clipboard.writeText(ta.value);
+    await navigator.clipboard.writeText(uri);
     ok = true;
   } catch {
-    try { ok = document.execCommand('copy'); } catch { }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = uri;
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, uri.length);  // iOS needs an explicit range
+      ok = document.execCommand('copy');
+      ta.remove();
+    } catch { }
   }
   if (ok) {
     const note = $('wcCopied');

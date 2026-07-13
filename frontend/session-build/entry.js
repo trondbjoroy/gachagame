@@ -2,10 +2,20 @@
    running entirely in the player's browser. Signs game transactions without
    wallet prompts; sweeps everything back to the main wallet on demand. */
 import { HathorWallet, Connection, walletUtils } from '@hathor/wallet-lib';
+import { P2PKH_ACCT_PATH } from '@hathor/wallet-lib/lib/constants';
+import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address';
 
 const NODE = 'https://node1.testnet.hathor.network/v1a/';
 const NETWORK = 'testnet';
 const PIN = 'emberfall-session';
+
+// address 0 straight from the seed words: pure key derivation, no network.
+// mirrors generateAccessDataFromSeed's path (acct path -> change 0 -> index)
+function addressFor(words) {
+  const root = walletUtils.getXPrivKeyFromSeed(words, { networkName: NETWORK });
+  const change = root.deriveNonCompliantChild(P2PKH_ACCT_PATH).deriveNonCompliantChild(0);
+  return deriveAddressFromXPubP2PKH(change.xpubkey, 0, NETWORK).base58;
+}
 
 function waitReady(wallet) {
   return new Promise((resolve, reject) => {
@@ -75,5 +85,6 @@ async function open(words) {
 
 window.SessionKit = {
   generateWords: () => walletUtils.generateWalletWords(),
+  addressFor,
   open,
 };

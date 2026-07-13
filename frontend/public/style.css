@@ -780,9 +780,8 @@ body.land-flash::before {
   #wcQr { display: none; }  /* the wallet is on this device; a QR helps nobody */
 }
 
-/* walletconnect uri: tap to copy */
-#wcUri { cursor: pointer; }
-#wcUri:active { border-color: var(--acid); }
+/* walletconnect pairing code: copy button */
+#wcCopyBtn { margin-top: 10px; }
 .wc-copied {
   font-size: 12px; color: var(--acid); letter-spacing: .06em; margin-top: 6px;
   opacity: 0; transition: opacity .3s ease;

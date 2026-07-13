@@ -268,6 +268,13 @@ class SessionWallet {
     return window.SessionKit.generateWords();
   }
 
+  // address 0 for a seed, derived offline: lets the funding step show an
+  // address without waiting on (or risking) a full wallet sync
+  static async addressFor(words) {
+    await loadSessionLib();
+    return window.SessionKit.addressFor(words);
+  }
+
   static async open(words, mainAddr) {
     await loadSessionLib();
     const handle = await window.SessionKit.open(words);
@@ -285,11 +292,10 @@ class SessionWallet {
 
   async tokenBalance(uid) { return this.handle.balance(uid); }
   async htrBalance() { return this.handle.balance('00'); }
-  // balance straight from the node over HTTP: immune to the wallet's live
-  // sync sleeping through a transfer while the tab is suspended (phones)
-  async chainHtr() { return addrBalance(this.address, '00'); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
 }
 
-window.WALLETS = { SnapWallet, WcWallet, SessionWallet };
+// HTR balance of any address over plain HTTP: immune to the wallet's live
+// sync sleeping through a transfer while the tab is suspended (phones)
+window.WALLETS = { SnapWallet, WcWallet, SessionWallet, addrHtr: a => addrBalance(a, '00') };
