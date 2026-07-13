@@ -81,7 +81,9 @@ function iosTick() {
   try {
     if (!iosSwitch) {
       iosSwitch = document.createElement('label');
-      iosSwitch.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+      // iOS refuses the haptic when the control is fully invisible
+      iosSwitch.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;'
+        + 'overflow:hidden;opacity:.02;pointer-events:none;z-index:-1';
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.setAttribute('switch', '');
@@ -98,6 +100,14 @@ window.haptic = function haptic(pattern) {
     else iosTick();
   } catch { /* haptics must never break the game */ }
 };
+
+// iOS only allows the tick DURING a genuine tap (user activation), so async
+// moments can never buzz there; give every meaningful press a synchronous
+// tick instead. Android gets the same soft press on top of its patterns.
+document.addEventListener('pointerdown', e => {
+  if (!e.isTrusted) return;
+  if (e.target.closest('button, .tab, .card, .connect-opt')) window.haptic(10);
+}, { capture: true, passive: true });
 
 const sfxCache = {};
 window.sfx = function sfx(name, opts) {
