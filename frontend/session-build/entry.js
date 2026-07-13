@@ -18,23 +18,36 @@ function addressFor(words) {
   return deriveAddressFromXPubP2PKH(change.xpubkey, 0, NETWORK).base58;
 }
 
+const HOST = new URL(NODE).host;
+
 function waitReady(wallet) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('session wallet sync timeout')), 90_000);
+    const timer = setTimeout(() => reject(new Error(`sync timeout via ${HOST}`)), 90_000);
     wallet.on('state', state => {
       if (state === HathorWallet.READY) { clearTimeout(timer); resolve(); }
-      if (state === HathorWallet.ERROR) { clearTimeout(timer); reject(new Error('session wallet failed to sync')); }
+      if (state === HathorWallet.ERROR) { clearTimeout(timer); reject(new Error(`sync error via ${HOST}`)); }
     });
     if (wallet.isReady()) { clearTimeout(timer); resolve(); }
   });
 }
 
 async function open(words) {
+  // preflight so failures name the exact broken stage, not a generic sync error
+  try {
+    const r = await fetch(NODE + 'version');
+    if (!r.ok) throw new Error('http ' + r.status);
+  } catch (e) {
+    throw new Error(`node unreachable via ${HOST} (${(e && e.message) || e})`);
+  }
   const connection = new Connection({ network: NETWORK, servers: [NODE] });
   const wallet = new HathorWallet({
     connection, seed: words, password: PIN, pinCode: PIN,
   });
-  await wallet.start();
+  try {
+    await wallet.start();
+  } catch (e) {
+    throw new Error(`wallet start failed via ${HOST}: ${(e && e.message) || e}`);
+  }
   await waitReady(wallet);
   const address = await wallet.getAddressAtIndex(0);
 

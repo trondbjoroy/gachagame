@@ -245,7 +245,9 @@ function loadSessionLib() {
   if (!sessionLibLoading) {
     sessionLibLoading = new Promise((resolve, reject) => {
       const el = document.createElement('script');
-      el.src = 'session-lib.js';
+      // versioned: phones pin heuristically-cached copies of this 3.7MB
+      // bundle even after the server starts sending no-cache
+      el.src = 'session-lib.js?v=4';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
