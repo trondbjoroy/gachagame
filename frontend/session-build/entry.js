@@ -87,6 +87,17 @@ async function open(words) {
   const wallet = new HathorWallet({
     connection, seed: words, password: PIN, pinCode: PIN, logger,
   });
+  // the PROCESSING state's catch swallows its exception, so shadow the
+  // method and capture the real error before rethrowing
+  const origQueue = wallet.processTxQueue.bind(wallet);
+  wallet.processTxQueue = async () => {
+    try { return await origQueue(); }
+    catch (e) {
+      lastError = `[v7] processing: ${(e && (e.message || String(e))) || e}`
+        + (e && e.stack ? ` | ${String(e.stack).slice(0, 160)}` : '');
+      throw e;
+    }
+  };
   try {
     await wallet.start();
   } catch (e) {
