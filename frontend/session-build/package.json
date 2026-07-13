@@ -6,7 +6,8 @@
     "build": "node build.js"
   },
   "dependencies": {
-    "@hathor/wallet-lib": "4.0.0"
+    "@hathor/wallet-lib": "4.0.0",
+    "json-bigint": "^1.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

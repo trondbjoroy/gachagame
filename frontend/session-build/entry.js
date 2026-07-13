@@ -4,6 +4,24 @@
 import { HathorWallet, Connection, walletUtils } from '@hathor/wallet-lib';
 import { P2PKH_ACCT_PATH } from '@hathor/wallet-lib/lib/constants';
 import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address';
+import { JSONBigInt } from '@hathor/wallet-lib/lib/utils/bigint';
+import JSONBigIntFactory from 'json-bigint';
+
+// wallet-lib's BigInt JSON codec relies on the V8-only JSON.parse reviver
+// `context` argument and JSON.rawJSON. WebKit (every browser on iOS) has
+// neither, so the reviver throws on the first number it meets and the wallet
+// dies mid-sync. Swap in a pure-JS codec with the same semantics there.
+(function patchBigIntCodec() {
+  let hasContext = false;
+  try {
+    JSON.parse('1', (k, v, ctx) => { if (ctx && ctx.source) hasContext = true; return v; });
+  } catch { /* engines without the argument may throw via other paths */ }
+  const forced = typeof window !== 'undefined' && window.__FORCE_JSONBI_PATCH;
+  if (hasContext && typeof JSON.rawJSON === 'function' && !forced) return;
+  const JB = JSONBigIntFactory({ useNativeBigInt: true });
+  JSONBigInt.parse = text => JB.parse(text);
+  JSONBigInt.stringify = (value, space) => JB.stringify(value, null, space);
+})();
 
 const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessionNode)
   || 'https://node1.testnet.hathor.network/v1a/';
