@@ -373,8 +373,10 @@ function rowArt(c) {
 
 function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
-  $('walletBtn').classList.toggle('beckon', !S.addr);
-  $('walletAddr').textContent = S.addr ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}` : 'Connect wallet';
+  $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
+  $('walletAddr').textContent = S.addr
+    ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}`
+    : (S.restoring ? 'Connecting…' : 'Connect wallet');
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
   $('walletHint').textContent = S.addr ? (S.wallet?.mode === 'session' ? 'session' : 'this address') : '';
@@ -1522,6 +1524,14 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
 })();
 
 (async () => {
+  // a saved session or prior pairing will be restored below: say so in the
+  // header right away so the player doesn't start a second connection
+  S.restoring = !!(localStorage.getItem(SESSION_LS)
+    || (window.GAME.wcProjectId && Object.keys(localStorage).some(k => k.startsWith('wc@2'))));
+  if (S.restoring) {
+    $('walletAddr').textContent = 'Connecting…';
+    $('walletBtn').classList.remove('beckon');
+  }
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   render();
   await resumeSession();
@@ -1540,5 +1550,7 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
       }
     } catch { /* no valid session; the player connects manually */ }
   }
+  S.restoring = false;
+  render();
 })();
 setInterval(() => refresh().catch(() => {}), 45000);
