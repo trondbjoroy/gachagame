@@ -778,6 +778,8 @@ body.land-flash::before {
 /* walletconnect: mobile layout */
 @media (pointer: coarse) and (max-width: 700px) {
   #wcQr { display: none; }  /* the wallet is on this device; a QR helps nobody */
+  /* MetaMask Snaps only exist in the desktop extension */
+  .connect-opt[data-wallet="snap"] { display: none; }
 }
 
 /* walletconnect pairing code: copy button */
