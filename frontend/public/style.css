@@ -373,7 +373,7 @@ body::after {
 
 /* the unbound showcase */
 .machine.showcase {
-  position: relative; height: 440px; cursor: pointer;
+  position: relative; height: 440px;
   border-radius: var(--r-md); overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--rc, #d4a843) 35%, transparent);
   transition: border-color 1.2s ease;
@@ -400,7 +400,6 @@ body::after {
 .show-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; pointer-events: none; }
 .show-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 19px; color: #f4efe6; text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
 .show-station { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; margin-top: 4px; }
-.machine.showcase:hover { border-color: var(--rc, #d4a843); }
 
 /* whispers of the realm */
 .whisper {

@@ -1499,10 +1499,6 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   }
   next();
   if (!REDUCED) setInterval(next, 6000);
-  $('machine').onclick = () => {
-    if (!$('pullBtn').disabled) pull();
-    else if (!S.addr) $('walletBtn').click();
-  };
 })();
 
 /* whispers of the realm: live, mildly envy-inducing facts */
