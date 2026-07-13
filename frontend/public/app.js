@@ -1294,6 +1294,7 @@ async function resumeFundingWait(saved) {
       if (!ok) return;  // the key stays saved; the next visit tries again
     }
     if (S.sessionStarting || (S.wallet && S.wallet.mode === 'session')) return;
+    ribbon('Coin found; finishing your promptless session…');
     const sw = await openSessionWallet(saved.words, saved.mainAddr);
     localStorage.setItem(SESSION_LS, JSON.stringify(
       { words: saved.words, mainAddr: saved.mainAddr, addr }));
@@ -1317,7 +1318,14 @@ async function openSessionWallet(words, mainAddr) {
   let last = null;
   for (let i = 0; i < 3; i++) {
     try { return await window.WALLETS.SessionWallet.open(words, mainAddr); }
-    catch (e) { last = e; await new Promise(r => setTimeout(r, 2500)); }
+    catch (e) {
+      last = e;
+      track('session_sync_failed', {
+        attempt: i + 1,
+        reason: String((e && e.message) || e).slice(0, 120),
+      });
+      await new Promise(r => setTimeout(r, 2500));
+    }
   }
   throw last;
 }

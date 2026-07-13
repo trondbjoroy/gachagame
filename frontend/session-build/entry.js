@@ -5,7 +5,8 @@ import { HathorWallet, Connection, walletUtils } from '@hathor/wallet-lib';
 import { P2PKH_ACCT_PATH } from '@hathor/wallet-lib/lib/constants';
 import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address';
 
-const NODE = 'https://node1.testnet.hathor.network/v1a/';
+const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessionNode)
+  || 'https://node1.testnet.hathor.network/v1a/';
 const NETWORK = 'testnet';
 const PIN = 'emberfall-session';
 
@@ -19,7 +20,7 @@ function addressFor(words) {
 
 function waitReady(wallet) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('session wallet sync timeout')), 60_000);
+    const timer = setTimeout(() => reject(new Error('session wallet sync timeout')), 90_000);
     wallet.on('state', state => {
       if (state === HathorWallet.READY) { clearTimeout(timer); resolve(); }
       if (state === HathorWallet.ERROR) { clearTimeout(timer); reject(new Error('session wallet failed to sync')); }

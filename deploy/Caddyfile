@@ -14,8 +14,18 @@ www.emberfall.fun {
 
 # the game itself
 app.emberfall.fun {
-	reverse_proxy 127.0.0.1:8090
 	encode gzip
+	# the in-browser session wallet syncs with the fullnode through us
+	# (some phones refuse direct connections to the node's host); this
+	# also carries the wallet's websocket
+	handle_path /hnode/* {
+		reverse_proxy https://node1.testnet.hathor.network {
+			header_up Host {upstream_hostport}
+		}
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8090
+	}
 }
 
 # the game guide (static)

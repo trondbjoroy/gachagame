@@ -13,4 +13,10 @@ window.GAME = {
   // live economy (cents). Fusion fees are tiered by station in the v2.2 contract.
   economy: { sessionFund: 1000, fusionFees: [5, 10, 50, 100] },
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
+  // the session wallet talks to the fullnode through our own domain (Caddy
+  // proxies /hnode, websocket included): phones that balk at connecting to
+  // node1.testnet.hathor.network directly still sync fine this way
+  sessionNode: location.hostname.endsWith('emberfall.fun')
+    ? location.origin + '/hnode/v1a/'
+    : null,
 };
