@@ -139,7 +139,15 @@ class WcWallet {
     if (!window.GAME.wcProjectId) {
       throw new Error('WalletConnect needs a (free) Reown Cloud project id; set wcProjectId in config.js');
     }
-    const { SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle');
+    // module imports can fail transiently on mobile (memory pressure,
+    // flaky radio): one retry turns most of those into non-events
+    let SignClient;
+    try {
+      ({ SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle'));
+    } catch {
+      await new Promise(r => setTimeout(r, 1500));
+      ({ SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle'));
+    }
     this.client = await SignClient.init({
       projectId: window.GAME.wcProjectId,
       metadata: {
@@ -247,7 +255,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=8';
+      el.src = 'session-lib.js?v=9';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);

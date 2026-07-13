@@ -46,7 +46,9 @@ function waitReady(wallet, detail) {
       if (state === HathorWallet.READY) { clearTimeout(timer); resolve(); }
       if (state === HathorWallet.ERROR) {
         clearTimeout(timer);
-        reject(new Error(`sync error via ${HOST}: ${detail() || 'no detail'}`));
+        // the lib emits ERROR one statement BEFORE logging the actual error;
+        // wait a beat so the detail buffer catches it
+        setTimeout(() => reject(new Error(`sync error via ${HOST}: ${detail() || 'no detail'}`)), 120);
       }
     });
     if (wallet.isReady()) { clearTimeout(timer); resolve(); }
@@ -76,14 +78,20 @@ async function open(words) {
   }
   const connection = new Connection({ network: NETWORK, servers: [NODE] });
   // capture the wallet's own error logs: they carry the real failure cause,
-  // which the generic ERROR state hides
+  // which the generic ERROR state hides. Keep the FIRST error (root cause).
   let lastError = '';
+  const record = a => { if (!lastError) lastError = logToString(a); };
   const logger = {
     debug: () => {},
     info: () => {},
     warn: () => {},
-    error: (...a) => { lastError = logToString(a); console.error(...a); },
+    error: (...a) => { record(a); console.error(...a); },
   };
+  // parts of the lib log through their own default logger (console), not the
+  // injected one; mirror console.error into the buffer while opening
+  const origConsoleError = console.error.bind(console);
+  console.error = (...a) => { record(a); origConsoleError(...a); };
+  const restoreConsole = () => { console.error = origConsoleError; };
   const wallet = new HathorWallet({
     connection, seed: words, password: PIN, pinCode: PIN, logger,
   });
@@ -97,17 +105,23 @@ async function open(words) {
   wallet.processTxQueue = async () => {
     try { return await origQueue(); }
     catch (e) {
-      lastError = `[v8] processing: ${(e && (e.message || String(e))) || e}`
-        + (e && e.stack ? ` | ${String(e.stack).slice(0, 160)}` : '');
+      if (!lastError) {
+        lastError = `processing: ${(e && (e.message || String(e))) || e}`
+          + (e && e.stack ? ` | ${String(e.stack).slice(0, 160)}` : '');
+      }
       throw e;
     }
   };
   try {
-    await wallet.start();
-  } catch (e) {
-    throw new Error(`wallet start failed via ${HOST}: ${(e && e.message) || e}`);
+    try {
+      await wallet.start();
+    } catch (e) {
+      throw new Error(`wallet start failed via ${HOST}: ${(e && e.message) || e}`);
+    }
+    await waitReady(wallet, () => `[v9 ${crumbs.join('>')}] ${lastError}`);
+  } finally {
+    restoreConsole();
   }
-  await waitReady(wallet, () => `[v8 ${crumbs.join('>')}] ${lastError}`);
   const address = await wallet.getAddressAtIndex(0);
 
   return {
