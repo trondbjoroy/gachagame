@@ -87,13 +87,17 @@ async function open(words) {
   const wallet = new HathorWallet({
     connection, seed: words, password: PIN, pinCode: PIN, logger,
   });
+  // breadcrumbs: wallet + connection state transitions for failure reports
+  const crumbs = [];
+  wallet.on('state', s => crumbs.push('w' + s));
+  connection.on('state', s => crumbs.push('c' + s));
   // the PROCESSING state's catch swallows its exception, so shadow the
   // method and capture the real error before rethrowing
   const origQueue = wallet.processTxQueue.bind(wallet);
   wallet.processTxQueue = async () => {
     try { return await origQueue(); }
     catch (e) {
-      lastError = `[v7] processing: ${(e && (e.message || String(e))) || e}`
+      lastError = `[v8] processing: ${(e && (e.message || String(e))) || e}`
         + (e && e.stack ? ` | ${String(e.stack).slice(0, 160)}` : '');
       throw e;
     }
@@ -103,7 +107,7 @@ async function open(words) {
   } catch (e) {
     throw new Error(`wallet start failed via ${HOST}: ${(e && e.message) || e}`);
   }
-  await waitReady(wallet, () => lastError);
+  await waitReady(wallet, () => `[v8 ${crumbs.join('>')}] ${lastError}`);
   const address = await wallet.getAddressAtIndex(0);
 
   return {

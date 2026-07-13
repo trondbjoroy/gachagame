@@ -22,6 +22,8 @@
 // safe no-op until (unless) posthog loads
 window.track = function (name, props) {
   try {
-    if (window.posthog && window.posthog.__loaded) window.posthog.capture(name, props);
+    if (window.posthog && window.posthog.__loaded) {
+      window.posthog.capture(name, Object.assign({ build: window.BUILD || 0 }, props));
+    }
   } catch (e) { /* analytics must never break the game */ }
 };

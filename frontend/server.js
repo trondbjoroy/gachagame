@@ -193,11 +193,22 @@ http.createServer(async (req, res) => {
       res.writeHead(404); return res.end('not found');
     }
     const ext = path.extname(f);
-    // code must never go stale on players' phones; heavy assets may cache briefly
+    // code must never go stale on players' phones; heavy assets may cache briefly.
+    // Last-Modified gives no-cache something to revalidate against (without a
+    // validator some mobile browsers keep serving pinned copies).
     const heavy = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.ico': 1, '.mp3': 1, '.svg': 1 };
+    const cache = heavy[ext] ? 'public, max-age=3600' : 'no-cache';
+    const mtime = fs.statSync(f).mtime;
+    mtime.setMilliseconds(0); // HTTP dates have second precision
+    const ims = req.headers['if-modified-since'];
+    if (ims && new Date(ims) >= mtime) {
+      res.writeHead(304, { 'Cache-Control': cache });
+      return res.end();
+    }
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': heavy[ext] ? 'public, max-age=3600' : 'no-cache',
+      'Cache-Control': cache,
+      'Last-Modified': mtime.toUTCString(),
     });
     fs.createReadStream(f).pipe(res);
   } catch (e) {
