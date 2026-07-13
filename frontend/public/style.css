@@ -832,4 +832,16 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .shelf { padding: 18px 0 0; }
   .lore { padding-left: 14px; }
   .sec-body { padding: 2px 12px 14px; }
+
+  /* champions ride side by side; swipe between them (next one peeks in) */
+  .cards {
+    display: flex; gap: 12px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin-left: -14px; margin-right: -14px;
+    padding: 4px 14px 8px;
+  }
+  .cards::-webkit-scrollbar { display: none; }
+  .cards > * { flex: 0 0 min(240px, 72vw); scroll-snap-align: center; }
 }
