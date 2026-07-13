@@ -7,17 +7,15 @@ import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address
 import { JSONBigInt } from '@hathor/wallet-lib/lib/utils/bigint';
 import JSONBigIntFactory from 'json-bigint';
 
-// wallet-lib's BigInt JSON codec relies on the V8-only JSON.parse reviver
-// `context` argument and JSON.rawJSON. WebKit (every browser on iOS) has
-// neither, so the reviver throws on the first number it meets and the wallet
-// dies mid-sync. Swap in a pure-JS codec with the same semantics there.
+// wallet-lib's BigInt JSON codec is engine-specific twice over: it needs the
+// V8-only JSON.parse reviver `context` argument and JSON.rawJSON, and its
+// float handling whitelists V8's and Firefox's BigInt SyntaxError message
+// strings — WebKit throws "Failed to parse String to BigInt", which is not
+// on the list, so any float in any response kills the sync on iOS. No
+// feature detection can catch a message-string mismatch, so the pure-JS
+// codec (same semantics: unsafe-range integers become BigInts) is used
+// unconditionally.
 (function patchBigIntCodec() {
-  let hasContext = false;
-  try {
-    JSON.parse('1', (k, v, ctx) => { if (ctx && ctx.source) hasContext = true; return v; });
-  } catch { /* engines without the argument may throw via other paths */ }
-  const forced = typeof window !== 'undefined' && window.__FORCE_JSONBI_PATCH;
-  if (hasContext && typeof JSON.rawJSON === 'function' && !forced) return;
   const JB = JSONBigIntFactory({ useNativeBigInt: true });
   JSONBigInt.parse = text => JB.parse(text);
   JSONBigInt.stringify = (value, space) => JB.stringify(value, null, space);
