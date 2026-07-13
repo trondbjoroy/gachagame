@@ -76,34 +76,16 @@ const HAPTICS = {
   deed: [12, 50, 12],
   favor: [15, 50, 15, 50, 30],
 };
-let iosSwitch = null;
-function iosTick() {
-  try {
-    if (!iosSwitch) {
-      iosSwitch = document.createElement('label');
-      // iOS refuses the haptic when the control is fully invisible
-      iosSwitch.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;'
-        + 'overflow:hidden;opacity:.02;pointer-events:none;z-index:-1';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.setAttribute('switch', '');
-      iosSwitch.appendChild(input);
-      document.body.appendChild(iosSwitch);
-    }
-    iosSwitch.click();
-  } catch { /* haptics must never break the game */ }
-}
+// Android only: iOS offers no working web haptics API (the Vibration API
+// is absent from WebKit, and the iOS 18 switch-toggle trick is patched out)
 window.haptic = function haptic(pattern) {
   try {
-    if (!matchMedia('(pointer: coarse)').matches) return;
-    if (navigator.vibrate) navigator.vibrate(pattern);
-    else iosTick();
+    if (!navigator.vibrate || !matchMedia('(pointer: coarse)').matches) return;
+    navigator.vibrate(pattern);
   } catch { /* haptics must never break the game */ }
 };
 
-// iOS only allows the tick DURING a genuine tap (user activation), so async
-// moments can never buzz there; give every meaningful press a synchronous
-// tick instead. Android gets the same soft press on top of its patterns.
+// a soft tick on every meaningful press, on top of the event patterns
 document.addEventListener('pointerdown', e => {
   if (!e.isTrusted) return;
   if (e.target.closest('button, .tab, .card, .connect-opt')) window.haptic(10);
