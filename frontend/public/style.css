@@ -784,6 +784,9 @@ body.land-flash::before {
 
 /* walletconnect pairing code: copy button */
 #wcCopyBtn { margin-top: 10px; }
+
+/* session funding: scannable address for a phone wallet's send screen */
+#fundQr { display: block; margin: 12px auto 10px; border-radius: 8px; }
 .wc-copied {
   font-size: 12px; color: var(--acid); letter-spacing: .06em; margin-top: 6px;
   opacity: 0; transition: opacity .3s ease;

@@ -1246,9 +1246,20 @@ function showFundingUI(addr, need, lead) {
     + `Send <b>${fmtHtr(need)}</b> (or more) to the session address below from your `
     + 'wallet\u2019s normal send screen; the game will detect it, even if you switch '
     + 'apps or reload this page.<br>'
+    + '<canvas id="fundQr" hidden></canvas>'
     + `<span class="mono" style="word-break:break-all">${addr}</span> `
     + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${addr}')">COPY ADDRESS</button> `
     + `<button class="mini-btn alt" style="margin-top:8px" id="fundCancelBtn">CANCEL</button>`;
+  // on desktop the wallet is usually a phone: offer the address as a QR for
+  // its send screen scanner (on phones the wallet is on this same device)
+  if (!matchMedia('(pointer: coarse)').matches) {
+    import('https://esm.sh/qrcode@1.5.4?bundle').then(m => {
+      const cv = $('fundQr');
+      if (!cv) return;  // the funding UI may already be gone
+      cv.hidden = false;
+      return m.default.toCanvas(cv, addr, { width: 172, margin: 2 });
+    }).catch(() => { const cv = $('fundQr'); if (cv) cv.hidden = true; });
+  }
   $('fundCancelBtn').onclick = async () => {
     const bal = await window.WALLETS.addrHtr(addr).catch(() => 0);
     if (bal > 0) {
