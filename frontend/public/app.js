@@ -1322,7 +1322,7 @@ async function openSessionWallet(words, mainAddr) {
       last = e;
       track('session_sync_failed', {
         attempt: i + 1,
-        reason: String((e && e.message) || e).slice(0, 120),
+        reason: String((e && e.message) || e).slice(0, 300),
       });
       await new Promise(r => setTimeout(r, 2500));
     }

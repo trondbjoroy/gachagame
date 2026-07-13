@@ -20,15 +20,32 @@ function addressFor(words) {
 
 const HOST = new URL(NODE).host;
 
-function waitReady(wallet) {
+function waitReady(wallet, detail) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`sync timeout via ${HOST}`)), 90_000);
+    const timer = setTimeout(
+      () => reject(new Error(`sync timeout via ${HOST}: ${detail() || 'no detail'}`)), 90_000);
     wallet.on('state', state => {
       if (state === HathorWallet.READY) { clearTimeout(timer); resolve(); }
-      if (state === HathorWallet.ERROR) { clearTimeout(timer); reject(new Error(`sync error via ${HOST}`)); }
+      if (state === HathorWallet.ERROR) {
+        clearTimeout(timer);
+        reject(new Error(`sync error via ${HOST}: ${detail() || 'no detail'}`));
+      }
     });
     if (wallet.isReady()) { clearTimeout(timer); resolve(); }
   });
+}
+
+// serialize whatever the wallet's logger was handed, Errors included
+function logToString(args) {
+  try {
+    return args.map(x => {
+      if (x instanceof Error) return x.message || String(x);
+      if (typeof x === 'object' && x !== null) {
+        return JSON.stringify(x, (k, v) => (v instanceof Error ? (v.message || String(v)) : v));
+      }
+      return String(x);
+    }).join(' ').slice(0, 300);
+  } catch { return 'unserializable error'; }
 }
 
 async function open(words) {
@@ -40,15 +57,24 @@ async function open(words) {
     throw new Error(`node unreachable via ${HOST} (${(e && e.message) || e})`);
   }
   const connection = new Connection({ network: NETWORK, servers: [NODE] });
+  // capture the wallet's own error logs: they carry the real failure cause,
+  // which the generic ERROR state hides
+  let lastError = '';
+  const logger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: (...a) => { lastError = logToString(a); console.error(...a); },
+  };
   const wallet = new HathorWallet({
-    connection, seed: words, password: PIN, pinCode: PIN,
+    connection, seed: words, password: PIN, pinCode: PIN, logger,
   });
   try {
     await wallet.start();
   } catch (e) {
     throw new Error(`wallet start failed via ${HOST}: ${(e && e.message) || e}`);
   }
-  await waitReady(wallet);
+  await waitReady(wallet, () => lastError);
   const address = await wallet.getAddressAtIndex(0);
 
   return {
