@@ -829,7 +829,11 @@ function crashLand(uid, tier) {
     el.style.animationDuration = dur + 'ms';
     el.classList.add('crash-landing');
     setTimeout(() => {  // impact moment (~55% of the drop)
-      window.sfx?.('reveal-footman', { rate: [1, .88, .74, .6][tier], volume: [.8, .9, 1, 1][tier] });
+      window.sfx?.('reveal-footman', {
+        rate: [1, .88, .74, .6][tier], volume: [.8, .9, 1, 1][tier],
+        // impact thump grows with the station
+        haptic: [[30], [50], [30, 40, 70], [40, 50, 100, 50, 60]][tier],
+      });
       const rect = el.getBoundingClientRect();
       spawnDust(rect, tier);
       document.body.style.setProperty('--quake-amp', [2, 4, 7, 12][tier] + 'px');

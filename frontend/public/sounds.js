@@ -59,9 +59,52 @@ $('musicBtn').onclick = () => {
 };
 syncMusicBtn();
 
+/* physical feedback on touch devices. Android has the Vibration API;
+   iOS Safari has none, but toggling a switch control fires the system
+   haptic tick on iOS 18+. Patterns in ms, keyed to the moments below. */
+const HAPTICS = {
+  summon: 20,
+  'reveal-footman': 15,
+  'reveal-knight': [15, 60, 25],
+  'reveal-highlord': [25, 70, 40],
+  'reveal-sovereign': [35, 80, 45, 80, 70],
+  coin: 12,
+  fuse: [20, 40, 35],
+  clash: [15, 30, 15],
+  win: [20, 60, 20, 60, 45],
+  lose: 35,
+  deed: [12, 50, 12],
+  favor: [15, 50, 15, 50, 30],
+};
+let iosSwitch = null;
+function iosTick() {
+  try {
+    if (!iosSwitch) {
+      iosSwitch = document.createElement('label');
+      iosSwitch.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('switch', '');
+      iosSwitch.appendChild(input);
+      document.body.appendChild(iosSwitch);
+    }
+    iosSwitch.click();
+  } catch { /* haptics must never break the game */ }
+}
+window.haptic = function haptic(pattern) {
+  try {
+    if (!matchMedia('(pointer: coarse)').matches) return;
+    if (navigator.vibrate) navigator.vibrate(pattern);
+    else iosTick();
+  } catch { /* haptics must never break the game */ }
+};
+
 const sfxCache = {};
 window.sfx = function sfx(name, opts) {
   try {
+    // the physical channel is independent of the sound mute
+    const h = (opts && opts.haptic) !== undefined ? opts.haptic : HAPTICS[name];
+    if (h) window.haptic(h);
     if (sfxMuted || !sfxUnlocked) return;
     let base = sfxCache[name];
     if (!base) {
