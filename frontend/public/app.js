@@ -1129,9 +1129,6 @@ async function startSession() {
     localStorage.setItem(SESSION_LS, JSON.stringify(
       { words, mainAddr: main.address, addr, funding: ECON.sessionFund }));
     let waitRounds = 100; // 5 minutes on the automatic path
-    // the mobile wallet's sendTransaction over WalletConnect fails post-approval
-    // on custom networks, so WalletConnect goes straight to the manual transfer
-    const autoFund = main.mode !== 'wc';
     // coin already waiting at a reused key: skip funding entirely
     const alreadyFunded = reusing
       && (await window.WALLETS.addrHtr(addr).catch(() => 0)) >= ECON.sessionFund;
@@ -1139,16 +1136,26 @@ async function startSession() {
       sessionNote('Your earlier transfer is already here; finishing the setup\u2026');
     } else {
       try {
-        if (!autoFund) throw new Error('manual funding for WalletConnect');
+        // sendTransaction over WalletConnect used to fail post-approval
+        // (upstream bug, no longer reproducing as of 2026-07-15): every
+        // wallet now gets the automatic attempt, manual flow as fallback
         sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
-        await main.sendHtr(addr, ECON.sessionFund);
+        await Promise.race([
+          main.sendHtr(addr, ECON.sessionFund),
+          new Promise((_, rej) => setTimeout(
+            () => rej(new Error('wallet approval timed out')), 120_000)),
+        ]);
+        track('session_autofund', { ok: true, wallet: walletKindOf(main) });
         sessionNote('Waiting for the funding to arrive\u2026');
       } catch (e) {
-        // wallet could not build the transfer (some wallets' sendTransaction
-        // over WalletConnect is flaky): fall back to a manual send
+        // wallet could not build the transfer: fall back to a manual send
+        track('session_autofund', {
+          ok: false, wallet: walletKindOf(main),
+          reason: String((e && e.message) || e).slice(0, 200),
+        });
         waitRounds = 600; // half an hour for a human-driven transfer
         showFundingUI(addr, ECON.sessionFund,
-          (autoFund ? 'Automatic funding failed in your wallet. ' : '')
+          'Automatic funding failed in your wallet. '
           + (reusing ? 'Reusing your earlier session key. ' : ''));
         sessionNote('Waiting for the transfer\u2026 safe to switch apps or even reload this page.');
       }
