@@ -96,7 +96,11 @@ async function loadContract() {
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
       'get_favor_pool()']);
     S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
-    S.wins = me[`get_wins("${S.addr}")`] || 0;
+    const winsNow = me[`get_wins("${S.addr}")`] || 0;
+    // covers wins as challenger too (someone answered while we were away)
+    if (S.prevWins !== undefined && winsNow > S.prevWins) window.trialEvent?.('duel_win');
+    S.prevWins = winsNow;
+    S.wins = winsNow;
     S.renown = me[`get_renown("${S.addr}")`] || 0;
     S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
     S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
@@ -597,7 +601,13 @@ function bindListActions() {
     if (h) crashLand(u, tier);
   });
   bind('[data-stake]', u => doTx('Sending to the mines', 'stake', [], [depAct(u, CARD_AMT)]));
-  bind('[data-unstake]', u => doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]));
+  bind('[data-unstake]', async u => {
+    const c = S.cards.get(u);
+    // hours of toil approximated from accrued gems and the station's rate
+    const hours = c ? c.pendingGems / ([1, 3, 10, 40][c.tier] * 60) : 0;
+    const h = await doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]);
+    if (h) window.trialEvent?.('recall8', { hours });
+  });
   bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
   bind('[data-temper]', u => openTemper(u));
   bind('[data-duel]', u => openPick('create', u));
@@ -686,6 +696,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     el.classList.add('ok');
     sub.textContent = 'done';
     track(method, { ok: true, target: target || 'game', wallet: walletKind() });
+    window.trialEvent?.(method);
     setTimeout(() => el.remove(), 6000);
     await refresh();
     return hash;
@@ -1350,7 +1361,7 @@ async function openSessionWallet(words, mainAddr) {
 async function disconnectWallet() {
   await S.wallet?.disconnect?.().catch(() => {});
   S.wallet = null; S.addr = null; S.htr = 0; S.gemsWallet = 0;
-  S.gemsLedger = 0; S.wins = 0; S.selected.clear();
+  S.gemsLedger = 0; S.wins = 0; S.prevWins = undefined; S.selected.clear();
   for (const c of S.cards.values()) c.mine = false;
   localStorage.removeItem('gacha_wallet');
   $('overlay').hidden = true;

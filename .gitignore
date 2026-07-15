@@ -5,3 +5,6 @@ wallet-headless/
 
 __pycache__/
 node_modules/
+
+# generated on the VPS by scripts/season.py and scripts/weekly_favor.py
+frontend/public/season.json

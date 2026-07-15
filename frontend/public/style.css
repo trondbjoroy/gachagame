@@ -630,6 +630,35 @@ body.land-flash::before {
   .ribbon { transition: opacity .2s; }
 }
 
+/* progression: daily trial, muster roll, season */
+.trial-note { color: var(--acid); font-size: 13px; }
+.trial-done { color: var(--acid-hot); font-weight: 700; letter-spacing: .08em; }
+.m-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.m-label { width: 110px; font-size: 13px; color: var(--ink-muted); }
+.m-bar {
+  flex: 1; height: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line);
+}
+.m-fill { display: block; height: 100%; background: rgba(212, 168, 67, .55); }
+.m-fill.full { background: var(--acid-hot); }
+.m-count { font-size: 12px; color: var(--ink-muted); min-width: 52px; text-align: right; }
+.m-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.m-chip {
+  border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px;
+  font-size: 12.5px; color: var(--ink-muted);
+}
+.m-chip b { color: var(--ink); margin-left: 4px; }
+.m-chip.done { border-color: rgba(212, 168, 67, .5); color: var(--acid); background: rgba(212, 168, 67, .06); }
+.m-chip.done b { color: var(--acid-hot); }
+.s-table { margin-top: 10px; }
+.s-row {
+  display: flex; gap: 14px; padding: 8px 12px; font-size: 13.5px;
+  border-bottom: 1px solid var(--line); align-items: center;
+}
+.s-row .s-rank { width: 24px; color: var(--ink-dim); }
+.s-row .s-pts { margin-left: auto; color: var(--acid); }
+.s-row.me { background: rgba(212, 168, 67, .07); border-left: 2px solid var(--acid); }
+
 /* codex collapsible sections */
 .codex-link {
   display: block; margin-bottom: 14px; padding: 16px 18px;

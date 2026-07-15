@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=16" />
+<link rel="stylesheet" href="style.css?b=17" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -67,6 +67,7 @@
       </button>
       <div class="pull-note" id="pullNote"></div>
       <div class="pull-note favor-note" id="favorNote" hidden></div>
+      <div class="pull-note trial-note" id="trialLine"></div>
     </div>
   </section>
 
@@ -162,6 +163,19 @@
     <div class="lore"><p id="deedsSummary"></p></div>
     <div class="deeds" id="deedsGrid"></div>
     <div class="lore"><p id="raffleLine" hidden></p></div>
+    </div>
+    </details>
+
+    <details class="codex-sec" data-sec="muster">
+    <summary>The muster roll</summary>
+    <div class="sec-body"><div id="musterRoll"></div></div>
+    </details>
+
+    <details class="codex-sec" data-sec="season">
+    <summary>The season &amp; the daily trial</summary>
+    <div class="sec-body">
+    <div class="lore"><p id="trialCodex"></p></div>
+    <div id="seasonPanel"></div>
     </div>
     </details>
 
@@ -363,14 +377,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 16;</script>
-<script src="analytics.js?b=16"></script>
-<script src="config.js?b=16"></script>
-<script src="art.js?b=16"></script>
-<script src="catalog.js?b=16"></script>
-<script src="wallets.js?b=16"></script>
-<script src="app.js?b=16"></script>
-<script src="sounds.js?b=16"></script>
-<script src="tutorial.js?b=16"></script>
+<script>window.BUILD = 17;</script>
+<script src="analytics.js?b=17"></script>
+<script src="config.js?b=17"></script>
+<script src="art.js?b=17"></script>
+<script src="catalog.js?b=17"></script>
+<script src="wallets.js?b=17"></script>
+<script src="app.js?b=17"></script>
+<script src="progress.js?b=17"></script>
+<script src="sounds.js?b=17"></script>
+<script src="tutorial.js?b=17"></script>
 </body>
 </html>
