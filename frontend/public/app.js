@@ -1636,5 +1636,50 @@ if (new URLSearchParams(location.search).has('wctest')) {
   probe('TEST 0.01 → SELF', 1, 'self');
   probe('TEST 10 → SELF', 1000, 'self');
   probe('TEST 10 → OPER', 1000, 'oper');
+
+  // the decisive variant: a recipient address that has NEVER appeared on
+  // chain, exactly like a fresh session key. Prefers the pending session's
+  // own address (approval then simply completes that session); otherwise
+  // derives a throwaway whose words are kept in localStorage (recoverable).
+  const bf = document.createElement('button');
+  bf.className = 'mini-btn';
+  bf.textContent = 'TEST 10 → FRESH ADDR';
+  bf.onclick = async () => {
+    if (S.wallet?.mode !== 'wc') {
+      show('Connect first', 'Pair via WalletConnect, then tap the test again.');
+      return;
+    }
+    bf.disabled = true;
+    const was = bf.textContent;
+    bf.textContent = 'PREPARING…';
+    try {
+      let target = null;
+      let rec = null;
+      try { rec = JSON.parse(localStorage.getItem('emberfall_session')); } catch { }
+      if (rec && rec.funding && rec.addr) {
+        target = rec.addr;  // approval funds and completes the pending session
+      } else {
+        const words = await window.WALLETS.SessionWallet.create();
+        target = await window.WALLETS.SessionWallet.addressFor(words);
+        localStorage.setItem('wctest_fresh', JSON.stringify({ words, addr: target }));
+      }
+      bf.textContent = 'AWAITING WALLET…';
+      const r = await Promise.race([
+        S.wallet.sendHtr(target, 1000),
+        new Promise((_, rej) => setTimeout(() => rej(new Error(
+          'The wallet never responded (3 min).')), 180_000)),
+      ]);
+      track('wctest_send', { ok: true, amount: 1000, to: 'fresh' });
+      show('Send succeeded ✓', 'FRESH ADDR: the wallet built and pushed the '
+        + 'transfer. Hash: ' + ((r && r.hash) || 'unknown'));
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      track('wctest_send', { ok: false, amount: 1000, to: 'fresh', reason: msg.slice(0, 300) });
+      show('Send failed', 'FRESH ADDR: ' + msg);
+    }
+    bf.disabled = false;
+    bf.textContent = was;
+  };
+  wrap.appendChild(bf);
   document.body.appendChild(wrap);
 }
