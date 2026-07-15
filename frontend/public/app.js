@@ -1063,6 +1063,7 @@ async function connectWallet(kind) {
     };
     S.addr = await (kind === 'wc' ? w.connect(onUri) : w.connect());
     S.wallet = w;
+    window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
     track('wallet_connect', { wallet: kind });
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
@@ -1139,7 +1140,8 @@ async function startSession() {
         // sendTransaction over WalletConnect used to fail post-approval
         // (upstream bug, no longer reproducing as of 2026-07-15): every
         // wallet now gets the automatic attempt, manual flow as fallback
-        sessionNote('Approve the ' + fmtHtr(ECON.sessionFund) + ' funding in your wallet\u2026');
+        sessionNote('Funding request sent: now open your Hathor wallet and approve the '
+          + fmtHtr(ECON.sessionFund) + ' transfer\u2026');
         await Promise.race([
           main.sendHtr(addr, ECON.sessionFund),
           new Promise((_, rej) => setTimeout(
@@ -1574,6 +1576,7 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
       if (addr) {
         S.wallet = w;
         S.addr = addr;
+        window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
         track('wallet_connect', { wallet: 'wc-restored' });
         await refresh();
       }

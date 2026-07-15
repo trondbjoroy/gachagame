@@ -320,5 +320,11 @@ class SessionWallet {
 }
 
 // HTR balance of any address over plain HTTP: immune to the wallet's live
-// sync sleeping through a transfer while the tab is suspended (phones)
-window.WALLETS = { SnapWallet, WcWallet, SessionWallet, addrHtr: a => addrBalance(a, '00') };
+// sync sleeping through a transfer while the tab is suspended (phones).
+// prefetchSession warms the 3.7MB session bundle so the funding request can
+// publish the instant the player taps, before any app switch suspends us.
+window.WALLETS = {
+  SnapWallet, WcWallet, SessionWallet,
+  addrHtr: a => addrBalance(a, '00'),
+  prefetchSession: () => loadSessionLib().catch(() => {}),
+};
