@@ -163,13 +163,26 @@ class WcWallet {
     return this.client;
   }
 
-  // adopt a still-valid pairing from a previous visit, if one exists
+  // adopt a still-valid pairing from a previous visit, if one exists.
+  // Stored sessions can be zombies (the wallet app forgot them, e.g. after
+  // a settings reset), so ping before trusting one: an unacked ping means
+  // requests would vanish into the relay with nobody listening.
   async restore() {
     await this.initClient();
     const live = this.client.session.getAll().filter(s =>
       s.namespaces?.hathor && s.expiry * 1000 > Date.now() + 60_000);
     const s = live.sort((a, b) => b.expiry - a.expiry)[0];
     if (!s) return null;
+    try {
+      await Promise.race([
+        this.client.ping({ topic: s.topic }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('ping timeout')), 8000)),
+      ]);
+    } catch {
+      try { await this.client.disconnect({ topic: s.topic, reason: { code: 6000, message: 'stale' } }); }
+      catch { /* already gone */ }
+      return null;
+    }
     this.session = s;
     const accounts = s.namespaces.hathor?.accounts ?? [];
     this.address = accounts[0]?.split(':')[2] || null;

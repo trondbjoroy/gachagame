@@ -1599,7 +1599,12 @@ if (new URLSearchParams(location.search).has('wctest')) {
     b.disabled = true;
     b.textContent = 'AWAITING WALLET…';
     try {
-      const r = await S.wallet.sendHtr(S.addr, 1);
+      const r = await Promise.race([
+        S.wallet.sendHtr(S.addr, 1),
+        new Promise((_, rej) => setTimeout(() => rej(new Error(
+          'The wallet never responded (90s). It likely holds no active '
+          + 'WalletConnect session: DISCONNECT in the game and pair again.')), 90_000)),
+      ]);
       track('wctest_send', { ok: true });
       show('Send succeeded ✓', 'The wallet built and pushed the transfer. '
         + 'Hash: ' + ((r && r.hash) || 'unknown'));
