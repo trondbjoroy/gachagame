@@ -1584,44 +1584,54 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
 })();
 setInterval(() => refresh().catch(() => {}), 45000);
 
-/* WalletConnect sendTransaction probe (?wctest=1): fires the exact call the
-   upstream bug report covers — htr_sendTransaction over WC, 0.01 HTR to your
-   own address — and shows the wallet's verbatim response. Debug only. */
+/* WalletConnect sendTransaction probe matrix (?wctest=1): three variants of
+   htr_sendTransaction isolating amount and recipient. "OPER" sends to the
+   game operator's address, recoverable if approved. Debug only. */
 if (new URLSearchParams(location.search).has('wctest')) {
-  const b = document.createElement('button');
-  b.className = 'mini-btn';
-  b.textContent = 'TEST WALLET SEND';
-  b.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:60';
-  b.onclick = async () => {
-    const show = (title, msg) => {
-      $('errTitle').textContent = title;
-      $('errMsg').textContent = msg;
-      showStage('stageError');
-      $('overlay').hidden = false;
-    };
-    if (S.wallet?.mode !== 'wc') {
-      show('Connect first', 'Pair via WalletConnect, then tap TEST WALLET SEND again.');
-      return;
-    }
-    b.disabled = true;
-    b.textContent = 'AWAITING WALLET…';
-    try {
-      const r = await Promise.race([
-        S.wallet.sendHtr(S.addr, 1),
-        new Promise((_, rej) => setTimeout(() => rej(new Error(
-          'The wallet never responded (90s). It likely holds no active '
-          + 'WalletConnect session: DISCONNECT in the game and pair again.')), 90_000)),
-      ]);
-      track('wctest_send', { ok: true });
-      show('Send succeeded ✓', 'The wallet built and pushed the transfer. '
-        + 'Hash: ' + ((r && r.hash) || 'unknown'));
-    } catch (e) {
-      const msg = (e && e.message) || String(e);
-      track('wctest_send', { ok: false, reason: msg.slice(0, 300) });
-      show('Send failed', msg);
-    }
-    b.disabled = false;
-    b.textContent = 'TEST WALLET SEND';
+  const OPER = 'Wer2yUudABEUzKbM8Q2qQFvLgW2s5kFkzG';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:60;'
+    + 'display:flex;flex-direction:column;gap:6px';
+  const show = (title, msg) => {
+    $('errTitle').textContent = title;
+    $('errMsg').textContent = msg;
+    showStage('stageError');
+    $('overlay').hidden = false;
   };
-  document.body.appendChild(b);
+  const probe = (label, amount, toKind) => {
+    const b = document.createElement('button');
+    b.className = 'mini-btn';
+    b.textContent = label;
+    b.onclick = async () => {
+      if (S.wallet?.mode !== 'wc') {
+        show('Connect first', 'Pair via WalletConnect, then tap the test again.');
+        return;
+      }
+      b.disabled = true;
+      const was = b.textContent;
+      b.textContent = 'AWAITING WALLET…';
+      try {
+        const r = await Promise.race([
+          S.wallet.sendHtr(toKind === 'self' ? S.addr : OPER, amount),
+          new Promise((_, rej) => setTimeout(() => rej(new Error(
+            'The wallet never responded (3 min). If the request could not '
+            + 'even be opened there, that is the finding.')), 180_000)),
+        ]);
+        track('wctest_send', { ok: true, amount, to: toKind });
+        show('Send succeeded ✓', `${label}: the wallet built and pushed the `
+          + 'transfer. Hash: ' + ((r && r.hash) || 'unknown'));
+      } catch (e) {
+        const msg = (e && e.message) || String(e);
+        track('wctest_send', { ok: false, amount, to: toKind, reason: msg.slice(0, 300) });
+        show('Send failed', `${label}: ${msg}`);
+      }
+      b.disabled = false;
+      b.textContent = was;
+    };
+    wrap.appendChild(b);
+  };
+  probe('TEST 0.01 → SELF', 1, 'self');
+  probe('TEST 10 → SELF', 1000, 'self');
+  probe('TEST 10 → OPER', 1000, 'oper');
+  document.body.appendChild(wrap);
 }
