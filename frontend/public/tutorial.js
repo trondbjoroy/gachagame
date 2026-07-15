@@ -12,6 +12,11 @@ const TOUR = [
     body: 'Every summoning binds a champion into soulstone: one of a kind, with a station (Footman to Sovereign), a power, and three aspects rolled at birth. The price in coin is shown on the button; the Blind Weaver answers within moments. Roughly 1 in 25 summonings, she returns your coin from the favor pool.',
   },
   {
+    target: '#trialLine', tab: 'collection',
+    title: 'The daily trial',
+    body: 'Each dawn (midnight UTC) the Crown asks one deed of the realm. Keep it and your streak grows in the Codex. Renown earned during the eight-week season also ranks you in the season standings, and the highest banners bear titles when it closes.',
+  },
+  {
     target: '#statsRow',
     title: 'Your measures',
     body: 'The realm keeps count: souls summoned everywhere, your gems (in your contract ledger and in hand), trials won, renown with your vigil streak, and your standing. Everything here is read from the Great Ledger; nothing is stored on our servers.',
@@ -39,7 +44,7 @@ const TOUR = [
   {
     target: '#pane-learn', tab: 'learn',
     title: 'The Codex',
-    body: 'The chronicle of the realm, the full how-to-play guide, and your Deeds of Renown: eighteen deeds that raise your level from Wanderer to Sovereign’s Hand. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
+    body: 'The chronicle of the realm, the how-to-play guide, your Deeds of Renown (eighteen deeds, Wanderer to Sovereign’s Hand), the Muster Roll of every champion you have ever sworn, and the season standings. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
   },
   {
     target: '#headerSessionBtn', tab: 'collection',

@@ -272,11 +272,12 @@ wallet, covered next.</p>
 <h3 id="start-wallet">Choosing a wallet</h3>
 <p>Click <b>Connect wallet</b> in the game's header and pick one:</p>
 <ul>
-  <li><b>Hathor mobile wallet</b> (Android / iOS) via WalletConnect. On a phone, the game
-  offers a one-tap open button and a tappable pairing code; on desktop, scan the QR with
-  the wallet app. Set the wallet's network to <b>testnet</b> in its settings.</li>
-  <li><b>MetaMask with the Hathor Snap</b> on desktop. The game will prompt MetaMask to
-  install the Snap on first connect.</li>
+  <li><b>Hathor mobile wallet</b> (Android / iOS) via WalletConnect. On a phone, tap
+  <b>COPY PAIRING CODE</b> and paste it into the wallet's WalletConnect screen; on
+  desktop, scan the QR with the wallet app. Set the wallet's network to
+  <b>testnet</b> in its settings.</li>
+  <li><b>MetaMask with the Hathor Snap</b>, desktop only. The game will prompt MetaMask
+  to install the Snap on first connect.</li>
 </ul>
 <p>Don't have either? The connect panel links you to the right download for your device.
 Your wallet is yours: the game never sees your keys, and every deed is signed by you.</p>
@@ -571,7 +572,9 @@ tickets.</p>
 <p>Signing every move in your wallet is safe but slow. <b>⚡ Promptless Play</b> forges a
 <b>session key</b> that lives only in your browser, funds it once from your wallet
 (<b>10 HTR</b>), and then plays every action through it instantly: no approval popups,
-no app-switching, just play.</p>
+no app-switching, just play. If the transfer is manual, the funding step shows the
+session address as text and, on desktop, as a QR your phone wallet's send screen can
+scan.</p>
 <ul>
   <li><b>Your wallet stays in charge.</b> The session purse holds only what you gave it.
   Your main wallet's keys are never shared, and nothing else in it can be touched.</li>
@@ -672,6 +675,11 @@ that everyone can read before wagering.</p>
 <p>Nothing is lost. Every state that matters lives on the Ledger or is saved in your
 browser before coin moves. Reload, reconnect, and the game picks up where it left off,
 including a half-finished session funding.</p>
+<h3>How do seasons and daily trials work?</h3>
+<p>Each dawn (midnight UTC) the Crown asks one deed; keeping it grows a streak in the
+Codex. Seasons run eight weeks: renown earned inside the window ranks the standings,
+and the highest banners bear season titles when it closes. See
+<a href="#renown-trials">Daily trials and seasons</a>.</p>
 <h3>Something looks exploitable. Should I report it?</h3>
 <p>Please. If you find a way to climb any ladder without paying its intended cost, that
 is a bug, and hearing about it is exactly what the test realm is for.</p>
