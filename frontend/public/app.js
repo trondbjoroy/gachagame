@@ -1576,3 +1576,40 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   render();
 })();
 setInterval(() => refresh().catch(() => {}), 45000);
+
+/* WalletConnect sendTransaction probe (?wctest=1): fires the exact call the
+   upstream bug report covers — htr_sendTransaction over WC, 0.01 HTR to your
+   own address — and shows the wallet's verbatim response. Debug only. */
+if (new URLSearchParams(location.search).has('wctest')) {
+  const b = document.createElement('button');
+  b.className = 'mini-btn';
+  b.textContent = 'TEST WALLET SEND';
+  b.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:60';
+  b.onclick = async () => {
+    const show = (title, msg) => {
+      $('errTitle').textContent = title;
+      $('errMsg').textContent = msg;
+      showStage('stageError');
+      $('overlay').hidden = false;
+    };
+    if (S.wallet?.mode !== 'wc') {
+      show('Connect first', 'Pair via WalletConnect, then tap TEST WALLET SEND again.');
+      return;
+    }
+    b.disabled = true;
+    b.textContent = 'AWAITING WALLET…';
+    try {
+      const r = await S.wallet.sendHtr(S.addr, 1);
+      track('wctest_send', { ok: true });
+      show('Send succeeded ✓', 'The wallet built and pushed the transfer. '
+        + 'Hash: ' + ((r && r.hash) || 'unknown'));
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      track('wctest_send', { ok: false, reason: msg.slice(0, 300) });
+      show('Send failed', msg);
+    }
+    b.disabled = false;
+    b.textContent = 'TEST WALLET SEND';
+  };
+  document.body.appendChild(b);
+}
