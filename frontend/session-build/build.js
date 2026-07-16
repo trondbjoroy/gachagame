@@ -1,13 +1,11 @@
 const { build } = require('esbuild');
 const { polyfillNode } = require('esbuild-plugin-polyfill-node');
 
-build({
-  entryPoints: ['entry.js'],
+const common = {
   bundle: true,
   minify: true,
   format: 'iife',
   platform: 'browser',
-  outfile: '../public/session-lib.js',
   define: {
     'process.env.NODE_ENV': '"production"',
     'global': 'globalThis',
@@ -25,4 +23,11 @@ build({
     }),
   ],
   logLevel: 'warning',
-}).then(() => console.log('session-lib.js built')).catch(e => { console.error(e.message || e); process.exit(1); });
+};
+
+Promise.all([
+  build({ ...common, entryPoints: ['entry.js'], outfile: '../public/session-lib.js' })
+    .then(() => console.log('session-lib.js built')),
+  build({ ...common, entryPoints: ['wc-entry.js'], outfile: '../public/wc-lib.js' })
+    .then(() => console.log('wc-lib.js built')),
+]).catch(e => { console.error(e.message || e); process.exit(1); });

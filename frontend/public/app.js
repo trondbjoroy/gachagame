@@ -1804,6 +1804,8 @@ async function disconnectWallet() {
 $('walletBtn').onclick = () => {
   $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${who(S.addr)}` : '';
   syncSessionBox();
+  // warm the WalletConnect bundle while the player reads the options
+  if (!S.addr) window.WALLETS.prefetchWc();
   showStage('stageConnect');
 };
 $('disconnectBtn').onclick = disconnectWallet;

@@ -137,6 +137,25 @@ class SnapWallet {
 
 /* ---------------- WalletConnect / Reown ---------------- */
 
+let wcLibLoading = null;
+function loadWcLib() {
+  if (window.WcSignClient) return Promise.resolve();
+  if (!wcLibLoading) {
+    wcLibLoading = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'wc-lib.js?v=1';
+      el.onload = resolve;
+      el.onerror = () => {
+        wcLibLoading = null; // a later attempt may retry the load
+        el.remove();
+        reject(new Error('failed to load the WalletConnect client'));
+      };
+      document.head.appendChild(el);
+    });
+  }
+  return wcLibLoading;
+}
+
 class WcWallet {
   constructor() {
     this.mode = 'wc'; this.label = 'WalletConnect (Hathor wallet)';
@@ -149,13 +168,13 @@ class WcWallet {
     if (!window.GAME.wcProjectId) {
       throw new Error('WalletConnect needs a (free) Reown Cloud project id; set wcProjectId in config.js');
     }
-    // module imports can fail transiently on mobile (memory pressure,
-    // flaky radio): one retry turns most of those into non-events
+    // self-hosted bundle first ("Importing a module script failed" on phones
+    // was the on-demand esm.sh build timing out); the CDN is a last resort
     let SignClient;
     try {
-      ({ SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle'));
+      await loadWcLib();
+      SignClient = window.WcSignClient;
     } catch {
-      await new Promise(r => setTimeout(r, 1500));
       ({ SignClient } = await import('https://esm.sh/@walletconnect/sign-client@2.17.2?bundle'));
     }
     this.client = await SignClient.init({
@@ -348,4 +367,5 @@ window.WALLETS = {
   SnapWallet, WcWallet, SessionWallet,
   addrHtr: a => addrBalance(a, '00'),
   prefetchSession: () => loadSessionLib().catch(() => {}),
+  prefetchWc: () => loadWcLib().catch(() => {}),
 };
