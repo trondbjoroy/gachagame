@@ -501,12 +501,7 @@ function render() {
     ['Your trials won', me(S.wins)],
     ['Your renown', me(S.renown + (S.vigil > 1 ? ` · vigil ${S.vigil}d` : ''))],
     ['Your standing', me(standingLabel(deedsDone))],
-    ['Your banner name', me(S.names[S.addr]
-      ? `${S.names[S.addr]} <button class="mini-btn alt" id="setNameBtn">CHANGE</button>`
-      : `<small>unclaimed</small> <button class="mini-btn" id="setNameBtn">SET NAME</button>`)],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
-  const nb = $('setNameBtn');
-  if (nb) nb.onclick = openName;
 
   // the Weaver's favor: claimable winnings under the summon button
   const fn = $('favorNote');
@@ -1509,6 +1504,8 @@ function syncSessionBox() {
   $('sessionEndBtn').hidden = !inSession;
   $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
   $('disconnectBtn').hidden = !S.addr || inSession;
+  $('setNameBtn').hidden = !S.addr;
+  $('setNameBtn').textContent = S.addr && S.names[S.addr] ? 'CHANGE BANNER NAME' : 'SET BANNER NAME';
   if (!S.sessionStarting) {
     $('sessionInfo').textContent = inSession
       ? 'Session active: every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
@@ -1810,6 +1807,7 @@ $('walletBtn').onclick = () => {
   showStage('stageConnect');
 };
 $('disconnectBtn').onclick = disconnectWallet;
+$('setNameBtn').onclick = openName;
 $('sessionStartBtn').onclick = startSession;
 $('headerSessionBtn').onclick = () => {
   $('walletBtn').onclick();

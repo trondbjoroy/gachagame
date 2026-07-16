@@ -19,7 +19,7 @@ const TOUR = [
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The realm keeps count: souls summoned everywhere, your gems (in your contract ledger and in hand), trials won, renown with your vigil streak, and your standing. SET NAME seals a banner name on the Ledger that stands in for your address across the realm. Everything here is read from the Great Ledger; nothing is stored on our servers.',
+    body: 'The realm keeps count: souls summoned everywhere, your gems (in your contract ledger and in hand), trials won, renown with your vigil streak, and your standing. Everything here is read from the Great Ledger; nothing is stored on our servers. Fancy a banner name instead of an address? Click your wallet chip and SET BANNER NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',
