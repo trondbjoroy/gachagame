@@ -1150,22 +1150,71 @@ function openDress(uid) {
   const c = S.cards.get(uid);
   if (!c) return;
   const price = 25 * (c.tier + 1);
+  const cur = cosmeticsOf(c);
+  const t = TIERS[c.tier] || TIERS[0];
+  const meta = cardMeta(c.name);
   $('dressTitle').textContent = `Dress ${c.name}`;
+  const art = meta?.art
+    ? `<img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    : `<div class="dress-svg">${artSvg(c.name)}</div>`;
+  const previewCls = (cur.frame ? ` cframe-${cur.frame}` : '') + (cur.tint ? ` ctint-${cur.tint}` : '');
   $('dressBody').innerHTML = `
-    <div class="wait-sub">Frames and tints cost ${fmtGems(price)} in gems
-    (you hold ${fmtGems(S.gemsLedger)}). Epithets cost 3 relic shards
-    (you hold ${S.shards || 0}; delve for more). Adornments travel with the
-    champion, forever.</div>
-    <div class="dress-row"><b>Frame</b> ${FRAMES.map((f, i) =>
-      `<button class="mini-btn alt" data-cos="0:${i + 1}">${f}</button>`).join('')}</div>
-    <div class="dress-row"><b>Tint</b> ${[...Array(6)].map((_, i) =>
-      `<button class="mini-btn alt" data-cos="1:${i + 1}">Tint ${i + 1}</button>`).join('')}</div>
-    <div class="dress-row"><b>Epithet</b> ${EPITHETS.map((e, i) =>
-      `<button class="mini-btn alt" data-cos="2:${i + 1}">${e}</button>`).join('')}</div>`;
+  <div class="dress-wrap">
+    <div class="dress-preview card${previewCls}" id="dressPreview" style="--rc:${t.color}">
+      ${art}
+      <div class="ac-scrim"></div>
+      <div class="dress-cap">
+        <div class="ac-name">${c.name}</div>
+        <div class="ac-epithet" id="dressEp">${cur.epithet ? EPITHETS[cur.epithet - 1] : ''}</div>
+      </div>
+    </div>
+    <div class="dress-controls">
+      <div class="wait-sub">Frames and tints cost <b>${fmtGems(price)}</b> each
+      (you hold ${fmtGems(S.gemsLedger)}). Epithets cost <b>3 relic shards</b>
+      (you hold ${S.shards || 0}; delve for more). Adornments are written on the
+      card and travel with it, forever.</div>
+      <div class="dress-row"><b>Frame</b>
+        ${FRAMES.map((f, i) => `<button class="mini-btn alt dress-btn cframe-${i + 1}${cur.frame === i + 1 ? ' active' : ''}"
+          data-cos="0:${i + 1}" data-prev="frame:${i + 1}">${f}</button>`).join('')}
+        ${cur.frame ? '<button class="ghost-btn" data-cos="0:0">clear</button>' : ''}
+      </div>
+      <div class="dress-row"><b>Tint</b>
+        ${[...Array(6)].map((_, i) => `<button class="mini-btn alt dress-btn tint-btn${cur.tint === i + 1 ? ' active' : ''}"
+          data-cos="1:${i + 1}" data-prev="tint:${i + 1}">${meta?.art
+            ? `<span class="ctint-${i + 1}"><img class="ac-img tint-thumb" src="cards/${slugOf(c.name)}.jpg" alt="Tint ${i + 1}"></span>`
+            : `Tint ${i + 1}`}</button>`).join('')}
+        ${cur.tint ? '<button class="ghost-btn" data-cos="1:0">clear</button>' : ''}
+      </div>
+      <div class="dress-row"><b>Epithet</b>
+        ${EPITHETS.map((e, i) => `<button class="mini-btn alt dress-btn${cur.epithet === i + 1 ? ' active' : ''}"
+          data-cos="2:${i + 1}" data-prev="ep:${i + 1}">${e}</button>`).join('')}
+        ${cur.epithet ? '<button class="ghost-btn" data-cos="2:0">clear</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+  // live preview on hover; the click buys
+  const preview = $('dressPreview');
+  const setPreview = (kind, v) => {
+    if (kind === 'frame') {
+      preview.className = preview.className.replace(/ ?cframe-\d/g, '');
+      if (v) preview.classList.add(`cframe-${v}`);
+    } else if (kind === 'tint') {
+      preview.className = preview.className.replace(/ ?ctint-\d/g, '');
+      if (v) preview.classList.add(`ctint-${v}`);
+    } else {
+      $('dressEp').textContent = v ? EPITHETS[v - 1] : (cur.epithet ? EPITHETS[cur.epithet - 1] : '');
+    }
+  };
+  document.querySelectorAll('[data-prev]').forEach(el => {
+    const [kind, v] = el.dataset.prev.split(':');
+    el.onmouseenter = () => setPreview(kind, Number(v));
+    el.onmouseleave = () => setPreview(kind,
+      kind === 'frame' ? cur.frame : kind === 'tint' ? cur.tint : 0);
+  });
   document.querySelectorAll('[data-cos]').forEach(el => el.onclick = async () => {
     const [slot, value] = el.dataset.cos.split(':').map(Number);
     $('overlay').hidden = true;
-    if (slot < 2 && !(await ensureLedgerGems(price))) {
+    if (slot < 2 && value > 0 && !(await ensureLedgerGems(price))) {
       $('errTitle').textContent = 'Not enough gems';
       $('errMsg').textContent = `This adornment costs ${fmtGems(price)}.`;
       showStage('stageError');
