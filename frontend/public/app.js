@@ -569,7 +569,7 @@ function render() {
     cardBox(c, inSession
       ? '<div class="pending-gems">coming home…</div>'
       : `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
-  $('pendingEmpty').hidden = pend.length > 0;
+  $('pendingWrap').hidden = pend.length === 0;
 
   // champions the retired realm still holds for this player
   const oldHeld = [...S.cards.values()].filter(c => S.addr && c.tier >= 0
