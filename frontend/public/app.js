@@ -376,7 +376,7 @@ function pumpRibbons() {
 
 /* ---------------- stat count-ups ---------------- */
 
-const COUNTED_STATS = ['Souls summoned · realm', 'Your gems', 'Your trials won', 'Your renown'];
+const COUNTED_STATS = ['Your gems', 'Your trials won', 'Your renown'];
 const statPrev = {};
 function animateStatEl(el, key) {
   const text = el.textContent;
@@ -500,13 +500,12 @@ function render() {
   const deedsDone = deeds.filter(d => d.done).length;
   announceNewDeeds(deeds);
   $('statsRow').innerHTML = [
-    ['Souls summoned · realm', S.totalPulls],
     // one number for the player; the ledger/wallet split (real, but bridged
     // automatically on every deed) is managed in The Mines
     ['Your gems', me(fmtGems(S.gemsLedger + S.gemsWallet))],
     ['Your trials won', me(S.wins)],
     ['Your renown', me(S.renown + (S.vigil > 1 ? ` · vigil ${S.vigil}d` : ''))],
-    ['Your standing', me(standingLabel(deedsDone))],
+    ['Your standing', me(`${titleFor(deedsDone)} (${levelFor(deedsDone)})`)],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
   // the Weaver's favor: claimable winnings under the summon button
