@@ -1306,7 +1306,7 @@ async function connectWallet(kind) {
 /* ---------------- misc / boot ---------------- */
 
 function showStage(id) {
-  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper'])
+  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress'])
     $(s).hidden = s !== id;
   $('overlay').hidden = false;
 }
