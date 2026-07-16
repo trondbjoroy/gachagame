@@ -76,7 +76,10 @@ async function loadContract() {
     try {
       const old = await node(`/nano_contract/state?id=${window.GAME.oldNc}&balances[]=__all__`);
       legacyUids = Object.keys(old.balances || {});
-    } catch { /* the legacy realm is optional */ }
+      // minted by the old arena: only IT holds melt authority, so the new
+      // contract cannot fuse them (fusion melts the parents)
+      S.legacy = new Set(legacyUids);
+    } catch { /* the legacy realm is optional; keep the last known set */ }
   }
   const uids = [...new Set([...Object.keys(base.balances), ...legacyUids])]
     .filter(u => u !== HTR && u !== GEMS && u !== window.GAME.oldGems);
@@ -583,11 +586,17 @@ function render() {
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
   const canPayFuse = S.gemsLedger + S.gemsWallet >= fuseFee;
-  $('fuseHint').textContent = !fuseReady ? 'Select two champions of the same station.'
+  // fusion melts the parents, and only the old arena holds melt rights over
+  // the champions it minted: recalled veterans cannot enter the Rite
+  const legacyPick = [...S.selected].some(u => S.legacy?.has(u));
+  $('fuseHint').textContent = legacyPick
+    ? 'A champion of the old realm cannot enter the Rite of Union: its bloodline '
+      + 'is sealed to the old Ledger. It still mines, fights, and trades as ever.'
+    : !fuseReady ? 'Select two champions of the same station.'
     : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
        : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
        : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
-  $('fuseBtn').disabled = !(fuseReady && canPayFuse);
+  $('fuseBtn').disabled = !(fuseReady && canPayFuse) || legacyPick;
 
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
