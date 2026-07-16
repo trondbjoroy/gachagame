@@ -1424,6 +1424,7 @@ function openPick(kind, ref) {
   if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
   $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge: choose your champion & wager' : `Answer challenge #${ref}: choose your champion`;
   $('pickWagerRow').hidden = kind !== 'create';
+  if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
   if (kind === 'accept') {
     const d = S.duels.find(x => x.id === ref);
     $('pickTitle').textContent += ` (wager ${fmtGems(d.wager)})`;
@@ -1449,7 +1450,15 @@ async function submitPick(uid) {
     return;
   }
   if (kind === 'create') {
-    const wager = Math.max(0, Number($('pickWager').value) || 0);
+    const raw = $('pickWager').value.trim();
+    if (raw === '') {
+      $('errTitle').textContent = 'Name your wager';
+      $('errMsg').textContent = 'Enter a wager in GEMS-cents, or 0 for a friendly spar '
+        + 'where no gems change hands.';
+      showStage('stageError');
+      return;
+    }
+    const wager = Math.max(0, Number(raw) || 0);
     if (wager > S.gemsLedger + S.gemsWallet) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtGems(S.gemsLedger + S.gemsWallet)} in total.`; showStage('stageError'); return; }
     if (!(await ensureLedgerGems(wager))) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = 'Could not move enough gems to the ledger.'; showStage('stageError'); return; }
     await doTx('Issuing challenge', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
