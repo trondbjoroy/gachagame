@@ -19,7 +19,11 @@ import urllib.parse
 import urllib.request
 
 NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
-ARENA = os.environ.get("ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
+# v3 arena; renown was migrated 1:1 via adopt_player, so existing baselines
+# stay valid. Player discovery still scans the retired v2.2 realm's history
+# because migration transactions carry only the operator's address.
+ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
+OLD_ARENA = os.environ.get("OLD_ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
 STATE = os.environ.get("SEASON_STATE", "/opt/gacha/season-state.json")
 OUT = os.environ.get("SEASON_OUT", "/opt/gacha/frontend/public/season.json")
 
@@ -47,22 +51,23 @@ def views(calls):
 
 def discover_players():
     addrs = set()
-    after = None
-    for _ in range(200):
-        url = f"{NODE}/nano_contract/history?id={ARENA}&count=50"
-        if after:
-            url += f"&after={after}"
-        h = get(url)
-        hist = h.get("history") or []
-        if not hist:
-            break
-        for tx in hist:
-            a = tx.get("nc_address")
-            if a:
-                addrs.add(a)
-        after = hist[-1].get("hash")
-        if len(hist) < 50:
-            break
+    for nc in (ARENA, OLD_ARENA):
+        after = None
+        for _ in range(200):
+            url = f"{NODE}/nano_contract/history?id={nc}&count=50"
+            if after:
+                url += f"&after={after}"
+            h = get(url)
+            hist = h.get("history") or []
+            if not hist:
+                break
+            for tx in hist:
+                a = tx.get("nc_address")
+                if a:
+                    addrs.add(a)
+            after = hist[-1].get("hash")
+            if len(hist) < 50:
+                break
     return sorted(addrs)
 
 

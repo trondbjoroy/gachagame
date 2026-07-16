@@ -29,12 +29,12 @@ const TOUR = [
   {
     target: '#pane-farm', tab: 'farm',
     title: 'The Mines',
-    body: 'Send champions to toil and they sweat gems by the minute, faster for higher stations. Gems pay for fusion and wagers. While a champion toils you may also TEMPER it: pay gems to raise one chosen aspect, at a price that grows each time.',
+    body: 'Send champions to toil and they sweat gems by the minute, faster for higher stations. Gems pay for fusion and wagers. While a champion toils you may TEMPER it (pay gems to raise one aspect), send it DELVING (an eight-hour gamble for gems or relic shards), or DRESS it in frames, tints, and epithets that travel with the card forever.',
   },
   {
     target: '#pane-arena', tab: 'arena',
     title: 'The Pit',
-    body: 'Trial by combat, best of three rounds: valor against valor, bulwark against bulwark, guile against guile. Wager gems; the winner takes the pot minus the Crown’s 5% tithe. Champions are never lost in a duel, and a wagered win against an equal or stronger foe hardens your champion by +1.',
+    body: 'Trial by combat, best of three rounds: valor against valor, bulwark against bulwark, guile against guile. Wager gems; the winner takes the pot minus the Crown’s 5% tithe. Champions are never lost, and every settled fight earns them experience. Below the duels waits THE GAUNTLET: ten writs posted by the Crown, fought solo by your staked champions, three fights per champion per day.',
   },
   {
     target: '#pane-market', tab: 'market',

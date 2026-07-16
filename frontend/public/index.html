@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=24" />
+<link rel="stylesheet" href="style.css?b=25" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -94,6 +94,12 @@
     <h2 class="mt">Newly bound, awaiting your claim</h2>
     <div class="cards" id="pendingCards"></div>
     <div class="empty" id="pendingEmpty" hidden>No champion waits.</div>
+    <div id="oldRealmWrap" hidden>
+      <h2 class="mt">Left in the old realm</h2>
+      <div class="lore"><p>The retired realm still holds these champions of yours.
+      Recall them and they fight on in the new one, standings intact.</p></div>
+      <div class="cards" id="oldRealmCards"></div>
+    </div>
   </section>
 
   <section class="shelf tabpane" id="pane-farm" hidden>
@@ -110,6 +116,9 @@
     </div>
     <div class="duels" id="duelList"></div>
     <div class="empty" id="duelEmpty" hidden>The Pit sands are unbloodied. Issue a challenge.</div>
+    <h2 class="mt">The Gauntlet</h2>
+    <div class="lore"><p id="gauntletIntro"></p></div>
+    <div class="duels" id="writList"></div>
   </section>
 
   <section class="shelf tabpane" id="pane-market" hidden>
@@ -286,12 +295,25 @@
         reloads. One caution: the session key lives in this browser's storage, so
         sweep before clearing site data or switching devices; unswept holdings
         stay locked to that browser.</p></div>
+      <div class="qa"><h4>What is the Gauntlet?</h4>
+        <p>Ten writs posted by the Crown, each a boss with a public aspect spread,
+        fought best-of-three by your <b>staked</b> champions: three fights per
+        champion per day, a small gems entry, bounty and renown for victories.
+        Fell a writ at Grim to face its Dire and Black; fell each writ to reach
+        the next. Every settled fight also earns the champion experience, and
+        levels grant capped aspect gains.</p></div>
+      <div class="qa"><h4>What are relic shards and adornments?</h4>
+        <p>Shards come only from <b>delves</b>: send a staked champion on an
+        eight-hour gamble instead of steady mining. Shards buy epithets; gems buy
+        frames and tints. Adornments are written on the card, travel with it to
+        new owners, and never grant power.</p></div>
       <div class="qa"><h4>What are seasons and daily trials?</h4>
-        <p>Each dawn (midnight UTC) the Crown asks one deed; keep it and your
-        streak grows in the Codex. The realm also plays in eight-week
-        <b>seasons</b>: renown earned inside the season ranks everyone in the
-        standings, and the highest banners bear season titles when it closes.
-        Lifetime renown stays on your ledger forever.</p></div>
+        <p>Each dawn (midnight UTC) the Crown asks one deed; the first matching
+        act is paid on the Ledger itself with bonus renown and a small gems
+        bounty, and your streak grows in the Codex. The realm also plays in
+        eight-week <b>seasons</b>: renown earned inside the season ranks everyone
+        in the standings, and the highest banners bear season titles when it
+        closes. Lifetime renown stays on your ledger forever.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
@@ -373,6 +395,11 @@
       <button class="mini-btn alt" id="disconnectBtn" hidden>DISCONNECT</button>
       <button class="ghost-btn" id="connectCloseBtn">close</button>
     </div>
+    <div class="stage" id="stageDress" hidden>
+      <div class="wait-title" id="dressTitle">Dress a champion</div>
+      <div id="dressBody"></div>
+      <button class="ghost-btn" id="dressCloseBtn">close</button>
+    </div>
     <div class="stage" id="stagePick" hidden>
       <div class="wait-title" id="pickTitle">Choose a card</div>
       <div class="cards pick-cards" id="pickCards"></div>
@@ -384,15 +411,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 24;</script>
-<script src="analytics.js?b=24"></script>
-<script src="config.js?b=24"></script>
-<script src="art.js?b=24"></script>
-<script src="catalog.js?b=24"></script>
-<script src="wallets.js?b=24"></script>
-<script src="app.js?b=24"></script>
-<script src="progress.js?b=24"></script>
-<script src="sounds.js?b=24"></script>
-<script src="tutorial.js?b=24"></script>
+<script>window.BUILD = 25;</script>
+<script src="analytics.js?b=25"></script>
+<script src="config.js?b=25"></script>
+<script src="art.js?b=25"></script>
+<script src="catalog.js?b=25"></script>
+<script src="wallets.js?b=25"></script>
+<script src="app.js?b=25"></script>
+<script src="progress.js?b=25"></script>
+<script src="sounds.js?b=25"></script>
+<script src="tutorial.js?b=25"></script>
 </body>
 </html>

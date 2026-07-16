@@ -26,7 +26,9 @@ import urllib.parse
 import urllib.request
 
 NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
-ARENA = os.environ.get("ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
+# v3 arena (renown migrated 1:1; discovery also scans the retired realm)
+ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
+OLD_ARENA = os.environ.get("OLD_ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
 WALLET = os.environ.get("WALLET_URL", "http://localhost:8000")
 WALLET_ID = os.environ.get("WALLET_ID", "operator")
 STATE = os.environ.get("RAFFLE_STATE", "/opt/gacha/raffle-state.json")
@@ -51,11 +53,18 @@ def views(calls):
 
 
 def discover_players():
-    """Every address that ever called the arena, from public history."""
+    """Every address that ever called either arena, from public history."""
+    addrs = set()
+    for nc in (ARENA, OLD_ARENA):
+        addrs |= _discover_one(nc)
+    return sorted(addrs)
+
+
+def _discover_one(nc):
     addrs = set()
     after = None
     for _ in range(200):  # generous page cap
-        url = f"{NODE}/nano_contract/history?id={ARENA}&count=50"
+        url = f"{NODE}/nano_contract/history?id={nc}&count=50"
         if after:
             url += f"&after={after}"
         h = get(url)
@@ -73,7 +82,7 @@ def discover_players():
         after = hist[-1].get("hash")
         if len(hist) < 50:
             break
-    return sorted(addrs)
+    return addrs
 
 
 def snapshot(players):

@@ -630,6 +630,29 @@ body.land-flash::before {
   .ribbon { transition: opacity .2s; }
 }
 
+/* the Gauntlet */
+.writ-row .writ-tiers { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.writ-done { color: var(--acid); font-size: 12px; letter-spacing: .08em; font-weight: 700; }
+.writ-locked { color: var(--ink-dim); font-size: 12px; letter-spacing: .08em; }
+
+/* cosmetics: frames, tints, epithets — identity, never power */
+.card.cframe-1 { box-shadow: 0 0 0 2px rgba(212, 168, 67, .55), 0 0 18px rgba(212, 168, 67, .25); }
+.card.cframe-2 { box-shadow: 0 0 0 2px rgba(200, 208, 220, .6), 0 0 14px rgba(200, 208, 220, .2); }
+.card.cframe-3 { box-shadow: 0 0 0 3px rgba(230, 190, 80, .8), 0 0 22px rgba(230, 190, 80, .35); }
+.card.cframe-4 { box-shadow: 0 0 0 2px rgba(120, 90, 200, .7), 0 0 20px rgba(120, 90, 200, .35); }
+.ctint-1 .ac-img { filter: hue-rotate(20deg) saturate(1.1); }
+.ctint-2 .ac-img { filter: hue-rotate(-25deg) saturate(1.15); }
+.ctint-3 .ac-img { filter: hue-rotate(160deg) saturate(.9); }
+.ctint-4 .ac-img { filter: sepia(.45) saturate(1.2); }
+.ctint-5 .ac-img { filter: grayscale(.8) contrast(1.1); }
+.ctint-6 .ac-img { filter: hue-rotate(90deg) saturate(1.2) brightness(1.05); }
+.ac-epithet, .card .ac-epithet {
+  font-style: italic; font-size: 11.5px; color: var(--acid);
+  letter-spacing: .04em; margin-bottom: 2px;
+}
+.dress-row { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dress-row b { width: 68px; font-size: 12px; letter-spacing: .1em; color: var(--ink-muted); }
+
 /* progression: daily trial, muster roll, season */
 .trial-note { color: var(--acid); font-size: 13px; }
 .trial-done { color: var(--acid-hot); font-weight: 700; letter-spacing: .08em; }

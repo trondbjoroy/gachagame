@@ -48,12 +48,35 @@ async function batchCalls(cs) {
 }
 
 async function loadContract() {
+  const now = Math.floor(Date.now() / 1000);
   const base = await ncState('balances[]=__all__&fields[]=total_pulls' + '&' +
-    callQs(['get_pull_price()', 'get_duel_count()']));
+    callQs(['get_pull_price()', 'get_duel_count()', 'get_writ_count()',
+            `get_trial_today(${now})`, 'get_delve_seconds()']));
   S.totalPulls = base.fields.total_pulls.value;
   S.pullPrice = base.calls['get_pull_price()'].value;
   const duelCount = base.calls['get_duel_count()'].value;
-  const uids = Object.keys(base.balances).filter(u => u !== HTR && u !== GEMS);
+  const writCount = base.calls['get_writ_count()']?.value || 0;
+  S.trialToday = base.calls[`get_trial_today(${now})`]?.value ?? null;
+  S.delveSeconds = base.calls['get_delve_seconds()']?.value || 28800;
+  // adopted legacy cards live in wallets and never touched this contract:
+  // their uids come from the old arena's token list (metadata is adopted here)
+  let legacyUids = [];
+  if (window.GAME.oldNc) {
+    try {
+      const old = await node(`/nano_contract/state?id=${window.GAME.oldNc}&balances[]=__all__`);
+      legacyUids = Object.keys(old.balances || {});
+    } catch { /* the legacy realm is optional */ }
+  }
+  const uids = [...new Set([...Object.keys(base.balances), ...legacyUids])]
+    .filter(u => u !== HTR && u !== GEMS && u !== window.GAME.oldGems);
+
+  if (writCount && (!S.writs || S.writs.length !== writCount)) {
+    const wq = await batchCalls([...Array(writCount).keys()].map(i => `get_writ(${i})`));
+    S.writs = [...Array(writCount).keys()].map(i => {
+      const [name, v, b, g] = (wq[`get_writ(${i})`] || '|||').split('|');
+      return { id: i, name, valor: +v, bulwark: +b, guile: +g };
+    });
+  }
 
   // static card info is immutable — fetch once
   const fresh = uids.filter(u => !S.cards.has(u));
@@ -71,30 +94,57 @@ async function loadContract() {
   const live = uids.filter(u => (S.cards.get(u)?.tier ?? -1) >= 0);
   const dyn = await batchCalls(live.flatMap(u =>
     [`get_pending_owner("${u}")`, `get_staker("${u}")`,
-     `get_card_aspects("${u}")`, `get_card_wins("${u}")`]));
-  const now = Math.floor(Date.now() / 1000);
+     `get_card_aspects("${u}")`, `get_card_wins("${u}")`, `get_card_cosmetics("${u}")`]));
   for (const u of live) {
     const c = S.cards.get(u);
     c.pending = dyn[`get_pending_owner("${u}")`] ?? null;
     c.staker = dyn[`get_staker("${u}")`] ?? null;
     const asp = dyn[`get_card_aspects("${u}")`] || '';
-    c.aspects = asp ? asp.split('|').map(Number) : null;  // [valor,bulwark,guile,tempers,hardened]
+    // [valor, bulwark, guile, tempers, hardened, xp, level, vet]
+    c.aspects = asp ? asp.split('|').map(Number) : null;
+    c.level = c.aspects?.[6] || 0;
     c.wins = dyn[`get_card_wins("${u}")`] || 0;
+    c.cosmetics = dyn[`get_card_cosmetics("${u}")`] || 0;
   }
+  // cards the retired realm still custodies (staked or pending there):
+  // owners recall them against the old contract, then play on here
+  if (window.GAME.oldNc && live.length) {
+    const oq = [];
+    for (const u of live) oq.push(`get_staker("${u}")`, `get_pending_owner("${u}")`);
+    const od = {};
+    for (let i = 0; i < oq.length; i += 30) {
+      const d = await node(`/nano_contract/state?id=${window.GAME.oldNc}&` + callQs(oq.slice(i, i + 30)));
+      for (const [k, v] of Object.entries(d.calls || {})) od[k] = v.value;
+    }
+    for (const u of live) {
+      const c = S.cards.get(u);
+      c.oldStaker = od[`get_staker("${u}")`] ?? null;
+      c.oldPending = od[`get_pending_owner("${u}")`] ?? null;
+    }
+  }
+
   const stakedMine = live.filter(u => S.cards.get(u).staker === S.addr);
   if (stakedMine.length) {
     const pg = await batchCalls(stakedMine.flatMap(u =>
-      [`get_pending_gems("${u}", ${now})`, `get_temper_cost("${u}")`]));
+      [`get_pending_gems("${u}", ${now})`, `get_temper_cost("${u}")`,
+       `get_delve_since("${u}")`, `get_writ_attempts("${u}", ${now})`]));
     for (const u of stakedMine) {
-      S.cards.get(u).pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
-      S.cards.get(u).temperCost = pg[`get_temper_cost("${u}")`] || 0;
+      const c = S.cards.get(u);
+      c.pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
+      c.temperCost = pg[`get_temper_cost("${u}")`] || 0;
+      c.delveSince = pg[`get_delve_since("${u}")`] || 0;
+      c.writFights = pg[`get_writ_attempts("${u}", ${now})`] || 0;
     }
   }
 
   if (S.addr) {
     const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
-      'get_favor_pool()']);
+      'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,
+      `get_trial_done("${S.addr}", ${now})`]);
+    S.shards = me[`get_shards("${S.addr}")`] || 0;
+    S.cleared = me[`get_gauntlet_cleared("${S.addr}")`] || 0;
+    S.trialDoneChain = me[`get_trial_done("${S.addr}", ${now})`] === true;
     S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
     const winsNow = me[`get_wins("${S.addr}")`] || 0;
     // covers wins as challenger too (someone answered while we were away)
@@ -330,6 +380,17 @@ function animateStatEl(el, key) {
   setTimeout(() => { done = true; el.textContent = text; }, dur + 120);
 }
 
+const FRAMES = ['Ember', 'Silver', 'Gold', 'Void'];
+const EPITHETS = ['the Unbowed', 'Thrice-Forged', 'of the Deep Seam', 'the Oathkeeper',
+  'Writ-Feller', 'the Ember-Marked', 'of the Long Vigil', 'the Pale', 'Stonefast',
+  'the Whisperblade', 'Crownless', 'the Last Banner'];
+const WRIT_TIERS = ['Grim', 'Dire', 'Black'];
+
+function cosmeticsOf(c) {
+  const cos = c.cosmetics || 0;
+  return { frame: cos & 0xFF, tint: (cos >> 8) & 0xFF, epithet: (cos >> 16) & 0xFF };
+}
+
 function aspectsRow(c) {
   if (!c.aspects) return '';
   const [v, b, g, t, h] = c.aspects;
@@ -339,19 +400,25 @@ function aspectsRow(c) {
 }
 
 function stationLine(c, t, meta) {
-  return `${t.name}${meta ? ' · ' + meta.type : ''}${c.wins > 0 ? ` · ★ ${c.wins}` : ''}`;
+  return `${t.name}${meta ? ' · ' + meta.type : ''}`
+    + `${c.level > 0 ? ` · Lv ${c.level}` : ''}${c.wins > 0 ? ` · ★ ${c.wins}` : ''}`;
 }
 
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
   const meta = cardMeta(c.name);
+  const cos = cosmeticsOf(c);
+  const cosCls = (cos.frame ? ` cframe-${cos.frame}` : '') + (cos.tint ? ` ctint-${cos.tint}` : '');
+  const epLine = cos.epithet && EPITHETS[cos.epithet - 1]
+    ? `<div class="ac-epithet">${EPITHETS[cos.epithet - 1]}</div>` : '';
   if (meta?.art) {
-    return `<div class="card art-card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+    return `<div class="card art-card${sel}${cosCls}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
       <img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">
       <div class="ac-scrim"></div>
       <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
       <div class="ac-bottom">
+        ${epLine}
         <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
         ${aspectsRow(c)}
         <div class="ac-flavor">${meta.flavor}</div>
@@ -359,9 +426,10 @@ function cardBox(c, buttonsHtml, selectable) {
       </div>
     </div>`;
   }
-  return `<div class="card${sel}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+  return `<div class="card${sel}${cosCls}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
     <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
+    ${epLine}
     <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
     ${aspectsRow(c)}
     ${buttonsHtml || ''}
@@ -479,6 +547,15 @@ function render() {
       : `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
   $('pendingEmpty').hidden = pend.length > 0;
 
+  // champions the retired realm still holds for this player
+  const oldHeld = [...S.cards.values()].filter(c => S.addr && c.tier >= 0
+    && (c.oldStaker === S.addr || c.oldPending === S.addr));
+  $('oldRealmWrap').hidden = oldHeld.length === 0;
+  $('oldRealmCards').innerHTML = oldHeld.map(c => cardBox(c,
+    c.oldStaker === S.addr
+      ? `<button class="mini-btn" data-oldunstake="${c.uid}">RECALL</button>`
+      : `<button class="mini-btn" data-oldclaim="${c.uid}">CLAIM</button>`)).join('');
+
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
   const fuseReady = selCount === 2 && sameTierSelected();
@@ -499,14 +576,27 @@ function render() {
         <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 ? 'disabled' : ''}>WITHDRAW ALL</button>
         <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
       </div></div>
-    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 0.01 · R 0.03 · E 0.10 · L 0.40</small></div></div>`;
-  $('stakedCards').innerHTML = staked.map(c => cardBox(c, `
-    <div class="pending-gems">⛏️ ${fmtGems(c.pendingGems)} pending</div>
+    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 0.01 · R 0.03 · E 0.10 · L 0.40</small></div></div>
+    <div class="stat"><div class="k">Relic shards</div><div class="v">${S.shards || 0} <small>· from delves · dress your champions</small></div></div>`;
+  $('stakedCards').innerHTML = staked.map(c => {
+    const delving = (c.delveSince || 0) > 0;
+    const doneAt = ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000;
+    const ready = delving && Date.now() >= doneAt;
+    const mins = Math.max(0, Math.ceil((doneAt - Date.now()) / 60000));
+    return cardBox(c, `
+    <div class="pending-gems">${delving
+      ? (ready ? '🕯️ the delve is done' : `🕯️ delving · ${Math.floor(mins / 60)}h ${mins % 60}m left`)
+      : `⛏️ ${fmtGems(c.pendingGems)} pending`}</div>
     <div class="row-btns">
-      <button class="mini-btn" data-claimgems="${c.uid}" ${c.pendingGems < 1 ? 'disabled' : ''}>CLAIM</button>
+      ${delving
+        ? (ready ? `<button class="mini-btn" data-claimdelve="${c.uid}">CLAIM DELVE</button>` : '')
+        : `<button class="mini-btn" data-claimgems="${c.uid}" ${c.pendingGems < 1 ? 'disabled' : ''}>CLAIM</button>
       <button class="mini-btn alt" data-unstake="${c.uid}">UNSTAKE</button>
       ${c.temperCost > 0 ? `<button class="mini-btn alt" data-temper="${c.uid}">TEMPER</button>` : ''}
-    </div>`)).join('');
+      <button class="mini-btn alt" data-delve="${c.uid}">DELVE</button>
+      <button class="mini-btn alt" data-dress="${c.uid}">DRESS</button>`}
+    </div>`);
+  }).join('');
   $('stakedEmpty').hidden = staked.length > 0;
 
   // arena: spectators see only open challenges; settled history needs a sworn wallet
@@ -536,6 +626,34 @@ function render() {
     </div>`;
   }).join('');
   $('duelEmpty').hidden = duelsShown.length > 0;
+
+  // the Gauntlet: writs of the Sundering, fought from the Mines
+  const cleared = S.cleared || 0;
+  $('gauntletIntro').textContent = S.addr
+    ? 'The Crown posts writs against the horrors of the Sundering. Champions march '
+      + 'straight from the Mines: three fights per champion per day, a gems entry, '
+      + 'bounty and renown for the victor. Fell a writ at Grim to face its Dire; '
+      + 'fell the writ before to reach the next.'
+    : 'Swear a wallet to your cause to march on the writs.';
+  $('writList').innerHTML = (S.writs || []).map(w => {
+    const writOpen = w.id === 0 || !!(cleared & (1 << ((w.id - 1) * 3)));
+    const gates = [true,
+      !!(cleared & (1 << (w.id * 3))),
+      !!(cleared & (1 << (w.id * 3 + 1)))];
+    const btns = [0, 1, 2].map(t => {
+      const done = !!(cleared & (1 << (w.id * 3 + t)));
+      if (done) return `<span class="writ-done">${WRIT_TIERS[t]} ✓</span>`;
+      return writOpen && gates[t] && S.addr
+        ? `<button class="mini-btn alt" data-writ="${w.id}:${t}">${WRIT_TIERS[t]}</button>`
+        : `<span class="writ-locked">${WRIT_TIERS[t]} 🔒</span>`;
+    }).join('');
+    return `<div class="duel writ-row">
+      <div class="duel-info"><b>${w.name}</b>
+        <div class="duel-meta">⚔ ${w.valor} · 🛡 ${w.bulwark} · 🗡 ${w.guile}
+        <small>at Grim · Dire ×2 · Black ×4</small></div></div>
+      <div class="writ-tiers">${btns}</div>
+    </div>`;
+  }).join('');
 
   if (MKT) {
     $('marketFunds').textContent = `Sale proceeds: ${fmtHtr(S.marketFunds)}`;
@@ -610,6 +728,19 @@ function bindListActions() {
   });
   bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
   bind('[data-temper]', u => openTemper(u));
+  const OLD_REALM = window.GAME.oldNc
+    ? { nc: window.GAME.oldNc, blueprint: window.GAME.oldBlueprint } : null;
+  bind('[data-oldunstake]', u =>
+    doTx('Recalling from the old realm', 'unstake', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
+  bind('[data-oldclaim]', u =>
+    doTx('Claiming from the old realm', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
+  bind('[data-delve]', u => doTx('Sending into the deep', 'begin_delve', [u]));
+  bind('[data-claimdelve]', claimDelve);
+  bind('[data-dress]', openDress);
+  document.querySelectorAll('[data-writ]').forEach(el => el.onclick = () => {
+    const [w, t] = el.dataset.writ.split(':').map(Number);
+    openPick('writ', { writ: w, tier: t });
+  });
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-cancelduel]', id => doTx('Withdrawing challenge', 'cancel_duel', [Number(id)], []));
@@ -976,9 +1107,102 @@ async function fuse() {
   if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
 }
 
+async function fightWrit(uid, writ, tier) {
+  const c = S.cards.get(uid);
+  const entry = Math.max(1, Math.floor(fuseFeeFor(c?.tier ?? 0) / 5));
+  if (!(await ensureLedgerGems(entry))) {
+    $('errTitle').textContent = 'The writ demands an entry';
+    $('errMsg').textContent = `Marching costs ${fmtGems(entry)}. Earn more in the Mines.`;
+    showStage('stageError');
+    $('overlay').hidden = false;
+    return;
+  }
+  const before = S.gemsLedger;
+  const h = await doTx('Marching on the writ', 'fight_writ', [uid, writ, tier]);
+  if (!h) return;
+  const won = S.gemsLedger > before;  // victory pays 4x the entry
+  const w = S.writs[writ] || { name: 'the writ' };
+  $('duelResult').innerHTML = won
+    ? `<div class="duel-banner win">⚔️ THE WRIT IS FELLED</div>
+       <div class="wait-sub">${w.name} (${WRIT_TIERS[tier]}) falls. The bounty and the renown are yours.</div>`
+    : `<div class="duel-banner lose">💀 THE WRIT STANDS</div>
+       <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`;
+  window.sfx?.('clash');
+  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+  showStage('stageDuel');
+  $('overlay').hidden = false;
+}
+
+async function claimDelve(uid) {
+  const g0 = S.gemsLedger;
+  const s0 = S.shards || 0;
+  const h = await doTx('Returning from the delve', 'claim_delve', [uid]);
+  if (!h) return;
+  const dg = S.gemsLedger - g0;
+  const ds = (S.shards || 0) - s0;
+  if (ds > 0 && dg > 0) ribbon(`An ancient relic! +${ds} shards and ${fmtGems(dg)}`, 'level', 'favor');
+  else if (ds > 0) ribbon(`The delve found relic shards: +${ds}`, 'level', 'favor');
+  else if (dg > 0) ribbon(`The delve struck a seam: +${fmtGems(dg)}`, 'level', 'coin');
+  else ribbon('The delve found only dust', '', 'lose');
+}
+
+function openDress(uid) {
+  const c = S.cards.get(uid);
+  if (!c) return;
+  const price = 25 * (c.tier + 1);
+  $('dressTitle').textContent = `Dress ${c.name}`;
+  $('dressBody').innerHTML = `
+    <div class="wait-sub">Frames and tints cost ${fmtGems(price)} in gems
+    (you hold ${fmtGems(S.gemsLedger)}). Epithets cost 3 relic shards
+    (you hold ${S.shards || 0}; delve for more). Adornments travel with the
+    champion, forever.</div>
+    <div class="dress-row"><b>Frame</b> ${FRAMES.map((f, i) =>
+      `<button class="mini-btn alt" data-cos="0:${i + 1}">${f}</button>`).join('')}</div>
+    <div class="dress-row"><b>Tint</b> ${[...Array(6)].map((_, i) =>
+      `<button class="mini-btn alt" data-cos="1:${i + 1}">Tint ${i + 1}</button>`).join('')}</div>
+    <div class="dress-row"><b>Epithet</b> ${EPITHETS.map((e, i) =>
+      `<button class="mini-btn alt" data-cos="2:${i + 1}">${e}</button>`).join('')}</div>`;
+  document.querySelectorAll('[data-cos]').forEach(el => el.onclick = async () => {
+    const [slot, value] = el.dataset.cos.split(':').map(Number);
+    $('overlay').hidden = true;
+    if (slot < 2 && !(await ensureLedgerGems(price))) {
+      $('errTitle').textContent = 'Not enough gems';
+      $('errMsg').textContent = `This adornment costs ${fmtGems(price)}.`;
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    await doTx('Dressing the champion', 'buy_cosmetic', [uid, slot, value]);
+  });
+  showStage('stageDress');
+  $('overlay').hidden = false;
+}
+
 let pickCtx = null;
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
+  if (kind === 'writ') {
+    const marchers = [...S.cards.values()].filter(c =>
+      c.staker === S.addr && !(c.delveSince > 0) && (c.writFights || 0) < 3);
+    if (!marchers.length) {
+      $('errTitle').textContent = 'No champion can march';
+      $('errMsg').textContent = 'Writs are fought from the Mines. Stake a champion '
+        + '(not delving, and under three fights today) and march again.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    const w = S.writs[ref.writ];
+    $('pickTitle').textContent = `March on ${w.name} (${WRIT_TIERS[ref.tier]}): choose a champion from the Mines`;
+    $('pickWagerRow').hidden = true;
+    $('pickCards').innerHTML = marchers.map(c => cardBox(c,
+      `<div class="duel-meta">${3 - (c.writFights || 0)} fight${3 - (c.writFights || 0) === 1 ? '' : 's'} left today</div>
+       <button class="mini-btn" data-pick="${c.uid}">MARCH</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
   if (kind === 'want') {
     const others = [...S.cards.values()].filter(c => c.tier >= 0 && !c.mine);
     if (!others.length) {
@@ -1013,6 +1237,10 @@ function openPick(kind, ref) {
 async function submitPick(uid) {
   const { kind, ref } = pickCtx;
   $('overlay').hidden = true;
+  if (kind === 'writ') {
+    await fightWrit(uid, ref.writ, ref.tier);
+    return;
+  }
   if (kind === 'want') {
     await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT });
     return;
@@ -1391,7 +1619,7 @@ $('headerSessionBtn').onclick = () => {
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
-for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel'])
+for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>

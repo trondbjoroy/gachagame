@@ -6,6 +6,10 @@
   if (!window.CATALOG) return;
 
   /* ---------------- daily trials ---------------- */
+  // order and rotation MUST match the v3 contract: kinds 0..7 are
+  // pull, stake, duel win, fuse, temper, claim gems, recall 8h+, writ won,
+  // and the day's trial is ((day * 5 + 2) % 8). The contract pays the
+  // bonus (renown + gems) on the first matching act each UTC day.
   const TRIALS = [
     { id: 'pull', text: 'Summon a champion at the brazier' },
     { id: 'stake', text: 'Send a champion down the Mines' },
@@ -14,21 +18,32 @@
     { id: 'temper', text: 'Temper a champion in the Mines' },
     { id: 'claim_gems', text: 'Claim mined gems from the deep' },
     { id: 'recall8', text: 'Recall a miner after 8+ hours of toil' },
-    { id: 'bazaar', text: 'Strike a deal in the Bazaar (list, buy, or trade)' },
+    { id: 'writ_win', text: 'Fell a writ in the Gauntlet' },
   ];
   const METHOD_KIND = {
     pull: 'pull', stake: 'stake', fuse: 'fuse', temper: 'temper',
     claim_gems: 'claim_gems',
-    list_card: 'bazaar', buy: 'bazaar', offer_swap: 'bazaar', accept_swap: 'bazaar',
   };
   const dayNum = () => Math.floor(Date.now() / 86400000);
-  // fixed permutation so consecutive days differ in kind
   const todaysTrial = () => TRIALS[(dayNum() * 5 + 2) % TRIALS.length];
   const tKey = () => 'emberfall_trials_' + (S.addr || '');
   function tState() {
     try { return JSON.parse(localStorage.getItem(tKey())) || {}; } catch { return {}; }
   }
-  const trialDone = () => !!((tState().days || {})[dayNum()]);
+  // the chain is the source of truth once connected; localStorage keeps streaks
+  const trialDone = () => !!((tState().days || {})[dayNum()]) || S.trialDoneChain === true;
+
+  function markDoneLocally() {
+    const st = tState();
+    const d = dayNum();
+    st.days = st.days || {};
+    if (st.days[d]) return false;
+    st.days[d] = true;
+    st.streak = st.days[d - 1] ? (st.streak || 0) + 1 : 1;
+    st.best = Math.max(st.best || 0, st.streak);
+    localStorage.setItem(tKey(), JSON.stringify(st));
+    return true;
+  }
 
   window.trialEvent = function (kindOrMethod, data) {
     try {
@@ -37,21 +52,22 @@
       const trial = todaysTrial();
       if (trial.id !== kind) return;
       if (kind === 'recall8' && !(data && data.hours >= 8)) return;
-      const st = tState();
-      const d = dayNum();
-      st.days = st.days || {};
-      if (st.days[d]) return;
-      st.days[d] = true;
-      st.streak = st.days[d - 1] ? (st.streak || 0) + 1 : 1;
-      st.best = Math.max(st.best || 0, st.streak);
-      localStorage.setItem(tKey(), JSON.stringify(st));
-      ribbon('Trial kept: ' + trial.text, 'level', 'deed');
-      track('trial_complete', { trial: trial.id, streak: st.streak });
+      if (!markDoneLocally()) return;
+      ribbon('Trial kept: ' + trial.text + ' (the Crown pays a bounty)', 'level', 'deed');
+      track('trial_complete', { trial: trial.id, streak: tState().streak });
       renderProgress();
     } catch { /* progression must never break the game */ }
   };
 
   function renderTrial() {
+    // the contract settled a trial we didn't catch locally (e.g. a duel or
+    // writ won elsewhere): sync the streak and celebrate
+    try {
+      if (S.addr && S.trialDoneChain === true && markDoneLocally()) {
+        ribbon('Trial kept: ' + todaysTrial().text + ' (the Crown pays a bounty)', 'level', 'deed');
+        track('trial_complete', { trial: todaysTrial().id, streak: tState().streak });
+      }
+    } catch { /* progression must never break the game */ }
     const t = todaysTrial();
     const done = S.addr && trialDone();
     const line = $('trialLine');

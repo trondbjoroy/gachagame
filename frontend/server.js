@@ -20,9 +20,9 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-const NC = '00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258';
+const NC = '0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587';
 const MKT_NC = process.env.MARKET_NC || '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b';
-const GEMS = 'd99c0aae27eae400cd7eac85eed44064dfedafb47800a481ce90c3c01b0dbd15';
+const GEMS = 'e05b7b0c7651fabf0424f229abede02fc7d63761a3c48ed2034c557678fd1ef3';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_GEMS = 100_000;   // gems-cents per single ledger move
 const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
@@ -105,6 +105,10 @@ const METHODS = {
   cancel_duel:   { actions: [],                args: [isSmallInt] },
   temper:        { actions: [],                args: [isHex64, isSmallInt] },
   claim_favor:   { actions: [htrWd],           args: [] },
+  fight_writ:    { actions: [],                args: [isHex64, isSmallInt, isSmallInt] },
+  begin_delve:   { actions: [],                args: [isHex64] },
+  claim_delve:   { actions: [],                args: [isHex64] },
+  buy_cosmetic:  { actions: [],                args: [isHex64, isSmallInt, isSmallInt] },
 };
 
 function validExecute(body) {
