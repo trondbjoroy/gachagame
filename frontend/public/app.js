@@ -465,8 +465,10 @@ function rowArt(c) {
 function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
+  // a banner name stands alone in the chip (the hint span names the wallet
+  // kind already); otherwise wallet kind + shortened address
   $('walletAddr').textContent = S.addr
-    ? `${S.wallet.label.split(' ')[0]} · ${who(S.addr)}`
+    ? (S.names[S.addr] || `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}`)
     : (S.restoring ? 'Connecting…' : 'Connect wallet');
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
@@ -1289,7 +1291,10 @@ function openName() {
 let reclaimTried = false;
 async function reclaimBanner() {
   if (reclaimTried || S.wallet?.mode !== 'session' || !S.addr) return;
-  const last = localStorage.getItem(NAME_LS);
+  // the name resting on the main wallet is the source of truth: it follows
+  // across devices, unlike this browser's remembered name
+  const last = (S.wallet.mainAddr && S.names[S.wallet.mainAddr])
+    || localStorage.getItem(NAME_LS);
   if (!last || S.names[S.addr]) return;
   reclaimTried = true;
   try {
@@ -1297,7 +1302,9 @@ async function reclaimBanner() {
     await waitForConfirm(hash);
     // the player may have sealed a name by hand while this tx confirmed:
     // their explicit choice wins, the reclaim stands down
-    if (S.names[S.addr] || localStorage.getItem(NAME_LS) !== last) return;
+    const still = (S.wallet?.mainAddr && S.names[S.wallet.mainAddr])
+      || localStorage.getItem(NAME_LS);
+    if (S.names[S.addr] || still !== last) return;
     const r = await fetch('/api/name', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
