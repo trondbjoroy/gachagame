@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=28" />
+<link rel="stylesheet" href="style.css?b=29" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -25,12 +25,12 @@
       </div>
       <div>
         <div class="wordmark">EMBERFALL</div>
-        <div class="netline">a realm written in soulstone Â· summon Â· mine Â· forge Â· fight</div>
+        <div class="netline">a realm written in soulstone · summon · mine · forge · fight</div>
       </div>
     </div>
     <div class="wallet-area">
-      <button class="mini-btn alt tour-btn" id="musicBtn" title="Music on">ðŸŽµ</button>
-      <button class="mini-btn alt tour-btn" id="muteBtn" title="Sound on">ðŸ”Š</button>
+      <button class="mini-btn alt tour-btn" id="musicBtn" title="Music on">🎵</button>
+      <button class="mini-btn alt tour-btn" id="muteBtn" title="Sound on">🔊</button>
       <button class="mini-btn alt tour-btn" id="tutorialBtn" title="Tour the realm">?</button>
       <button class="mini-btn header-session" id="headerSessionBtn" hidden>&#9889; PROMPTLESS PLAY</button>
       <button class="wallet-chip as-btn" id="walletBtn">
@@ -140,7 +140,7 @@
   <section class="shelf tabpane" id="pane-learn" hidden>
     <a class="codex-link" href="https://docs.emberfall.fun" target="_blank" rel="noopener"
        onclick="window.track&&track('guide_open',{})">
-      ðŸ“– The Emberfall Guide<span>every rule, rate, and rite of the realm, in one book</span></a>
+      📖 The Emberfall Guide<span>every rule, rate, and rite of the realm, in one book</span></a>
     <details class="codex-sec" data-sec="chronicle">
     <summary>The chronicle of Emberfall</summary>
     <div class="sec-body">
@@ -249,6 +249,14 @@
         for one specific card you want. Buying or swapping escrows through the
         market contract; claim your side from the escrow shelf after it settles.</p>
       </li>
+      <li>
+        <h3>Claim a banner name</h3>
+        <p>Hit <b>SET NAME</b> in the stats row to seal a name on the Ledger
+        (0.01 HTR, burned). Your name then stands in for your address everywhere
+        the realm speaks of you: the season standings, Pit challenges, Bazaar
+        listings. Names are 3-16 characters, first claimed, first kept; claim
+        again any time to change yours.</p>
+      </li>
     </ol>
     </div>
     </details>
@@ -314,6 +322,13 @@
         eight-week <b>seasons</b>: renown earned inside the season ranks everyone
         in the standings, and the highest banners bear season titles when it
         closes. Lifetime renown stays on your ledger forever.</p></div>
+      <div class="qa"><h4>What is a banner name?</h4>
+        <p>A name you seal on the Ledger yourself with a tiny transaction
+        (0.01 HTR, burned) carrying <span class="mono">emberfall:name:YourName</span>.
+        Because you sign it, nobody can claim a name for your address but you.
+        It replaces your address in the standings, the Pit, and the Bazaar.
+        First claimed, first kept; claim again to change it. Set yours with
+        <b>SET NAME</b> in the stats row.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
@@ -336,7 +351,7 @@
   <div class="overlay-inner">
     <div class="stage" id="stageWait" hidden>
       <div class="capsule-drop"><div class="capsule"><div class="capsule-top"></div><div class="capsule-bottom"></div></div></div>
-      <div class="wait-title" id="waitTitle">The Weaver is at workâ€¦</div>
+      <div class="wait-title" id="waitTitle">The Weaver is at work…</div>
       <div class="wait-sub" id="waitStatus">your deed awaits witness</div>
       <div class="wait-timer mono" id="waitTimer">0s</div>
     </div>
@@ -354,14 +369,14 @@
       <div class="wait-title">The Rite of Tempering</div>
       <div class="wait-sub" id="temperInfo"></div>
       <div class="temper-opts">
-        <button class="mini-btn" data-aspectpick="0">âš” VALOR</button>
-        <button class="mini-btn" data-aspectpick="1">ðŸ›¡ BULWARK</button>
-        <button class="mini-btn" data-aspectpick="2">ðŸ—¡ GUILE</button>
+        <button class="mini-btn" data-aspectpick="0">⚔ VALOR</button>
+        <button class="mini-btn" data-aspectpick="1">🛡 BULWARK</button>
+        <button class="mini-btn" data-aspectpick="2">🗡 GUILE</button>
       </div>
       <button class="ghost-btn" id="temperCancel">not now</button>
     </div>
     <div class="stage" id="stageError" hidden>
-      <div class="err-emoji">ðŸ’¥</div>
+      <div class="err-emoji">💥</div>
       <div class="wait-title" id="errTitle">Failed</div>
       <div class="wait-sub" id="errMsg"></div>
       <button class="ghost-btn" id="errCloseBtn">close</button>
@@ -370,10 +385,10 @@
       <div class="wait-title">Connect a wallet</div>
       <div class="connect-list">
         <button class="connect-opt" data-wallet="snap">
-          <b>ðŸ¦Š MetaMask</b><span>Hathor Snap Â· HTR inside MetaMask</span>
+          <b>🦊 MetaMask</b><span>Hathor Snap · HTR inside MetaMask</span>
         </button>
         <button class="connect-opt" data-wallet="wc">
-          <b>ðŸ”— WalletConnect</b><span>Pair the Hathor mobile / desktop wallet</span>
+          <b>🔗 WalletConnect</b><span>Pair the Hathor mobile / desktop wallet</span>
         </button>
       </div>
       <div class="get-wallet" id="getWallet"></div>
@@ -381,7 +396,7 @@
         <canvas id="wcQr" width="220" height="220"></canvas>
         <div class="wait-sub">Scan with the Hathor wallet, or copy the pairing code and paste it there:</div>
         <button class="mini-btn" id="wcCopyBtn">COPY PAIRING CODE</button>
-        <div class="wc-copied" id="wcCopied">copied to clipboard âœ“</div>
+        <div class="wc-copied" id="wcCopied">copied to clipboard ✓</div>
       </div>
       <div class="session-box" id="sessionBox" hidden>
         <b>&#9889; Promptless play</b>
@@ -400,6 +415,18 @@
       <div id="dressBody"></div>
       <button class="ghost-btn" id="dressCloseBtn">close</button>
     </div>
+    <div class="stage" id="stageName" hidden>
+      <div class="wait-title">Claim a banner name</div>
+      <div class="wait-sub">Your name is sealed on the Ledger by your own hand
+        (0.01 HTR, burned) and shown in place of your address across the realm:
+        the season standings, the Pit, the Bazaar. 3-16 characters; letters,
+        numbers, spaces and _. First claimed, first kept; claim again to change it.</div>
+      <input id="nameInput" class="name-input" maxlength="16" placeholder="Sir Pullsalot"
+        autocomplete="off" spellcheck="false" />
+      <div class="wait-sub" id="nameMsg"></div>
+      <button class="mini-btn" id="nameClaimBtn">SEAL THE NAME</button>
+      <button class="ghost-btn" id="nameCancel">not now</button>
+    </div>
     <div class="stage" id="stagePick" hidden>
       <div class="wait-title" id="pickTitle">Choose a card</div>
       <div class="cards pick-cards" id="pickCards"></div>
@@ -411,15 +438,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 28;</script>
-<script src="analytics.js?b=28"></script>
-<script src="config.js?b=28"></script>
-<script src="art.js?b=28"></script>
-<script src="catalog.js?b=28"></script>
-<script src="wallets.js?b=28"></script>
-<script src="app.js?b=28"></script>
-<script src="progress.js?b=28"></script>
-<script src="sounds.js?b=28"></script>
-<script src="tutorial.js?b=28"></script>
+<script>window.BUILD = 29;</script>
+<script src="analytics.js?b=29"></script>
+<script src="config.js?b=29"></script>
+<script src="art.js?b=29"></script>
+<script src="catalog.js?b=29"></script>
+<script src="wallets.js?b=29"></script>
+<script src="app.js?b=29"></script>
+<script src="progress.js?b=29"></script>
+<script src="sounds.js?b=29"></script>
+<script src="tutorial.js?b=29"></script>
 </body>
 </html>

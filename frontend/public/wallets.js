@@ -123,6 +123,16 @@ class SnapWallet {
     if (!hash) throw new Error('your wallet did not confirm the deed');
     return { hash };
   }
+
+  async sendData(data) {
+    const res = await this.invoke('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ type: 'data', data }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('your wallet did not confirm the deed');
+    return { hash };
+  }
 }
 
 /* ---------------- WalletConnect / Reown ---------------- */
@@ -248,6 +258,16 @@ class WcWallet {
     return { hash };
   }
 
+  async sendData(data) {
+    const res = await this.request('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ type: 'data', data }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('your wallet did not confirm the deed');
+    return { hash };
+  }
+
   async disconnect() {
     if (this.client && this.session) {
       await this.client.disconnect({
@@ -268,7 +288,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=10';
+      el.src = 'session-lib.js?v=11';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
@@ -315,6 +335,7 @@ class SessionWallet {
 
   async tokenBalance(uid) { return this.handle.balance(uid); }
   async htrBalance() { return this.handle.balance('00'); }
+  async sendData(data) { return this.handle.sendData(data); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
 }

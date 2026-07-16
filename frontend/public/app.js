@@ -18,6 +18,9 @@ const TIERS = [
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
 const fmtGems = c => (c / 100).toFixed(2) + ' GEMS';
 const short = u => u.slice(0, 10) + '…';
+// banner name if the address claimed one, else the shortened address
+const who = a => (a && S.names[a]) || short(a || '?');
+const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/;
 const myAddrs = () => new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
 const isMine = a => !!a && myAddrs().has(a);
 const $ = id => document.getElementById(id);
@@ -30,6 +33,7 @@ const S = {
   renown: 0, vigil: 0, favorOwed: 0, favorPool: 0,
   duels: [], selected: new Set(), busy: false, mainWallet: null,
   listings: [], swaps: [], marketFunds: 0, raffle: null,
+  names: {},             // address -> banner name (on-chain claims, server-indexed)
 };
 
 /* ---------------- chain reads ---------------- */
@@ -216,11 +220,19 @@ async function loadRaffle() {
   } catch { /* raffle display is optional */ }
 }
 
+async function loadNames() {
+  try {
+    const r = await fetch('/api/names');
+    if (r.ok) S.names = await r.json();
+  } catch { /* names are cosmetic; addresses still show */ }
+}
+
 async function refresh() {
   await loadContract();
   await loadMarket().catch(() => {});
   await loadMine();
   await loadRaffle();
+  await loadNames();
   render();
   maybeAutoClaim();
 }
@@ -447,7 +459,7 @@ function render() {
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   $('walletAddr').textContent = S.addr
-    ? `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}`
+    ? `${S.wallet.label.split(' ')[0]} · ${who(S.addr)}`
     : (S.restoring ? 'Connecting…' : 'Connect wallet');
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
@@ -482,7 +494,12 @@ function render() {
     ['Your trials won', me(S.wins)],
     ['Your renown', me(S.renown + (S.vigil > 1 ? ` · vigil ${S.vigil}d` : ''))],
     ['Your standing', me(standingLabel(deedsDone))],
+    ['Your banner name', me(S.names[S.addr]
+      ? `${S.names[S.addr]} <button class="mini-btn alt" id="setNameBtn">CHANGE</button>`
+      : `<small>unclaimed</small> <button class="mini-btn" id="setNameBtn">SET NAME</button>`)],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const nb = $('setNameBtn');
+  if (nb) nb.onclick = openName;
 
   // the Weaver's favor: claimable winnings under the summon button
   const fn = $('favorNote');
@@ -612,7 +629,7 @@ function render() {
       <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
-        <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : short(d.challenger || '?')}</div>
+        <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}</div>
       </div>
       ${d.status === 'open'
         ? (mineD
@@ -666,7 +683,7 @@ function render() {
     };
     $('listingList').innerHTML = S.listings.map(l => `
       <div class="duel ${l.status}">${cardBit(l.card)}
-        <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${isMine(l.seller) ? 'you' : short(l.seller || '?')}</div></div>
+        <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${isMine(l.seller) ? 'you' : who(l.seller)}</div></div>
         ${l.status === 'open' ? (isMine(l.seller)
           ? (l.seller === S.addr
             ? `<button class="mini-btn alt" data-cancellisting="${l.id}">CANCEL</button>`
@@ -678,7 +695,7 @@ function render() {
     $('swapList').innerHTML = S.swaps.map(w => {
       const wantMine = S.cards.get(w.want)?.mine;
       return `<div class="duel ${w.status}">${cardBit(w.give)}
-        <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${isMine(w.maker) ? 'you' : short(w.maker || '?')}</div></div>
+        <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${isMine(w.maker) ? 'you' : who(w.maker)}</div></div>
         ${w.status === 'open' ? (isMine(w.maker)
           ? (w.maker === S.addr
             ? `<button class="mini-btn alt" data-cancelswap="${w.id}">CANCEL</button>`
@@ -776,6 +793,17 @@ async function ensureLedgerGems(amount) {
   if (S.gemsWallet < shortfall) return false;
   const hash = await doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, shortfall)]);
   return !!hash && S.gemsLedger >= amount;
+}
+
+// confirmation wait for plain (non-nano) transactions: no execution logs exist
+async function waitForConfirm(hash) {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 2500));
+    const tx = await node(`/transaction?id=${hash}`);
+    const meta = tx.meta || {};
+    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate; try again');
+    if (meta.first_block) return;
+  }
 }
 
 async function waitForExecution(hash, onTick) {
@@ -1235,6 +1263,58 @@ function openDress(uid) {
   $('overlay').hidden = false;
 }
 
+/* ---------------- banner names ---------------- */
+/* A name claim is a real transaction carrying the data output
+   "emberfall:name:<name>" (0.01 HTR, burned). The signed inputs prove the
+   claimer owns the address; the server only indexes what the Ledger says. */
+
+function openName() {
+  if (!S.addr) return;
+  $('nameInput').value = S.names[S.addr] || '';
+  $('nameMsg').textContent = '';
+  $('nameClaimBtn').disabled = false;
+  showStage('stageName');
+}
+
+async function claimName() {
+  const name = $('nameInput').value.trim().replace(/\s+/g, ' ');
+  const msg = $('nameMsg');
+  if (!NAME_RE.test(name)) {
+    msg.textContent = 'Names are 3-16 characters: letters, numbers, spaces or _.';
+    return;
+  }
+  if (name === S.names[S.addr]) { $('overlay').hidden = true; return; }
+  const lower = name.toLowerCase();
+  const taken = Object.entries(S.names).some(([a, n]) => a !== S.addr && n.toLowerCase() === lower);
+  if (taken) { msg.textContent = 'That name is already claimed by another.'; return; }
+  $('nameClaimBtn').disabled = true;
+  try {
+    msg.textContent = 'Sealing your name on the Ledger…';
+    const { hash } = await S.wallet.sendData('emberfall:name:' + name);
+    msg.textContent = 'The realm bears witness…';
+    await waitForConfirm(hash);
+    const r = await fetch('/api/name', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tx: hash, addr: S.addr }),
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error || 'the scribe rejected the claim');
+    await loadNames();
+    render();
+    $('overlay').hidden = true;
+    ribbon(`The realm knows you as <b>${name}</b>`, 'level', 'deed');
+    track('set_name', { ok: true, wallet: walletKind() });
+  } catch (e) {
+    const m = (e && e.message) || String(e);
+    msg.textContent = /not enough|insufficient|no utxos/i.test(m)
+      ? 'Your purse cannot cover the 0.01 HTR seal. The faucet linked in the Codex pays free coin.'
+      : m;
+    $('nameClaimBtn').disabled = false;
+    track('set_name', { ok: false, reason: m.slice(0, 120), wallet: walletKind() });
+  }
+}
+
 let pickCtx = null;
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
@@ -1363,7 +1443,7 @@ async function connectWallet(kind) {
 /* ---------------- misc / boot ---------------- */
 
 function showStage(id) {
-  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress'])
+  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress', 'stageName'])
     $(s).hidden = s !== id;
   $('overlay').hidden = false;
 }
@@ -1663,7 +1743,7 @@ async function disconnectWallet() {
 }
 
 $('walletBtn').onclick = () => {
-  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${short(S.addr)}` : '';
+  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${who(S.addr)}` : '';
   syncSessionBox();
   showStage('stageConnect');
 };
@@ -1676,8 +1756,9 @@ $('headerSessionBtn').onclick = () => {
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
-for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn'])
+for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel'])
   $(id).onclick = () => { $('overlay').hidden = true; };
+$('nameClaimBtn').onclick = claimName;
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));

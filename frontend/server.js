@@ -111,6 +111,65 @@ const METHODS = {
   buy_cosmetic:  { actions: [],                args: [isHex64, isSmallInt, isSmallInt] },
 };
 
+// ---- banner names: claims live on-chain as data outputs; this is an index ----
+// A claim tx's inputs are signed by the claimer, so a tx whose data output
+// says "emberfall:name:X" and whose inputs spend from address A proves A
+// chose the name X. The server never sees a key: it only reads the chain.
+const NAMES_FILE = path.join(__dirname, 'names.json');
+const NAME_MAGIC = 'emberfall:name:';
+const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/; // 3-16, no edge spaces
+let names = {};
+try { names = JSON.parse(fs.readFileSync(NAMES_FILE, 'utf8')); } catch { names = {}; }
+function saveNames() {
+  try { fs.writeFileSync(NAMES_FILE, JSON.stringify(names, null, 1)); }
+  catch (e) { console.error('names.json write failed:', e.message); }
+}
+
+// data output script: PUSHDATA <bytes> OP_CHECKSIG
+function dataFromScript(b64) {
+  try {
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length < 3 || buf[buf.length - 1] !== 0xac) return null;
+    let off = 1, len = buf[0];
+    if (len === 0x4c) { len = buf[1]; off = 2; } // OP_PUSHDATA1
+    if (off + len !== buf.length - 1) return null;
+    return buf.slice(off, off + len).toString('utf8');
+  } catch { return null; }
+}
+
+async function handleNameClaim(res, body) {
+  const txId = body && body.tx;
+  const wanted = body && body.addr;
+  if (typeof txId !== 'string' || !HEX64.test(txId)) return deny(res, 400, 'bad tx id');
+  if (typeof wanted !== 'string' || !/^[A-Za-z0-9]{30,40}$/.test(wanted)) return deny(res, 400, 'bad address');
+  let d;
+  try { d = await (await fetch(`${NODE}/transaction?id=${txId}`)).json(); }
+  catch { return deny(res, 502, 'node unreachable, try again'); }
+  const tx = d && d.tx, meta = d && d.meta;
+  if (!tx || !meta) return deny(res, 404, 'transaction not found');
+  if ((meta.voided_by || []).length) return deny(res, 400, 'transaction was voided');
+  if (!meta.first_block) return deny(res, 425, 'not yet confirmed, try again shortly');
+  let name = null;
+  for (const o of tx.outputs || []) {
+    const s = dataFromScript(o.script || '');
+    if (s && s.startsWith(NAME_MAGIC)) { name = s.slice(NAME_MAGIC.length); break; }
+  }
+  if (name === null) return deny(res, 400, 'no name claim in that transaction');
+  if (!NAME_RE.test(name)) return deny(res, 400, 'names are 3-16 letters, numbers, spaces or _');
+  const signers = new Set((tx.inputs || []).map(i => i.decoded && i.decoded.address).filter(Boolean));
+  if (!signers.has(wanted)) return deny(res, 403, 'claim was not signed by that address');
+  const lower = name.toLowerCase();
+  for (const [a, n] of Object.entries(names)) {
+    if (a !== wanted && n.name.toLowerCase() === lower) {
+      return deny(res, 409, 'that name is already claimed by another');
+    }
+  }
+  names[wanted] = { name, tx: txId, ts: Math.floor(Date.now() / 1000) };
+  saveNames();
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ success: true, address: wanted, name }));
+}
+
 function validExecute(body) {
   if (!body || typeof body !== 'object') return 'bad body';
   const table = body.nc_id === NC ? METHODS : (body.nc_id === MKT_NC ? MKT_METHODS : null);
@@ -143,6 +202,23 @@ async function forward(res, target, opts) {
 async function handleApi(req, res, ip) {
   const url = new URL(req.url.slice(4), 'http://x');
   const q = url.searchParams;
+
+  if (req.method === 'GET' && url.pathname === '/names') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    const flat = {};
+    for (const [a, n] of Object.entries(names)) flat[a] = n.name;
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify(flat));
+  }
+
+  if (req.method === 'POST' && url.pathname === '/name') {
+    if (rateLimited(ip, 'tx')) return deny(res, 429, 'rate limited');
+    const chunks = [];
+    for await (const c of req) { chunks.push(c); if (Buffer.concat(chunks).length > 1024) return deny(res, 413, 'too large'); }
+    let body;
+    try { body = JSON.parse(Buffer.concat(chunks)); } catch { return deny(res, 400, 'bad json'); }
+    return handleNameClaim(res, body);
+  }
 
   if (req.method === 'GET' && url.pathname === '/wallet/address') {
     if (q.get('index') !== '0' || [...q.keys()].length !== 1) return deny(res, 403, 'forbidden');

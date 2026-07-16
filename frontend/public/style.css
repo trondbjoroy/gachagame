@@ -287,6 +287,11 @@ footer a { color: var(--cyan); text-decoration: none; }
   width: 90px; background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 7px;
   color: var(--ink); font-family: 'Fragment Mono', monospace; padding: 6px 9px; margin-left: 8px;
 }
+.name-input {
+  display: block; margin: 16px auto 6px; width: 240px; text-align: center;
+  background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 7px;
+  color: var(--ink); font-family: 'Cinzel', serif; font-size: 18px; padding: 9px 12px;
+}
 .prize-power { margin-top: 8px; font-family: 'Fragment Mono', monospace; font-size: 15px; color: var(--ink); }
 .duel-banner { font-family: 'Cinzel', serif; font-size: 40px; letter-spacing: .1em; margin-bottom: 14px; }
 .duel-banner.win { color: var(--acid); text-shadow: 0 0 40px rgba(212,168,67,.5); }

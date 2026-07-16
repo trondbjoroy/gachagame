@@ -182,7 +182,7 @@
     const rows = (sn.standings || []).slice(0, 10).map((s, i) => {
       const me = S.addr && s.addr === S.addr;
       return `<div class="s-row${me ? ' me' : ''}"><span class="s-rank mono">${i + 1}</span>
-        <span class="mono">${short(s.addr)}${me ? ' · you' : ''}</span>
+        <span class="mono">${who(s.addr)}${me ? ' · you' : ''}</span>
         <span class="s-pts mono">${s.seasonal}</span></div>`;
     }).join('');
     const mine = S.addr ? (sn.standings || []).findIndex(s => s.addr === S.addr) : -1;

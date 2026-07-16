@@ -149,6 +149,16 @@ async function open(words) {
       return wallet.getTokens();
     },
 
+    // one data output (0.01 HTR, burned by the protocol): used for on-chain
+    // name claims; the signed inputs prove who wrote the data
+    async sendData(data) {
+      // data must be a plain string: the lib utf8-encodes it (ScriptData).
+      // change stays pinned to address 0 like every other session flow
+      const tx = await wallet.sendManyOutputsTransaction(
+        [{ type: 'data', data }], { pinCode: PIN, changeAddress: address });
+      return { hash: tx.hash };
+    },
+
     async sweep(toAddress) {
       const uids = await wallet.getTokens();
       const outputs = [];

@@ -8,3 +8,6 @@ node_modules/
 
 # generated on the VPS by scripts/season.py and scripts/weekly_favor.py
 frontend/public/season.json
+
+# banner-name registry, written by server.js from on-chain claims
+frontend/names.json
