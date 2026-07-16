@@ -117,7 +117,9 @@ const METHODS = {
 // chose the name X. The server never sees a key: it only reads the chain.
 const NAMES_FILE = path.join(__dirname, 'names.json');
 const NAME_MAGIC = 'emberfall:name:';
+const BEQUEATH_MAGIC = 'emberfall:bequeath:'; // holder hands the name to another address
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/; // 3-16, no edge spaces
+const ADDR_RE = /^[A-Za-z0-9]{30,40}$/;
 let names = {};
 try { names = JSON.parse(fs.readFileSync(NAMES_FILE, 'utf8')); } catch { names = {}; }
 function saveNames() {
@@ -149,11 +151,24 @@ async function addressAbandoned(addr) {
   } catch { return false; } // when unsure, the held name stays held
 }
 
+// the earliest transaction that paid `addr`: nobody knows a fresh session
+// address before its funding, so whoever signed this tx created the address
+async function firstFundingTx(addr) {
+  try {
+    const d = await (await fetch(`${NODE}/thin_wallet/address_history?addresses[]=${addr}`)).json();
+    const txs = (d.history || []).filter(tx =>
+      (tx.outputs || []).some(o => o.decoded && o.decoded.address === addr));
+    if (!txs.length) return null;
+    txs.sort((a, b) => a.timestamp - b.timestamp);
+    return txs[0];
+  } catch { return null; }
+}
+
 async function handleNameClaim(res, body) {
   const txId = body && body.tx;
   const wanted = body && body.addr;
   if (typeof txId !== 'string' || !HEX64.test(txId)) return deny(res, 400, 'bad tx id');
-  if (typeof wanted !== 'string' || !/^[A-Za-z0-9]{30,40}$/.test(wanted)) return deny(res, 400, 'bad address');
+  if (typeof wanted !== 'string' || !ADDR_RE.test(wanted)) return deny(res, 400, 'bad address');
   let d;
   try { d = await (await fetch(`${NODE}/transaction?id=${txId}`)).json(); }
   catch { return deny(res, 502, 'node unreachable, try again'); }
@@ -161,22 +176,46 @@ async function handleNameClaim(res, body) {
   if (!tx || !meta) return deny(res, 404, 'transaction not found');
   if ((meta.voided_by || []).length) return deny(res, 400, 'transaction was voided');
   if (!meta.first_block) return deny(res, 425, 'not yet confirmed, try again shortly');
-  let name = null;
+  let name = null, heir = null;
   for (const o of tx.outputs || []) {
     const s = dataFromScript(o.script || '');
     if (s && s.startsWith(NAME_MAGIC)) { name = s.slice(NAME_MAGIC.length); break; }
+    if (s && s.startsWith(BEQUEATH_MAGIC)) { heir = s.slice(BEQUEATH_MAGIC.length); break; }
   }
-  if (name === null) return deny(res, 400, 'no name claim in that transaction');
-  if (!NAME_RE.test(name)) return deny(res, 400, 'names are 3-16 letters, numbers, spaces or _');
+  if (name === null && heir === null) return deny(res, 400, 'no name claim in that transaction');
   const signers = new Set((tx.inputs || []).map(i => i.decoded && i.decoded.address).filter(Boolean));
   if (!signers.has(wanted)) return deny(res, 403, 'claim was not signed by that address');
+
+  if (heir !== null) {
+    // the signer hands their own name to another address (session -> wallet)
+    if (!ADDR_RE.test(heir)) return deny(res, 400, 'bad heir address');
+    const entry = names[wanted];
+    if (!entry) return deny(res, 400, 'that address holds no name to bequeath');
+    if (heir === wanted) return deny(res, 400, 'the name already rests there');
+    if (names[heir]) return deny(res, 409, 'the heir already bears a name');
+    delete names[wanted];
+    names[heir] = { name: entry.name, tx: txId, ts: Math.floor(Date.now() / 1000) };
+    saveNames();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, address: heir, name: entry.name }));
+  }
+
+  if (!NAME_RE.test(name)) return deny(res, 400, 'names are 3-16 letters, numbers, spaces or _');
   const lower = name.toLowerCase();
   for (const [a, n] of Object.entries(names)) {
     if (a !== wanted && n.name.toLowerCase() === lower) {
+      // the name moves to the claimant if its holder let go of it (a swept,
+      // empty address) or if the holder itself signed the tx that first
+      // funded the claimant (a wallet spawning its next session key)
       if (!(await addressAbandoned(a))) {
-        return deny(res, 409, 'that name is already claimed by another');
+        const fund = await firstFundingTx(wanted);
+        const funders = new Set((fund && fund.inputs || [])
+          .map(i => i.decoded && i.decoded.address).filter(Boolean));
+        if (!funders.has(a)) {
+          return deny(res, 409, 'that name is already claimed by another');
+        }
       }
-      delete names[a]; // a swept session let go of it; the name moves on
+      delete names[a];
     }
   }
   names[wanted] = { name, tx: txId, ts: Math.floor(Date.now() / 1000) };

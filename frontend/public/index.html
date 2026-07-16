@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=36" />
+<link rel="stylesheet" href="style.css?b=37" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -256,8 +256,8 @@
         (0.01 HTR, burned). Your name then stands in for your address everywhere
         the realm speaks of you: the season standings, Pit challenges, Bazaar
         listings. Names are 3-16 characters, first claimed, first kept; claim
-        again any time to change yours. Ending a session frees its name, and
-        your next promptless session picks it up again automatically.</p>
+        again any time to change yours. Ending a session sends your name home
+        to your wallet, and your next session picks it up again automatically.</p>
       </li>
     </ol>
     </div>
@@ -333,8 +333,10 @@
         It replaces your address in the standings, the Pit, and the Bazaar.
         First claimed, first kept; claim again to change it. Set yours behind
         the wallet chip in the header. Session keys are throwaway, but names
-        are not: a name whose purse stands empty (a swept session) falls free,
-        and a new promptless session re-claims your remembered name by itself.</p></div>
+        are not: ending a session sends your name home to your main wallet (a
+        parting deed signed by the session key itself), so it shows in session
+        and non-session play alike, and the next session funded by that wallet
+        re-claims it automatically.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
@@ -428,8 +430,8 @@
         (0.01 HTR, burned) and shown in place of your address across the realm:
         the season standings, the Pit, the Bazaar. 3-16 characters; letters,
         numbers, spaces and _. First claimed, first kept; claim again to change it.
-        End a session with the sweep and your name follows you to the next one
-        by itself.</div>
+        Your name follows you: the sweep sends it home to your main wallet, and
+        the next session picks it up by itself.</div>
       <input id="nameInput" class="name-input" maxlength="16" placeholder="Sir Pullsalot"
         autocomplete="off" spellcheck="false" />
       <div class="wait-sub" id="nameMsg"></div>
@@ -447,15 +449,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 36;</script>
-<script src="analytics.js?b=36"></script>
-<script src="config.js?b=36"></script>
-<script src="art.js?b=36"></script>
-<script src="catalog.js?b=36"></script>
-<script src="wallets.js?b=36"></script>
-<script src="app.js?b=36"></script>
-<script src="progress.js?b=36"></script>
-<script src="sounds.js?b=36"></script>
-<script src="tutorial.js?b=36"></script>
+<script>window.BUILD = 37;</script>
+<script src="analytics.js?b=37"></script>
+<script src="config.js?b=37"></script>
+<script src="art.js?b=37"></script>
+<script src="catalog.js?b=37"></script>
+<script src="wallets.js?b=37"></script>
+<script src="app.js?b=37"></script>
+<script src="progress.js?b=37"></script>
+<script src="sounds.js?b=37"></script>
+<script src="tutorial.js?b=37"></script>
 </body>
 </html>

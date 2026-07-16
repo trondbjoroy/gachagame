@@ -1668,6 +1668,27 @@ async function endSession() {
         + blockers.join(' · ') + '.');
       return;
     }
+    // the name goes home first: a bequest signed by the session key (the
+    // holder) moves it to the main wallet before the sweep empties the purse
+    if (S.names[S.addr] && S.wallet.mainAddr) {
+      sessionNote('Sending your banner name home\u2026');
+      try {
+        const { hash } = await S.wallet.sendData('emberfall:bequeath:' + S.wallet.mainAddr);
+        await waitForConfirm(hash);
+        const br = await fetch('/api/name', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ tx: hash, addr: S.addr }),
+        });
+        const bd = await br.json();
+        track('name_bequeath', { ok: !!bd.success, reason: (bd.error || '').slice(0, 80) });
+      } catch (e) {
+        // best effort: the sweep must never be hostage to the name
+        track('name_bequeath', {
+          ok: false, reason: String((e && e.message) || e).slice(0, 80),
+        });
+      }
+    }
     sessionNote('Sweeping your champions and coin home\u2026');
     const r = await S.wallet.sweep();
     track('session_end', { swept: r ? r.moved : 0 });
