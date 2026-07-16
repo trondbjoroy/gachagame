@@ -56,6 +56,13 @@ async function loadContract() {
   const base = await ncState('balances[]=__all__&fields[]=total_pulls' + '&' +
     callQs(['get_pull_price()', 'get_duel_count()', 'get_writ_count()',
             `get_trial_today(${now})`, 'get_delve_seconds()']));
+  // a rate-limited or hiccuping node answers without fields: name the real
+  // problem instead of crashing on the first missing property
+  if (!base || !base.fields) {
+    throw new Error(base?.error === 'rate limited'
+      ? 'the scribes are swamped; wait a few heartbeats and try again'
+      : 'the Ledger could not be read just now; give it a moment and try again');
+  }
   S.totalPulls = base.fields.total_pulls.value;
   S.pullPrice = base.calls['get_pull_price()'].value;
   const duelCount = base.calls['get_duel_count()'].value;
@@ -1614,13 +1621,29 @@ async function endSession() {
   try {
     $('sessionEndBtn').disabled = true;
     sessionNote('Checking for anything still in play\u2026');
-    await refresh();
+    try { await refresh(); }
+    catch (e) {
+      sessionNote((e && e.message) || 'the Ledger could not be read just now; try again in a moment');
+      return;
+    }
     const blockers = [];
     const cs = [...S.cards.values()];
     const n1 = cs.filter(c => c.pending === S.addr).length;
     if (n1) blockers.push(`${n1} champion${n1 > 1 ? 's' : ''} awaiting claim under Your Host`);
-    const n2 = cs.filter(c => c.staker === S.addr).length;
+    const delvers = cs.filter(c => c.staker === S.addr && (c.delveSince || 0) > 0);
+    const n2 = cs.filter(c => c.staker === S.addr).length - delvers.length;
     if (n2) blockers.push(`${n2} champion${n2 > 1 ? 's' : ''} still toiling in The Mines (recall them)`);
+    if (delvers.length) {
+      // a delve locks the champion until it ends and the haul is claimed
+      const doneAt = Math.max(...delvers.map(c =>
+        ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000));
+      const mins = Math.ceil((doneAt - Date.now()) / 60000);
+      blockers.push(delvers.length + ' champion' + (delvers.length > 1 ? 's' : '')
+        + ' mid-delve in The Mines: '
+        + (mins > 0
+          ? `the delve ends in ${Math.floor(mins / 60)}h ${mins % 60}m; claim it, then recall`
+          : 'the delve is done; CLAIM DELVE, then recall'));
+    }
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
     if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
     if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in your ledger (withdraw in The Mines)`);
