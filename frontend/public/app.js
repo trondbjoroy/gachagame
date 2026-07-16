@@ -376,7 +376,7 @@ function pumpRibbons() {
 
 /* ---------------- stat count-ups ---------------- */
 
-const COUNTED_STATS = ['Souls summoned · realm', 'Your gems in ledger', 'Your gems in hand', 'Your trials won', 'Your renown'];
+const COUNTED_STATS = ['Souls summoned · realm', 'Your gems', 'Your trials won', 'Your renown'];
 const statPrev = {};
 function animateStatEl(el, key) {
   const text = el.textContent;
@@ -501,8 +501,9 @@ function render() {
   announceNewDeeds(deeds);
   $('statsRow').innerHTML = [
     ['Souls summoned · realm', S.totalPulls],
-    ['Your gems in ledger', me(fmtGems(S.gemsLedger))],
-    ['Your gems in hand', me(fmtGems(S.gemsWallet))],
+    // one number for the player; the ledger/wallet split (real, but bridged
+    // automatically on every deed) is managed in The Mines
+    ['Your gems', me(fmtGems(S.gemsLedger + S.gemsWallet))],
     ['Your trials won', me(S.wins)],
     ['Your renown', me(S.renown + (S.vigil > 1 ? ` · vigil ${S.vigil}d` : ''))],
     ['Your standing', me(standingLabel(deedsDone))],
@@ -601,7 +602,8 @@ function render() {
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
   $('farmSummary').innerHTML = `
-    <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}</div>
+    <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}${
+      S.gemsWallet >= 1 ? ` <small>· ${fmtGems(S.gemsWallet)} in hand</small>` : ''}</div>
       <div class="row-btns">
         <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 ? 'disabled' : ''}>WITHDRAW ALL</button>
         <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
