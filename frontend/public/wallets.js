@@ -307,7 +307,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=11';
+      el.src = 'session-lib.js?v=12';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
