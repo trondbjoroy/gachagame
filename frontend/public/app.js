@@ -1670,8 +1670,21 @@ async function endSession() {
     localStorage.removeItem(SESSION_LS);
     const main = S.mainWallet;
     S.mainWallet = null;
-    if (main) { S.wallet = main; S.addr = main.address; }
-    else { S.wallet = null; S.addr = null; }
+    if (main) {
+      S.wallet = main;
+      S.addr = main.address;
+    } else {
+      // the session outlived the page load that started it, so no live main
+      // wallet object exists: quietly re-adopt the wallet pairing instead of
+      // dropping the player to "Connect wallet"
+      S.wallet = null;
+      S.addr = null;
+      sessionNote('Session ended; waking your wallet pairing…');
+      if (await restoreWcPairing()) {
+        sessionNote('Session ended; your wallet is sworn again.');
+        track('wallet_connect', { wallet: 'wc-restored-after-session' });
+      }
+    }
     await refresh();
   } catch (e) {
     sessionNote(e.message || String(e));
@@ -1789,6 +1802,21 @@ async function openSessionWallet(words, mainAddr) {
     }
   }
   throw last;
+}
+
+// silently re-adopt a prior WalletConnect pairing, if a live one exists
+// (pairings persist for days and survive page reloads)
+async function restoreWcPairing() {
+  if (!window.GAME.wcProjectId
+      || !Object.keys(localStorage).some(k => k.startsWith('wc@2'))) return null;
+  try {
+    const w = new window.WALLETS.WcWallet();
+    const addr = await w.restore();
+    if (!addr) return null;
+    S.wallet = w;
+    S.addr = addr;
+    return w;
+  } catch { return null; }
 }
 
 async function disconnectWallet() {
@@ -1996,19 +2024,10 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   await resumeSession();
   // silently resume a prior WalletConnect pairing (sessions persist for days);
   // only load the WC library if its storage says there was ever a pairing here
-  if (!S.wallet && window.GAME.wcProjectId
-      && Object.keys(localStorage).some(k => k.startsWith('wc@2'))) {
-    try {
-      const w = new window.WALLETS.WcWallet();
-      const addr = await w.restore();
-      if (addr) {
-        S.wallet = w;
-        S.addr = addr;
-        window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
-        track('wallet_connect', { wallet: 'wc-restored' });
-        await refresh();
-      }
-    } catch { /* no valid session; the player connects manually */ }
+  if (!S.wallet && await restoreWcPairing()) {
+    window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
+    track('wallet_connect', { wallet: 'wc-restored' });
+    await refresh();
   }
   S.restoring = false;
   render();
