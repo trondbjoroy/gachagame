@@ -1326,8 +1326,13 @@ async function claimName() {
   if (taken) { msg.textContent = 'That name is already claimed by another.'; return; }
   $('nameClaimBtn').disabled = true;
   try {
-    msg.textContent = 'Sealing your name on the Ledger…';
+    // through a wallet the seal is a transaction the wallet must approve;
+    // in a session it signs silently
+    msg.textContent = S.wallet.mode === 'session'
+      ? 'Sealing your name on the Ledger…'
+      : 'Approve the seal in your Hathor wallet, then return here…';
     const { hash } = await S.wallet.sendData('emberfall:name:' + name);
+    track('set_name_submitted', { wallet: walletKind() });
     msg.textContent = 'The realm bears witness…';
     await waitForConfirm(hash);
     const r = await fetch('/api/name', {
@@ -1347,6 +1352,9 @@ async function claimName() {
     const m = (e && e.message) || String(e);
     msg.textContent = /not enough|insufficient|no utxos/i.test(m)
       ? 'Your purse cannot cover the 0.01 HTR seal. The faucet linked in the Codex pays free coin.'
+      : /not signed by that address/i.test(m)
+      ? 'Your wallet sealed the claim with a different address than the one playing. '
+        + 'Start a promptless session and set your name there; it signs with the right key.'
       : m;
     $('nameClaimBtn').disabled = false;
     track('set_name', { ok: false, reason: m.slice(0, 120), wallet: walletKind() });
