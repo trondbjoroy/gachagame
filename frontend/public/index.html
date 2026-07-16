@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=29" />
+<link rel="stylesheet" href="style.css?b=30" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -255,7 +255,8 @@
         (0.01 HTR, burned). Your name then stands in for your address everywhere
         the realm speaks of you: the season standings, Pit challenges, Bazaar
         listings. Names are 3-16 characters, first claimed, first kept; claim
-        again any time to change yours.</p>
+        again any time to change yours. Ending a session frees its name, and
+        your next promptless session picks it up again automatically.</p>
       </li>
     </ol>
     </div>
@@ -328,7 +329,9 @@
         Because you sign it, nobody can claim a name for your address but you.
         It replaces your address in the standings, the Pit, and the Bazaar.
         First claimed, first kept; claim again to change it. Set yours with
-        <b>SET NAME</b> in the stats row.</p></div>
+        <b>SET NAME</b> in the stats row. Session keys are throwaway, but names
+        are not: a name whose purse stands empty (a swept session) falls free,
+        and a new promptless session re-claims your remembered name by itself.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
@@ -420,7 +423,9 @@
       <div class="wait-sub">Your name is sealed on the Ledger by your own hand
         (0.01 HTR, burned) and shown in place of your address across the realm:
         the season standings, the Pit, the Bazaar. 3-16 characters; letters,
-        numbers, spaces and _. First claimed, first kept; claim again to change it.</div>
+        numbers, spaces and _. First claimed, first kept; claim again to change it.
+        End a session with the sweep and your name follows you to the next one
+        by itself.</div>
       <input id="nameInput" class="name-input" maxlength="16" placeholder="Sir Pullsalot"
         autocomplete="off" spellcheck="false" />
       <div class="wait-sub" id="nameMsg"></div>
@@ -438,15 +443,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 29;</script>
-<script src="analytics.js?b=29"></script>
-<script src="config.js?b=29"></script>
-<script src="art.js?b=29"></script>
-<script src="catalog.js?b=29"></script>
-<script src="wallets.js?b=29"></script>
-<script src="app.js?b=29"></script>
-<script src="progress.js?b=29"></script>
-<script src="sounds.js?b=29"></script>
-<script src="tutorial.js?b=29"></script>
+<script>window.BUILD = 30;</script>
+<script src="analytics.js?b=30"></script>
+<script src="config.js?b=30"></script>
+<script src="art.js?b=30"></script>
+<script src="catalog.js?b=30"></script>
+<script src="wallets.js?b=30"></script>
+<script src="app.js?b=30"></script>
+<script src="progress.js?b=30"></script>
+<script src="sounds.js?b=30"></script>
+<script src="tutorial.js?b=30"></script>
 </body>
 </html>

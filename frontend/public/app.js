@@ -1268,12 +1268,47 @@ function openDress(uid) {
    "emberfall:name:<name>" (0.01 HTR, burned). The signed inputs prove the
    claimer owns the address; the server only indexes what the Ledger says. */
 
+const NAME_LS = 'emberfall_name';
+
 function openName() {
   if (!S.addr) return;
-  $('nameInput').value = S.names[S.addr] || '';
+  $('nameInput').value = S.names[S.addr] || localStorage.getItem(NAME_LS) || '';
   $('nameMsg').textContent = '';
   $('nameClaimBtn').disabled = false;
   showStage('stageName');
+}
+
+/* A swept session leaves its address empty, which frees its name (the server
+   lets anyone claim a name whose holding purse is bare). So when a new
+   session begins, quietly claim the player's remembered name again: the name
+   follows the player, not the throwaway key. */
+let reclaimTried = false;
+async function reclaimBanner() {
+  if (reclaimTried || S.wallet?.mode !== 'session' || !S.addr) return;
+  const last = localStorage.getItem(NAME_LS);
+  if (!last || S.names[S.addr]) return;
+  reclaimTried = true;
+  try {
+    const { hash } = await S.wallet.sendData('emberfall:name:' + last);
+    await waitForConfirm(hash);
+    const r = await fetch('/api/name', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tx: hash, addr: S.addr }),
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error || 'claim rejected');
+    await loadNames();
+    render();
+    ribbon(`Your banner still reads <b>${last}</b>`, 'level', 'deed');
+    track('set_name', { ok: true, auto: true, wallet: walletKind() });
+  } catch (e) {
+    // someone else truly holds it, or the tx failed: the player can SET NAME
+    track('set_name', {
+      ok: false, auto: true, wallet: walletKind(),
+      reason: String((e && e.message) || e).slice(0, 120),
+    });
+  }
 }
 
 async function claimName() {
@@ -1300,6 +1335,7 @@ async function claimName() {
     });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'the scribe rejected the claim');
+    localStorage.setItem(NAME_LS, name);
     await loadNames();
     render();
     $('overlay').hidden = true;
@@ -1549,6 +1585,7 @@ async function startSession() {
     track('session_start', { funder: walletKindOf(main) });
     $('overlay').hidden = true;
     await refresh();
+    reclaimBanner();
   } catch (e) {
     sessionNote(e.message || String(e));
   } finally {
@@ -1680,6 +1717,7 @@ async function resumeSession() {
     S.wallet = sw;
     S.addr = sw.address;
     await refresh();
+    reclaimBanner();
   } catch (e) {
     console.warn('session resume failed:', e);
   }
@@ -1707,6 +1745,7 @@ async function resumeFundingWait(saved) {
     ribbon('The funding arrived: your session is ready', 'level', 'coin');
     $('overlay').hidden = true;
     await refresh();
+    reclaimBanner();
   } catch (e) {
     // the record stays saved; syncing is retried on the next visit
     ribbon('Your funded session key is safe; reload the game to finish the setup');

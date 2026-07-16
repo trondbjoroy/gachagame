@@ -137,6 +137,18 @@ function dataFromScript(b64) {
   } catch { return null; }
 }
 
+// an address with nothing left on it (a swept session key) is abandoned:
+// its name is free for the taking. Active addresses always hold something.
+async function addressAbandoned(addr) {
+  try {
+    const d = await (await fetch(`${NODE}/thin_wallet/address_balance?address=${addr}`)).json();
+    for (const t of Object.values(d.tokens_data || {})) {
+      if ((t.received || 0) - (t.spent || 0) > 0) return false;
+    }
+    return true;
+  } catch { return false; } // when unsure, the held name stays held
+}
+
 async function handleNameClaim(res, body) {
   const txId = body && body.tx;
   const wanted = body && body.addr;
@@ -161,7 +173,10 @@ async function handleNameClaim(res, body) {
   const lower = name.toLowerCase();
   for (const [a, n] of Object.entries(names)) {
     if (a !== wanted && n.name.toLowerCase() === lower) {
-      return deny(res, 409, 'that name is already claimed by another');
+      if (!(await addressAbandoned(a))) {
+        return deny(res, 409, 'that name is already claimed by another');
+      }
+      delete names[a]; // a swept session let go of it; the name moves on
     }
   }
   names[wanted] = { name, tx: txId, ts: Math.floor(Date.now() / 1000) };

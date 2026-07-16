@@ -589,6 +589,12 @@ of you: the season standings, challenges in the Pit, listings and trades in the
 Bazaar. Names are unique and first claimed, first kept; claim again at any time
 to change yours, which frees the old name for others. In a promptless session
 the seal signs instantly; through a wallet it is one approval.</p>
+<p>Session keys are throwaway; names are not. A name whose holding address
+stands completely empty is considered let go, and the sweep that ends a session
+empties its address. So when you begin your next promptless session, the game
+quietly claims your remembered name again: the name follows the player, not
+the key. (An address in active use always holds something, so a living name
+cannot be taken from you.)</p>
 
 <h2 id="standing"><span class="num">14</span>Deeds of Renown and your standing</h2>
 <hr class="rule" />
@@ -761,7 +767,8 @@ and the highest banners bear season titles when it closes. See
 <p>SET NAME in the stats row seals a name of your choosing on the Ledger with a
 transaction only your key can sign (0.01 HTR, burned). It replaces your address
 in the standings, the Pit, and the Bazaar. Unique, first claimed, first kept;
-claim again to change it. See <a href="#renown-names">Banner names</a>.</p>
+claim again to change it. Ending a session frees its name and your next
+session re-claims it automatically. See <a href="#renown-names">Banner names</a>.</p>
 <h3>Something looks exploitable. Should I report it?</h3>
 <p>Please. If you find a way to climb any ladder without paying its intended cost, that
 is a bug, and hearing about it is exactly what the test realm is for.</p>
