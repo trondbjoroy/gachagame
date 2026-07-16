@@ -1221,6 +1221,14 @@ function openDress(uid) {
       $('overlay').hidden = false;
       return;
     }
+    if (slot === 2 && value > 0 && (S.shards || 0) < 3) {
+      $('errTitle').textContent = 'Not enough relic shards';
+      $('errMsg').textContent = 'Epithets cost 3 relic shards. Send a champion '
+        + 'delving in the Mines and claim the haul to earn them.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
     await doTx('Dressing the champion', 'buy_cosmetic', [uid, slot, value]);
   });
   showStage('stageDress');
