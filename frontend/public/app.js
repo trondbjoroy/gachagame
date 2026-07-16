@@ -1274,7 +1274,9 @@ const NAME_LS = 'emberfall_name';
 
 function openName() {
   if (!S.addr) return;
-  $('nameInput').value = S.names[S.addr] || localStorage.getItem(NAME_LS) || '';
+  // prefill only what this address actually holds; a remembered name from an
+  // old address may be unavailable and only misleads here
+  $('nameInput').value = S.names[S.addr] || '';
   $('nameMsg').textContent = '';
   $('nameClaimBtn').disabled = false;
   showStage('stageName');
@@ -1293,6 +1295,9 @@ async function reclaimBanner() {
   try {
     const { hash } = await S.wallet.sendData('emberfall:name:' + last);
     await waitForConfirm(hash);
+    // the player may have sealed a name by hand while this tx confirmed:
+    // their explicit choice wins, the reclaim stands down
+    if (S.names[S.addr] || localStorage.getItem(NAME_LS) !== last) return;
     const r = await fetch('/api/name', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -1321,9 +1326,8 @@ async function claimName() {
     return;
   }
   if (name === S.names[S.addr]) { $('overlay').hidden = true; return; }
-  const lower = name.toLowerCase();
-  const taken = Object.entries(S.names).some(([a, n]) => a !== S.addr && n.toLowerCase() === lower);
-  if (taken) { msg.textContent = 'That name is already claimed by another.'; return; }
+  // no client-side taken check: only the server knows whether the current
+  // holder is an abandoned (swept-empty) address whose name is up for grabs
   $('nameClaimBtn').disabled = true;
   try {
     // through a wallet the seal is a transaction the wallet must approve;
