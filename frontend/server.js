@@ -12,6 +12,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
 const NODE = process.env.NODE_URL || 'https://node1.testnet.hathor.network/v1a';
@@ -176,11 +177,21 @@ async function handleNameClaim(res, body) {
   if (!tx || !meta) return deny(res, 404, 'transaction not found');
   if ((meta.voided_by || []).length) return deny(res, 400, 'transaction was voided');
   if (!meta.first_block) return deny(res, 425, 'not yet confirmed, try again shortly');
-  let name = null, heir = null;
+  // both forms may carry a trailing :<sha256> — the hash of a secret the
+  // claiming browser keeps. It rides inside the SIGNED tx, so nobody can
+  // attach their own hash to someone else's claim.
+  const splitHash = s => {
+    const i = s.lastIndexOf(':');
+    if (i !== -1 && /^[0-9a-f]{64}$/.test(s.slice(i + 1))) {
+      return [s.slice(0, i), s.slice(i + 1)];
+    }
+    return [s, null];
+  };
+  let name = null, heir = null, reclaimHash = null;
   for (const o of tx.outputs || []) {
     const s = dataFromScript(o.script || '');
-    if (s && s.startsWith(NAME_MAGIC)) { name = s.slice(NAME_MAGIC.length); break; }
-    if (s && s.startsWith(BEQUEATH_MAGIC)) { heir = s.slice(BEQUEATH_MAGIC.length); break; }
+    if (s && s.startsWith(NAME_MAGIC)) { [name, reclaimHash] = splitHash(s.slice(NAME_MAGIC.length)); break; }
+    if (s && s.startsWith(BEQUEATH_MAGIC)) { [heir, reclaimHash] = splitHash(s.slice(BEQUEATH_MAGIC.length)); break; }
   }
   if (name === null && heir === null) return deny(res, 400, 'no name claim in that transaction');
   const signers = new Set((tx.inputs || []).map(i => i.decoded && i.decoded.address).filter(Boolean));
@@ -194,7 +205,11 @@ async function handleNameClaim(res, body) {
     if (heir === wanted) return deny(res, 400, 'the name already rests there');
     if (names[heir]) return deny(res, 409, 'the heir already bears a name');
     delete names[wanted];
-    names[heir] = { name: entry.name, tx: txId, ts: Math.floor(Date.now() / 1000) };
+    names[heir] = {
+      name: entry.name, tx: txId, ts: Math.floor(Date.now() / 1000),
+      ...(reclaimHash || entry.reclaimHash
+        ? { reclaimHash: reclaimHash || entry.reclaimHash } : {}),
+    };
     saveNames();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ success: true, address: heir, name: entry.name }));
@@ -205,20 +220,29 @@ async function handleNameClaim(res, body) {
   for (const [a, n] of Object.entries(names)) {
     if (a !== wanted && n.name.toLowerCase() === lower) {
       // the name moves to the claimant if its holder let go of it (a swept,
-      // empty address) or if the holder itself signed the tx that first
-      // funded the claimant (a wallet spawning its next session key)
+      // empty address), if the holder signed the tx that first funded the
+      // claimant (a wallet spawning its next session key), or if the claimer
+      // presents the secret whose hash a previous claim of this name sealed
+      // on-chain (same browser, however the wallet shuffled its addresses)
       if (!(await addressAbandoned(a))) {
-        const fund = await firstFundingTx(wanted);
-        const funders = new Set((fund && fund.inputs || [])
-          .map(i => i.decoded && i.decoded.address).filter(Boolean));
-        if (!funders.has(a)) {
-          return deny(res, 409, 'that name is already claimed by another');
+        const secretOk = n.reclaimHash && typeof body.secret === 'string'
+          && crypto.createHash('sha256').update(body.secret).digest('hex') === n.reclaimHash;
+        if (!secretOk) {
+          const fund = await firstFundingTx(wanted);
+          const funders = new Set((fund && fund.inputs || [])
+            .map(i => i.decoded && i.decoded.address).filter(Boolean));
+          if (!funders.has(a)) {
+            return deny(res, 409, 'that name is already claimed by another');
+          }
         }
       }
       delete names[a];
     }
   }
-  names[wanted] = { name, tx: txId, ts: Math.floor(Date.now() / 1000) };
+  names[wanted] = {
+    name, tx: txId, ts: Math.floor(Date.now() / 1000),
+    ...(reclaimHash ? { reclaimHash } : {}),
+  };
   saveNames();
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ success: true, address: wanted, name }));

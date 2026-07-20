@@ -1283,6 +1283,25 @@ function openDress(uid) {
    claimer owns the address; the server only indexes what the Ledger says. */
 
 const NAME_LS = 'emberfall_name';
+const NAME_SECRET_LS = 'emberfall_name_secret';
+
+/* Wallets shuffle addresses, so address kinship cannot always be proven on
+   chain. Each claim therefore seals sha256(device secret) inside the signed
+   tx; presenting the secret later proves "same player" to the name server
+   no matter which address the wallet signed with. */
+function nameSecret() {
+  let sec = localStorage.getItem(NAME_SECRET_LS);
+  if (!sec) {
+    const b = crypto.getRandomValues(new Uint8Array(32));
+    sec = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(NAME_SECRET_LS, sec);
+  }
+  return sec;
+}
+async function nameSecretHash() {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(nameSecret()));
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
 
 function openName() {
   if (!S.addr) return;
@@ -1308,7 +1327,8 @@ async function reclaimBanner() {
   if (!last || S.names[S.addr]) return;
   reclaimTried = true;
   try {
-    const { hash } = await S.wallet.sendData('emberfall:name:' + last);
+    const { hash } = await S.wallet.sendData(
+      `emberfall:name:${last}:${await nameSecretHash()}`);
     await waitForConfirm(hash);
     // the player may have sealed a name by hand while this tx confirmed:
     // their explicit choice wins, the reclaim stands down
@@ -1318,7 +1338,7 @@ async function reclaimBanner() {
     const r = await fetch('/api/name', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tx: hash, addr: S.addr }),
+      body: JSON.stringify({ tx: hash, addr: S.addr, secret: nameSecret() }),
     });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'claim rejected');
@@ -1352,14 +1372,15 @@ async function claimName() {
     msg.textContent = S.wallet.mode === 'session'
       ? 'Sealing your name on the Ledger…'
       : 'Approve the seal in your Hathor wallet, then return here…';
-    const { hash } = await S.wallet.sendData('emberfall:name:' + name);
+    const { hash } = await S.wallet.sendData(
+      `emberfall:name:${name}:${await nameSecretHash()}`);
     track('set_name_submitted', { wallet: walletKind() });
     msg.textContent = 'The realm bears witness…';
     await waitForConfirm(hash);
     const r = await fetch('/api/name', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tx: hash, addr: S.addr }),
+      body: JSON.stringify({ tx: hash, addr: S.addr, secret: nameSecret() }),
     });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'the scribe rejected the claim');
@@ -1699,7 +1720,8 @@ async function endSession() {
     if (S.names[S.addr] && S.wallet.mainAddr) {
       sessionNote('Sending your banner name home\u2026');
       try {
-        const { hash } = await S.wallet.sendData('emberfall:bequeath:' + S.wallet.mainAddr);
+        const { hash } = await S.wallet.sendData(
+          `emberfall:bequeath:${S.wallet.mainAddr}:${await nameSecretHash()}`);
         await waitForConfirm(hash);
         const br = await fetch('/api/name', {
           method: 'POST',
