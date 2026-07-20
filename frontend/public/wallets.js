@@ -106,7 +106,7 @@ class SnapWallet {
       push_tx: true,
     });
     const hash = res?.hash ?? res?.response?.hash ?? res?.txId;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 
@@ -120,7 +120,7 @@ class SnapWallet {
       outputs: [{ address: toAddress, value: String(amount) }],
     });
     const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 
@@ -130,7 +130,7 @@ class SnapWallet {
       outputs: [{ type: 'data', data }],
     });
     const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 }
@@ -259,7 +259,7 @@ class WcWallet {
       push_tx: true,
     });
     const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 
@@ -273,7 +273,7 @@ class WcWallet {
       outputs: [{ address: toAddress, value: String(amount) }],
     });
     const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 
@@ -283,7 +283,7 @@ class WcWallet {
       outputs: [{ type: 'data', data }],
     });
     const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the deed');
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
     return { hash };
   }
 

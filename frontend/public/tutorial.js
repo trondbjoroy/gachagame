@@ -24,7 +24,7 @@ const TOUR = [
   {
     target: '#pane-collection', tab: 'collection',
     title: 'Your Host',
-    body: 'Champions sworn to your banner live here. Newly bound champions wait below until you claim them. Select two of the same station and FUSE them into the next station; each card also offers MINE, FIGHT, SELL, and TRADE.',
+    body: 'Champions sworn to your banner live here. New champions appear below until claimed; in a session they come home by themselves. Select two of the same station and FUSE them into the next station; each card also offers MINE, FIGHT, SELL, and TRADE.',
   },
   {
     target: '#pane-farm', tab: 'farm',
@@ -39,7 +39,7 @@ const TOUR = [
   {
     target: '#pane-market', tab: 'market',
     title: 'The Bazaar',
-    body: 'Sell champions for coin at your asking price, or offer a sworn trade for one specific champion you want. Purchases settle through the guild’s escrow: claim your side from "Held by the guild" after the deal closes.',
+    body: 'Sell champions for coin at your asking price, or offer a trade for one specific champion you want. Purchases settle through the guild’s escrow: claim your side from "Held in escrow" after the deal closes.',
   },
   {
     target: '#pane-learn', tab: 'learn',
@@ -49,7 +49,7 @@ const TOUR = [
   {
     target: '#headerSessionBtn', tab: 'collection',
     title: 'Promptless play',
-    body: 'Fund a session once and every deed after that signs instantly, with no wallet popups. SWEEP & END returns all champions, gems, and coin to your main wallet in one move. Sessions survive page reloads in this browser.',
+    body: 'Fund a session once and everything after that signs instantly, with no wallet popups. END SESSION & RETURN ALL sends every champion, gem, and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
   },
   {
     target: '#walletBtn',

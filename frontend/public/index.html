@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=45" />
+<link rel="stylesheet" href="style.css?b=46" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -92,7 +92,7 @@
     <div class="cards" id="collectionCards"></div>
     <div class="empty" id="collectionEmpty" hidden>Your banner hangs bare. Summon a champion.</div>
     <div id="pendingWrap" hidden>
-      <h2 class="mt">Newly bound, awaiting your claim</h2>
+      <h2 class="mt">New champions</h2>
       <div class="cards" id="pendingCards"></div>
     </div>
     <div id="oldRealmWrap" hidden>
@@ -132,10 +132,10 @@
     </div>
     <div class="duels" id="listingList"></div>
     <div class="empty" id="listingEmpty" hidden>No merchant cries their wares. SELL a champion from your host.</div>
-    <h2 class="mt">Sworn trades</h2>
+    <h2 class="mt">Trades</h2>
     <div class="duels" id="swapList"></div>
     <div class="empty" id="swapEmpty" hidden>No trades proposed. Offer one with TRADE on a champion you hold.</div>
-    <h2 class="mt">Held by the guild: claim what is yours</h2>
+    <h2 class="mt">Held in escrow: claim yours</h2>
     <div class="cards" id="marketPendingCards"></div>
   </section>
 
@@ -199,10 +199,10 @@
         <h3>Connect a wallet</h3>
         <p>Click the wallet chip in the header and pair your own wallet:
         <b>WalletConnect</b> for the Hathor mobile/desktop wallet, or
-        <b>MetaMask (Hathor Snap)</b> on desktop. Every deed is signed by you
+        <b>MetaMask (Hathor Snap)</b> on desktop. Everything is signed by you
         and owned by you; set your wallet's network to <b>testnet</b>. Then hit
-        <b>&#9889; Promptless play</b> to fund a session and skip per-deed
-        approvals entirely.</p>
+        <b>&#9889; Promptless play</b> to fund a session and skip approval
+        popups entirely.</p>
       </li>
       <li>
         <h3>Get HTR</h3>
@@ -304,8 +304,8 @@
         and try again.</p></div>
       <div class="qa"><h4>What is promptless play?</h4>
         <p>Starting a session forges a fresh key that lives only in your browser and
-        funds it with a fixed HTR stake from your wallet (one approval). Every deed after that
-        signs instantly, with no popups. <b>Sweep &amp; end</b> returns all champions
+        funds it with a fixed HTR stake from your wallet (one approval). Everything after that
+        signs instantly, with no popups. <b>End session &amp; return all</b> returns all champions
         and coin to your main wallet in one transaction, and sessions survive page
         reloads. A champion mid-delve is sealed in the deep until the delve ends
         and is claimed, so the sweep waits for it; the session keeps safely in the
@@ -414,10 +414,10 @@
       <div class="session-box" id="sessionBox" hidden>
         <b>&#9889; Promptless play</b>
         <p id="sessionInfo">Fund a session key held in this browser and play without
-        approving every deed. Sweep everything back to your wallet whenever you like.</p>
+        approval popups. End the session anytime to return everything to your wallet.</p>
         <button class="mini-btn" id="sessionStartBtn">START SESSION</button>
         <button class="mini-btn" id="sessionTopupBtn" hidden>TOP UP</button>
-        <button class="mini-btn alt" id="sessionEndBtn" hidden>SWEEP &amp; END SESSION</button>
+        <button class="mini-btn alt" id="sessionEndBtn" hidden>END SESSION &amp; RETURN ALL</button>
       </div>
       <div class="wait-sub" id="connectMsg"></div>
       <button class="mini-btn alt" id="setNameBtn" hidden>SET BANNER NAME</button>
@@ -431,16 +431,15 @@
     </div>
     <div class="stage" id="stageName" hidden>
       <div class="wait-title">Claim a banner name</div>
-      <div class="wait-sub">Your name is sealed on the Ledger by your own hand
-        (0.01 HTR, burned) and shown in place of your address across the realm:
-        the season standings, the Pit, the Bazaar. 3-16 characters; letters,
-        numbers, spaces and _. First claimed, first kept; claim again to change it.
-        Your name follows you: the sweep sends it home to your main wallet, and
-        the next session picks it up by itself.</div>
+      <div class="wait-sub">Your name replaces your address everywhere in the game:
+        season standings, fights, market listings. 3-16 characters (letters,
+        numbers, spaces, _). Costs 0.01 HTR, written on-chain. First claimed,
+        first kept; claim again anytime to change it. It follows you between
+        sessions automatically.</div>
       <input id="nameInput" class="name-input" maxlength="16" placeholder="Sir Pullsalot"
         autocomplete="off" spellcheck="false" />
       <div class="wait-sub" id="nameMsg"></div>
-      <button class="mini-btn" id="nameClaimBtn">SEAL THE NAME</button>
+      <button class="mini-btn" id="nameClaimBtn">CLAIM NAME</button>
       <button class="ghost-btn" id="nameCancel">not now</button>
     </div>
     <div class="stage" id="stagePick" hidden>
@@ -455,15 +454,15 @@
   </div>
 </div>
 
-<script>window.BUILD = 45;</script>
-<script src="analytics.js?b=45"></script>
-<script src="config.js?b=45"></script>
-<script src="art.js?b=45"></script>
-<script src="catalog.js?b=45"></script>
-<script src="wallets.js?b=45"></script>
-<script src="app.js?b=45"></script>
-<script src="progress.js?b=45"></script>
-<script src="sounds.js?b=45"></script>
-<script src="tutorial.js?b=45"></script>
+<script>window.BUILD = 46;</script>
+<script src="analytics.js?b=46"></script>
+<script src="config.js?b=46"></script>
+<script src="art.js?b=46"></script>
+<script src="catalog.js?b=46"></script>
+<script src="wallets.js?b=46"></script>
+<script src="app.js?b=46"></script>
+<script src="progress.js?b=46"></script>
+<script src="sounds.js?b=46"></script>
+<script src="tutorial.js?b=46"></script>
 </body>
 </html>

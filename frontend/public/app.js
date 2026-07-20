@@ -60,8 +60,8 @@ async function loadContract() {
   // problem instead of crashing on the first missing property
   if (!base || !base.fields) {
     throw new Error(base?.error === 'rate limited'
-      ? 'the scribes are swamped; wait a few heartbeats and try again'
-      : 'the Ledger could not be read just now; give it a moment and try again');
+      ? 'too many requests; wait a moment and try again'
+      : 'could not reach the network; try again in a moment');
   }
   S.totalPulls = base.fields.total_pulls.value;
   S.pullPrice = base.calls['get_pull_price()'].value;
@@ -491,7 +491,7 @@ function render() {
   const canPull = S.addr && S.pullPrice != null;
   $('pullBtn').disabled = !canPull;
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
-  $('pullNote').innerHTML = !S.addr ? 'Swear a wallet to your cause to play.' :
+  $('pullNote').innerHTML = !S.addr ? 'Connect a wallet to play.' :
     S.htr < (S.pullPrice ?? 0) ? `Not enough HTR: <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
     'Speak, and the Weaver answers within moments.';
 
@@ -513,10 +513,10 @@ function render() {
   if (fn) {
     fn.hidden = !(S.addr && S.favorOwed > 0);
     if (!fn.hidden) fn.innerHTML =
-      `The Weaver owes you <b>${fmtHtr(S.favorOwed)}</b> <button class="mini-btn" id="favorClaimBtn">CLAIM</button>`;
+      `You won a <b>${fmtHtr(S.favorOwed)}</b> refund <button class="mini-btn" id="favorClaimBtn">CLAIM</button>`;
     const fb = $('favorClaimBtn');
     if (fb) fb.onclick = async () => {
-      const h = await doTx("Claiming the Weaver's favor", 'claim_favor', [], [wdAct(HTR, S.favorOwed)]);
+      const h = await doTx('Claiming your refund', 'claim_favor', [], [wdAct(HTR, S.favorOwed)]);
       if (h) window.sfx?.('coin');
     };
   }
@@ -527,7 +527,7 @@ function render() {
   const lvl = levelFor(deedsDone);
   const toNext = lvl >= TITLES.length ? 0 : LEVEL_AT[lvl] - deedsDone;
   $('deedsSummary').innerHTML = !S.addr
-    ? 'Swear a wallet to your cause and your chronicle begins.'
+    ? 'Connect a wallet to start earning deeds.'
     : `You stand at <b>${standingLabel(deedsDone)}</b> with ${deedsDone} of ${DEEDS.length} deeds witnessed.` +
       (toNext > 0 ? ` ${toNext} more deed${toNext > 1 ? 's' : ''} and you rise to <b>Level ${lvl + 1} · ${TITLES[lvl]}</b>.`
                   : ' No higher standing exists in the realm.');
@@ -632,7 +632,7 @@ function render() {
 
   // arena: spectators see only open challenges; settled history needs a sworn wallet
   $('newDuelBtn').disabled = !S.addr;
-  $('newDuelBtn').title = S.addr ? '' : 'Swear a wallet to your cause to issue a challenge';
+  $('newDuelBtn').title = S.addr ? '' : 'Connect a wallet to issue a challenge';
   const duelsShown = S.addr ? S.duels : S.duels.filter(d => d.status === 'open');
   $('duelList').innerHTML = duelsShown.map(d => {
     const c = S.cards.get(d.card);
@@ -665,7 +665,7 @@ function render() {
       + 'straight from the Mines: three fights per champion per day, a gems entry, '
       + 'bounty and renown for the victor. Fell a writ at Grim to face its Dire; '
       + 'fell the writ before to reach the next.'
-    : 'Swear a wallet to your cause to march on the writs.';
+    : 'Connect a wallet to fight the writs.';
   $('writList').innerHTML = (S.writs || []).map(w => {
     const writOpen = w.id === 0 || !!(cleared & (1 << ((w.id - 1) * 3)));
     const gates = [true,
@@ -749,15 +749,15 @@ function bindListActions() {
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
     if (h) crashLand(u, tier);
   });
-  bind('[data-stake]', u => doTx('Sending to the mines', 'stake', [], [depAct(u, CARD_AMT)]));
+  bind('[data-stake]', u => doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)]));
   bind('[data-unstake]', async u => {
     const c = S.cards.get(u);
     // hours of toil approximated from accrued gems and the station's rate
     const hours = c ? c.pendingGems / ([1, 3, 10, 40][c.tier] * 60) : 0;
-    const h = await doTx('Recalling from the mines', 'unstake', [], [wdAct(u, CARD_AMT)]);
+    const h = await doTx('Recalling champion', 'unstake', [], [wdAct(u, CARD_AMT)]);
     if (h) window.trialEvent?.('recall8', { hours });
   });
-  bind('[data-claimgems]', u => doTx('Gathering gems', 'claim_gems', [u], []));
+  bind('[data-claimgems]', u => doTx('Claiming gems', 'claim_gems', [u], []));
   bind('[data-temper]', u => openTemper(u));
   const OLD_REALM = window.GAME.oldNc
     ? { nc: window.GAME.oldNc, blueprint: window.GAME.oldBlueprint } : null;
@@ -765,7 +765,7 @@ function bindListActions() {
     doTx('Recalling from the old realm', 'unstake', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
   bind('[data-oldclaim]', u =>
     doTx('Claiming from the old realm', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
-  bind('[data-delve]', u => doTx('Sending into the deep', 'begin_delve', [u]));
+  bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u]));
   bind('[data-claimdelve]', claimDelve);
   bind('[data-dress]', openDress);
   document.querySelectorAll('[data-writ]').forEach(el => el.onclick = () => {
@@ -780,11 +780,11 @@ function bindListActions() {
     if (raw === null) return;
     const p = Math.floor(Number(raw));
     if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
-    doTx('Crying your wares', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
+    doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
   });
   bind('[data-trade]', u => openPick('want', u));
-  bind('[data-cancellisting]', id => doTx('Leaving the stall', 'cancel_listing', [Number(id)], [], { target: MKT }));
-  bind('[data-cancelswap]', id => doTx('Recanting the trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
+  bind('[data-cancellisting]', id => doTx('Cancelling listing', 'cancel_listing', [Number(id)], [], { target: MKT }));
+  bind('[data-cancelswap]', id => doTx('Cancelling trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
   bind('[data-mclaim]', async u => {
     const tier = S.cards.get(u)?.tier ?? 0;
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT });
@@ -793,7 +793,7 @@ function bindListActions() {
   document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () =>
     doTx('Buying champion', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
   document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () =>
-    doTx('Sealing the trade', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
+    doTx('Accepting trade', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
 }
 
 const depAct = (token, amount) => ({ type: 'deposit', token, amount });
@@ -805,7 +805,7 @@ async function ensureLedgerGems(amount) {
   if (S.gemsLedger >= amount) return true;
   const shortfall = amount - S.gemsLedger;
   if (S.gemsWallet < shortfall) return false;
-  const hash = await doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, shortfall)]);
+  const hash = await doTx('Moving gems to your ledger', 'deposit_gems', [], [depAct(GEMS, shortfall)]);
   return !!hash && S.gemsLedger >= amount;
 }
 
@@ -815,7 +815,7 @@ async function waitForConfirm(hash) {
     await new Promise(r => setTimeout(r, 2500));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
-    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate; try again');
+    if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
     if (meta.first_block) return;
   }
 }
@@ -827,7 +827,7 @@ async function waitForExecution(hash, onTick) {
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
-    if ((meta.voided_by || []).length) throw new Error('the deed was undone by fate; try again');
+    if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
     if (!meta.first_block) continue;
     const logs = await node(`/nano_contract/logs?id=${hash}`);
     if (logs.nc_execution === 'success') return;
@@ -839,7 +839,7 @@ async function waitForExecution(hash, onTick) {
           if (m) reason = m[1];
         }
       }
-      throw new Error(reason || 'the realm refused this deed');
+      throw new Error(reason || 'the contract refused this action');
     }
   }
 }
@@ -858,13 +858,13 @@ async function doTx(label, method, args, actions, { target } = {}) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>${label}</b>
-    <span class="t-sub">sealing the deed\u2026</span></div><span class="t-time mono"></span>`;
+    <span class="t-sub">signing\u2026</span></div><span class="t-time mono"></span>`;
   $('txToasts').appendChild(el);
   const sub = el.querySelector('.t-sub');
   const tim = el.querySelector('.t-time');
   try {
     const { hash } = await S.wallet.executeNano(method, args, actions, target);
-    sub.textContent = 'the realm bears witness\u2026';
+    sub.textContent = 'confirming\u2026';
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
     sub.textContent = 'done';
@@ -879,9 +879,9 @@ async function doTx(label, method, args, actions, { target } = {}) {
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
       msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
     } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
-      msg = 'Your purse cannot cover this deed right now. If you just made another move, '
-        + 'wait a few heartbeats for your coin to settle and try again; if the purse is '
-        + 'truly empty, the faucet linked in the Codex pays free coin.';
+      msg = 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
+        + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
+        + 'in the Codex.';
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
@@ -1142,7 +1142,7 @@ async function fuse() {
     return;
   }
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
-  const hash = await doTx('Forging the Rite of Union', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
+  const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
   window.sfx?.('fuse');
   const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
@@ -1160,7 +1160,7 @@ async function fightWrit(uid, writ, tier) {
     return;
   }
   const before = S.gemsLedger;
-  const h = await doTx('Marching on the writ', 'fight_writ', [uid, writ, tier]);
+  const h = await doTx('Fighting the writ', 'fight_writ', [uid, writ, tier]);
   if (!h) return;
   const won = S.gemsLedger > before;  // victory pays 4x the entry
   const w = S.writs[writ] || { name: 'the writ' };
@@ -1178,7 +1178,7 @@ async function fightWrit(uid, writ, tier) {
 async function claimDelve(uid) {
   const g0 = S.gemsLedger;
   const s0 = S.shards || 0;
-  const h = await doTx('Returning from the delve', 'claim_delve', [uid]);
+  const h = await doTx('Claiming the delve', 'claim_delve', [uid]);
   if (!h) return;
   const dg = S.gemsLedger - g0;
   const ds = (S.shards || 0) - s0;
@@ -1370,12 +1370,12 @@ async function claimName() {
     // through a wallet the seal is a transaction the wallet must approve;
     // in a session it signs silently
     msg.textContent = S.wallet.mode === 'session'
-      ? 'Sealing your name on the Ledger…'
-      : 'Approve the seal in your Hathor wallet, then return here…';
+      ? 'Saving your name on-chain…'
+      : 'Approve the transaction in your Hathor wallet, then return here…';
     const { hash } = await S.wallet.sendData(
       `emberfall:name:${name}:${await nameSecretHash()}`);
     track('set_name_submitted', { wallet: walletKind() });
-    msg.textContent = 'The realm bears witness…';
+    msg.textContent = 'Confirming…';
     await waitForConfirm(hash);
     const r = await fetch('/api/name', {
       method: 'POST',
@@ -1383,7 +1383,7 @@ async function claimName() {
       body: JSON.stringify({ tx: hash, addr: S.addr, secret: nameSecret() }),
     });
     const d = await r.json();
-    if (!d.success) throw new Error(d.error || 'the scribe rejected the claim');
+    if (!d.success) throw new Error(d.error || 'the name server rejected the claim');
     localStorage.setItem(NAME_LS, name);
     await loadNames();
     render();
@@ -1393,10 +1393,10 @@ async function claimName() {
   } catch (e) {
     const m = (e && e.message) || String(e);
     msg.textContent = /not enough|insufficient|no utxos/i.test(m)
-      ? 'Your purse cannot cover the 0.01 HTR seal. The faucet linked in the Codex pays free coin.'
+      ? 'You need 0.01 HTR to claim a name. Get free testnet coin from the faucet linked in the Codex.'
       : /not signed by that address/i.test(m)
-      ? 'Your wallet sealed the claim with a different address than the one playing. '
-        + 'Start a promptless session and set your name there; it signs with the right key.'
+      ? 'Your wallet signed with a different address than the one playing. '
+        + 'Start a promptless session and claim the name there; it signs with the right key.'
       : m;
     $('nameClaimBtn').disabled = false;
     track('set_name', { ok: false, reason: m.slice(0, 120), wallet: walletKind() });
@@ -1410,9 +1410,9 @@ function openPick(kind, ref) {
     const marchers = [...S.cards.values()].filter(c =>
       c.staker === S.addr && !(c.delveSince > 0) && (c.writFights || 0) < 3);
     if (!marchers.length) {
-      $('errTitle').textContent = 'No champion can march';
-      $('errMsg').textContent = 'Writs are fought from the Mines. Stake a champion '
-        + '(not delving, and under three fights today) and march again.';
+      $('errTitle').textContent = 'No champion available';
+      $('errMsg').textContent = 'Writs are fought by staked champions. Stake one in '
+        + 'The Mines (not delving, fewer than 3 writ fights today) and try again.';
       showStage('stageError');
       $('overlay').hidden = false;
       return;
@@ -1567,8 +1567,8 @@ function syncSessionBox() {
   $('setNameBtn').textContent = S.addr && S.names[S.addr] ? 'CHANGE BANNER NAME' : 'SET BANNER NAME';
   if (!S.sessionStarting) {
     $('sessionInfo').textContent = inSession
-      ? 'Session active: every deed signs instantly. Sweep returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
-      : 'Fund a session key held in this browser and play without approving every deed. Sweep everything back to your wallet whenever you like.';
+      ? 'Session active: every action signs instantly, no popups. Ending the session returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
+      : 'Fund a session key held in this browser and play without approval popups. End the session anytime to return everything to your wallet.';
   }
 }
 
@@ -1711,7 +1711,7 @@ async function endSession() {
     const n6 = S.swaps.filter(w => w.status === 'open' && w.maker === S.addr).length;
     if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''} in The Bazaar (cancel them)`);
     if (blockers.length) {
-      sessionNote('Before the sweep can carry everything home, settle: '
+      sessionNote('Before the session can end, settle: '
         + blockers.join(' · ') + '.');
       return;
     }
@@ -1737,10 +1737,10 @@ async function endSession() {
         });
       }
     }
-    sessionNote('Sweeping your champions and coin home\u2026');
+    sessionNote('Returning all champions and coin to your wallet\u2026');
     const r = await S.wallet.sweep();
     track('session_end', { swept: r ? r.moved : 0 });
-    sessionNote(r ? `Swept ${r.moved} holdings back to your wallet.` : 'Nothing to sweep.');
+    sessionNote(r ? `Returned ${r.moved} holdings to your wallet.` : 'Nothing to return.');
     await S.wallet.disconnect();
     try {
       const arch = JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]');
@@ -1760,9 +1760,9 @@ async function endSession() {
       // dropping the player to "Connect wallet"
       S.wallet = null;
       S.addr = null;
-      sessionNote('Session ended; waking your wallet pairing…');
+      sessionNote('Session ended; reconnecting your wallet…');
       if (await restoreWcPairing()) {
-        sessionNote('Session ended; your wallet is sworn again.');
+        sessionNote('Session ended; your wallet is connected again.');
         track('wallet_connect', { wallet: 'wc-restored-after-session' });
       }
     }
@@ -1911,7 +1911,7 @@ async function disconnectWallet() {
 }
 
 $('walletBtn').onclick = () => {
-  $('connectMsg').textContent = S.addr ? `Sworn: ${S.wallet.label} · ${who(S.addr)}` : '';
+  $('connectMsg').textContent = S.addr ? `Connected: ${S.wallet.label} · ${who(S.addr)}` : '';
   syncSessionBox();
   // warm the WalletConnect bundle while the player reads the options
   if (!S.addr) window.WALLETS.prefetchWc();
@@ -2018,11 +2018,11 @@ document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
 $('wdGemsBtn')?.addEventListener('click', () => {});
 document.addEventListener('click', async e => {
   if (e.target.id === 'wdGemsBtn') {
-    if (await doTx('Drawing gems from the ledger', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)])) window.sfx?.('coin');
+    if (await doTx('Withdrawing gems', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)])) window.sfx?.('coin');
   }
-  if (e.target.id === 'depGemsBtn') doTx('Entrusting gems to the ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
+  if (e.target.id === 'depGemsBtn') doTx('Moving gems to your ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
   if (e.target.id === 'wdFundsBtn') {
-    if (await doTx('Collecting your coin', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT })) window.sfx?.('coin');
+    if (await doTx('Withdrawing HTR', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT })) window.sfx?.('coin');
   }
 });
 
