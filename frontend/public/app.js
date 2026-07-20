@@ -108,11 +108,14 @@ async function loadContract() {
   const live = uids.filter(u => (S.cards.get(u)?.tier ?? -1) >= 0);
   const dyn = await batchCalls(live.flatMap(u =>
     [`get_pending_owner("${u}")`, `get_staker("${u}")`,
-     `get_card_aspects("${u}")`, `get_card_wins("${u}")`, `get_card_cosmetics("${u}")`]));
+     `get_card_aspects("${u}")`, `get_card_wins("${u}")`, `get_card_cosmetics("${u}")`,
+     `get_card_power("${u}")`]));
   for (const u of live) {
     const c = S.cards.get(u);
     c.pending = dyn[`get_pending_owner("${u}")`] ?? null;
     c.staker = dyn[`get_staker("${u}")`] ?? null;
+    // power grows with tempering and veterancy: not static after all
+    c.power = dyn[`get_card_power("${u}")`] ?? c.power;
     const asp = dyn[`get_card_aspects("${u}")`] || '';
     // [valor, bulwark, guile, tempers, hardened, xp, level, vet]
     c.aspects = asp ? asp.split('|').map(Number) : null;
