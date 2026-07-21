@@ -141,6 +141,17 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .stat .v { font-family: 'Fragment Mono', monospace; font-variant-numeric: tabular-nums; font-size: 22px; margin-top: 6px; color: var(--ink); }
 .stat .v small { font-size: 12px; color: var(--ink-dim); }
 
+/* header X link renders like the neighbouring icon buttons */
+a.x-link { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* site footer */
+.site-foot {
+  margin-top: 56px; padding: 18px 0 6px; text-align: center;
+  font-size: 12px; color: var(--ink-dim); border-top: 1px solid var(--line);
+}
+.site-foot a { color: var(--ink-dim); text-decoration: none; }
+.site-foot a:hover { color: var(--ink-muted); }
+
 /* realm activity feed */
 .feed-panel {
   margin-top: 14px; border: 1px solid var(--line); background: var(--panel);
