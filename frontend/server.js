@@ -143,23 +143,13 @@ function feedEventFor(tx) {
   const who = tx.nc_address;
   const args = tx.nc_args_decoded || [];
   const ts = tx.timestamp;
-  const cardName = uid => {
-    const t = (tx.tokens || []).find(x => (x.uid || x) === uid);
-    return t && t.name ? t.name : null;
-  };
   switch (tx.nc_method) {
-    case 'pull': {
-      // the summoned card is the token minted by this tx
-      const t = (tx.tokens || []).find(x => x.name);
-      return t ? { ts, kind: 'pull', who, card: t.name } : null;
-    }
-    case 'fuse': {
-      // deposited tokens are the parents; the remaining token is the child
-      const deposited = new Set(((tx.nc_context || {}).actions || [])
-        .map(a => a.token_uid).filter(Boolean));
-      const child = (tx.tokens || []).find(x => x.name && !deposited.has(x.uid));
-      return { ts, kind: 'fuse', who, card: child ? child.name : null };
-    }
+    // contract-minted tokens never appear in the tx's own token list, so
+    // pull/fuse card names are filled in afterwards from the balance diff
+    case 'pull':
+      return { ts, kind: 'pull', who, card: null };
+    case 'fuse':
+      return { ts, kind: 'fuse', who, card: null };
     case 'fight_writ': {
       const writ = Number(args[1]), tier = Number(args[2]);
       const name = (writNames && writNames[writ]) || `writ ${writ}`;
@@ -180,9 +170,16 @@ function feedEventFor(tx) {
   }
 }
 
+let knownUids = null; // contract token set, for spotting freshly minted cards
+async function contractUids() {
+  const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
+  return new Set(Object.keys(d.balances || {}));
+}
+
 async function pollFeed() {
   try {
     if (!writNames) await loadWritNames();
+    if (!knownUids) knownUids = await contractUids();
     const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
     const fresh = [];
     for (const tx of d.history || []) {
@@ -191,8 +188,26 @@ async function pollFeed() {
       const ev = feedEventFor(tx);
       if (ev) fresh.push(ev);
     }
-    // history is newest-first; push oldest first so the feed stays ordered
-    for (const ev of fresh.reverse()) feedPush(ev);
+    fresh.reverse(); // history is newest-first; process oldest first
+    // name the cards minted since the last poll (summons and fusion children)
+    const minted = fresh.filter(ev => ev.kind === 'pull' || ev.kind === 'fuse');
+    if (minted.length) {
+      const now = await contractUids();
+      const newUids = [...now].filter(u => !knownUids.has(u));
+      knownUids = now;
+      const qs = newUids.slice(0, 20)
+        .map(u => 'calls[]=' + encodeURIComponent(`get_card_name("${u}")`)).join('&');
+      let named = {};
+      if (qs) {
+        const st = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+        named = st.calls || {};
+      }
+      const queue = newUids
+        .map(u => named[`get_card_name("${u}")`] && named[`get_card_name("${u}")`].value)
+        .filter(Boolean);
+      for (const ev of minted) ev.card = queue.shift() || null;
+    }
+    for (const ev of fresh) feedPush(ev);
     if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
   } catch { /* the feed is decorative; next poll retries */ }
 }

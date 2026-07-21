@@ -248,7 +248,9 @@ function agoText(ts) {
 function feedLine(ev) {
   const name = `<b>${who(ev.who)}</b>`;
   switch (ev.kind) {
-    case 'pull': return `${name} summoned <b>${ev.card}</b>`;
+    case 'pull': return ev.card
+      ? `${name} summoned <b>${ev.card}</b>`
+      : `${name} summoned a champion`;
     case 'fuse': return ev.card
       ? `${name} forged <b>${ev.card}</b> in the Rite of Union`
       : `${name} forged a champion in the Rite of Union`;
