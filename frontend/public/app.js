@@ -233,6 +233,53 @@ async function loadRaffle() {
   } catch { /* raffle display is optional */ }
 }
 
+/* ---------------- realm activity feed ---------------- */
+
+const WRIT_TIER_NAMES = ['Grim', 'Dire', 'Black'];
+
+function agoText(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (s < 90) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function feedLine(ev) {
+  const name = `<b>${who(ev.who)}</b>`;
+  switch (ev.kind) {
+    case 'pull': return `${name} summoned <b>${ev.card}</b>`;
+    case 'fuse': return ev.card
+      ? `${name} forged <b>${ev.card}</b> in the Rite of Union`
+      : `${name} forged a champion in the Rite of Union`;
+    case 'writ': return `${name} marched on <b>${ev.writ}</b> (${WRIT_TIER_NAMES[ev.tier] || 'Grim'})`;
+    case 'challenge': return ev.wager > 0
+      ? `${name} posted a challenge in the Pit · ${fmtGems(ev.wager)} wager`
+      : `${name} posted a friendly spar in the Pit`;
+    case 'answer': return `${name} answered challenge #${ev.id}`;
+    case 'delve': return `${name} sent a champion into the deep`;
+    case 'delve_done': return `${name} returned from a delve`;
+    case 'temper': return `${name} tempered a champion`;
+    case 'banner': return `A new banner rises: <b>${ev.name}</b>`;
+    default: return null;
+  }
+}
+
+async function loadFeed() {
+  try {
+    const r = await fetch('/api/feed');
+    if (!r.ok) return;
+    const d = await r.json();
+    const rows = (d.events || []).slice(0, 8)
+      .map(ev => ({ ev, line: feedLine(ev) }))
+      .filter(x => x.line)
+      .map(x => `<div class="feed-row"><span class="feed-ago mono">${agoText(x.ev.ts)}</span>
+        <span>${x.line}</span></div>`);
+    $('feedPanel').hidden = rows.length === 0;
+    $('feedList').innerHTML = rows.join('');
+  } catch { /* the feed is decorative */ }
+}
+
 async function loadNames() {
   try {
     const r = await fetch('/api/names');
@@ -246,6 +293,7 @@ async function refresh() {
   await loadMine();
   await loadRaffle();
   await loadNames();
+  await loadFeed();
   render();
   maybeAutoClaim();
 }
@@ -468,7 +516,30 @@ function rowArt(c) {
     : artSvg(c.name, 'card-art duel-art');
 }
 
+/* the delve is an appointment; the appointment should announce itself:
+   a badge on The Mines tab and a counter in the browser tab title */
+function updateCues() {
+  const ready = [...S.cards.values()].filter(c =>
+    S.addr && c.staker === S.addr && (c.delveSince || 0) > 0
+    && Date.now() >= (c.delveSince + (S.delveSeconds || 28800)) * 1000).length;
+  const tab = document.querySelector('.tab[data-tab="farm"]');
+  let badge = tab.querySelector('.tab-badge');
+  if (ready > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      tab.appendChild(badge);
+    }
+    badge.textContent = ready;
+  } else if (badge) {
+    badge.remove();
+  }
+  document.title = ready > 0 ? `(${ready}) Emberfall` : 'Emberfall';
+}
+setInterval(updateCues, 30_000); // countdowns cross zero between refreshes
+
 function render() {
+  updateCues();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   // a banner name stands alone in the chip (the hint span names the wallet
@@ -1167,15 +1238,35 @@ async function fightWrit(uid, writ, tier) {
   if (!h) return;
   const won = S.gemsLedger > before;  // victory pays 4x the entry
   const w = S.writs[writ] || { name: 'the writ' };
-  $('duelResult').innerHTML = won
+  const mult = [1, 2, 4][tier] || 1;
+  const mu = matchupHtml(S.cards.get(uid)?.aspects,
+    [w.valor * mult, w.bulwark * mult, w.guile * mult]);
+  $('duelResult').innerHTML = (won
     ? `<div class="duel-banner win">⚔️ THE WRIT IS FELLED</div>
        <div class="wait-sub">${w.name} (${WRIT_TIERS[tier]}) falls. The bounty and the renown are yours.</div>`
     : `<div class="duel-banner lose">💀 THE WRIT STANDS</div>
-       <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`;
+       <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`) + mu;
   window.sfx?.('clash');
   setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
   showStage('stageDuel');
   $('overlay').hidden = false;
+}
+
+/* a fight is three rounds, one per aspect: show the matchup so the result
+   reads as a story, not a coin flip */
+function matchupHtml(mine, theirs) {
+  const icons = ['⚔', '🛡', '🗡'];
+  const names = ['Valor', 'Bulwark', 'Guile'];
+  if (!mine || !theirs) return '';
+  const rows = [0, 1, 2].map(i => {
+    const a = mine[i] || 0, b = theirs[i] || 0;
+    const pct = a + b > 0 ? Math.round(100 * a / (a + b)) : 50;
+    return `<div class="mu-row"><span class="mu-k">${icons[i]} ${names[i]}</span>
+      <span class="mono">${a} vs ${b}</span>
+      <span class="mu-pct mono">${pct}% yours</span></div>`;
+  }).join('');
+  return `<div class="matchup">${rows}
+    <div class="mu-note">three rounds, one per aspect · win two to take the fight</div></div>`;
 }
 
 async function claimDelve(uid) {
@@ -1502,9 +1593,12 @@ async function submitPick(uid) {
     const home = S.wallet?.mode === 'session'
       ? 'Your champion is already on the way home.'
       : 'Your champion returns; claim them under Your Host.';
-    $('duelResult').innerHTML = won
+    const d = S.duels.find(x => x.id === ref);
+    const mu = matchupHtml(S.cards.get(uid)?.aspects,
+      d ? S.cards.get(d.card)?.aspects : null);
+    $('duelResult').innerHTML = (won
       ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
-      : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`;
+      : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`) + mu;
     window.sfx?.('clash');
     setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
     showStage('stageDuel');
@@ -2104,6 +2198,8 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
     $('walletBtn').classList.remove('beckon');
   }
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
+  // the feed greets visitors before any wallet is connected
+  loadNames().then(loadFeed).catch(() => {});
   render();
   await resumeSession();
   // silently resume a prior WalletConnect pairing (sessions persist for days);

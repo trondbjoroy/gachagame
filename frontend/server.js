@@ -112,6 +112,93 @@ const METHODS = {
   buy_cosmetic:  { actions: [],                args: [isHex64, isSmallInt, isSmallInt] },
 };
 
+// ---- realm activity feed: recent contract actions, told plainly ----
+// Built from the contract's public history. Outcomes (fight results, delve
+// hauls) live in emitted events the public node does not expose, so the feed
+// reports deeds, not verdicts.
+const FEED_MAX = 60;
+let feed = [];            // newest first: {ts, kind, who, ...detail}
+const feedSeen = new Set();
+let writNames = null;     // writ id -> name, fetched once
+
+function feedPush(ev) {
+  feed.unshift(ev);
+  if (feed.length > FEED_MAX) feed.length = FEED_MAX;
+}
+
+async function loadWritNames() {
+  try {
+    const qs = [...Array(10).keys()]
+      .map(i => 'calls[]=' + encodeURIComponent(`get_writ(${i})`)).join('&');
+    const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+    writNames = {};
+    for (let i = 0; i < 10; i++) {
+      const v = d.calls && d.calls[`get_writ(${i})`] && d.calls[`get_writ(${i})`].value;
+      if (v) writNames[i] = v.split('|')[0];
+    }
+  } catch { writNames = null; } // retried on the next poll
+}
+
+function feedEventFor(tx) {
+  const who = tx.nc_address;
+  const args = tx.nc_args_decoded || [];
+  const ts = tx.timestamp;
+  const cardName = uid => {
+    const t = (tx.tokens || []).find(x => (x.uid || x) === uid);
+    return t && t.name ? t.name : null;
+  };
+  switch (tx.nc_method) {
+    case 'pull': {
+      // the summoned card is the token minted by this tx
+      const t = (tx.tokens || []).find(x => x.name);
+      return t ? { ts, kind: 'pull', who, card: t.name } : null;
+    }
+    case 'fuse': {
+      // deposited tokens are the parents; the remaining token is the child
+      const deposited = new Set(((tx.nc_context || {}).actions || [])
+        .map(a => a.token_uid).filter(Boolean));
+      const child = (tx.tokens || []).find(x => x.name && !deposited.has(x.uid));
+      return { ts, kind: 'fuse', who, card: child ? child.name : null };
+    }
+    case 'fight_writ': {
+      const writ = Number(args[1]), tier = Number(args[2]);
+      const name = (writNames && writNames[writ]) || `writ ${writ}`;
+      return { ts, kind: 'writ', who, writ: name, tier: Number.isFinite(tier) ? tier : 0 };
+    }
+    case 'create_duel':
+      return { ts, kind: 'challenge', who, wager: Number(args[0]) || 0 };
+    case 'accept_duel':
+      return { ts, kind: 'answer', who, id: Number(args[0]) || 0 };
+    case 'begin_delve':
+      return { ts, kind: 'delve', who };
+    case 'claim_delve':
+      return { ts, kind: 'delve_done', who };
+    case 'temper':
+      return { ts, kind: 'temper', who };
+    default:
+      return null;
+  }
+}
+
+async function pollFeed() {
+  try {
+    if (!writNames) await loadWritNames();
+    const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
+    const fresh = [];
+    for (const tx of d.history || []) {
+      if (feedSeen.has(tx.hash) || tx.is_voided) continue;
+      feedSeen.add(tx.hash);
+      const ev = feedEventFor(tx);
+      if (ev) fresh.push(ev);
+    }
+    // history is newest-first; push oldest first so the feed stays ordered
+    for (const ev of fresh.reverse()) feedPush(ev);
+    if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
+  } catch { /* the feed is decorative; next poll retries */ }
+}
+pollFeed();
+setInterval(pollFeed, 45_000);
+
 // ---- banner names: claims live on-chain as data outputs; this is an index ----
 // A claim tx's inputs are signed by the claimer, so a tx whose data output
 // says "emberfall:name:X" and whose inputs spend from address A proves A
@@ -244,6 +331,7 @@ async function handleNameClaim(res, body) {
     ...(reclaimHash ? { reclaimHash } : {}),
   };
   saveNames();
+  feedPush({ ts: Math.floor(Date.now() / 1000), kind: 'banner', who: wanted, name });
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ success: true, address: wanted, name }));
 }
@@ -280,6 +368,12 @@ async function forward(res, target, opts) {
 async function handleApi(req, res, ip) {
   const url = new URL(req.url.slice(4), 'http://x');
   const q = url.searchParams;
+
+  if (req.method === 'GET' && url.pathname === '/feed') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({ events: feed }));
+  }
 
   if (req.method === 'GET' && url.pathname === '/names') {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
