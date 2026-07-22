@@ -19,7 +19,7 @@ const TOUR = [
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The realm keeps count: your gems, trials won, renown with your vigil streak, and your standing. Below the numbers, THE REALM STIRS shows what other lords are doing right now. Everything here is read from the Great Ledger; nothing is stored on our servers. Fancy a banner name instead of an address? Click your wallet chip and SET BANNER NAME.',
+    body: 'The realm keeps count: your gems, trials won, renown with your vigil streak, and your standing. Below the numbers, THE REALM STIRS shows what other lords are doing right now; it starts folded, so click its title to open it. Everything here is read from the Great Ledger; nothing is stored on our servers. Fancy a banner name instead of an address? Click your wallet chip and SET BANNER NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',

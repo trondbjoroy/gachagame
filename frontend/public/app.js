@@ -1801,6 +1801,22 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
+
+/* the realm feed folds away; closed until the player opens it */
+const FEED_LS = 'emberfall_feed_open';
+function applyFeedFold() {
+  const open = localStorage.getItem(FEED_LS) === '1';
+  $('feedPanel').classList.toggle('collapsed', !open);
+  $('feedList').hidden = !open;
+  $('feedToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+$('feedToggle').onclick = () => {
+  const open = localStorage.getItem(FEED_LS) === '1';
+  localStorage.setItem(FEED_LS, open ? '0' : '1');
+  applyFeedFold();
+  window.track && track('feed_toggle', { open: !open });
+};
+applyFeedFold();
 /* ---------------- promptless session ---------------- */
 
 const SESSION_LS = 'emberfall_session';
