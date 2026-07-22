@@ -1623,35 +1623,26 @@ async function shareCard(uid) {
     + `the fully onchain TCG on @hathornetwork. Free on testnet. Play with $HTR, `
     + `earn $GEMS at emberfall.fun`;
   try {
-    msg.textContent = 'Forging the card image…';
-    const blob = await cardShareImage(c);
-    const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
-    // the native sheet is only useful where X lives as an app (touch devices);
-    // on desktop the clipboard + prefilled composer is the shorter path
+    // the native sheet is only useful where X lives as an app (touch devices)
     const touch = matchMedia('(pointer: coarse)').matches;
-    if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], text });
-      msg.textContent = '';
-      track('share_card', { method: 'native' });
-      return;
+    if (touch) {
+      msg.textContent = 'Forging the card image…';
+      const blob = await cardShareImage(c);
+      const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        msg.textContent = '';
+        track('share_card', { method: 'native' });
+        return;
+      }
     }
-    // desktop: put the image on the clipboard, open the X composer prefilled
-    let copied = false;
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      copied = true;
-    } catch {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${slugOf(c.name)}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
-    }
-    window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
-    msg.textContent = copied
-      ? 'Card image copied. Paste it into the post, edit the words as you like.'
-      : 'Card image downloaded. Attach it to the post, edit the words as you like.';
-    track('share_card', { method: copied ? 'clipboard' : 'download' });
+    // desktop: the champion travels with a link — X reads /c/<uid> and shows
+    // the art under the post by itself (the composer cannot take attachments)
+    const cardUrl = `${location.origin}/c/${uid}`;
+    window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text)
+      + '&url=' + encodeURIComponent(cardUrl), '_blank');
+    msg.textContent = 'The champion travels with the link and shows under the post. Edit the words as you like.';
+    track('share_card', { method: 'link' });
   } catch (e) {
     if ((e && e.name) === 'AbortError') { msg.textContent = ''; return; }
     msg.textContent = 'Could not build the card image: ' + ((e && e.message) || e);
@@ -2415,6 +2406,9 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   // the feed greets visitors before any wallet is connected
   loadNames().then(loadFeed).catch(() => {});
   render();
+  // a shared champion link (/c/<uid>) lands here with ?card=: open the card
+  const sharedCard = new URLSearchParams(location.search).get('card');
+  if (sharedCard && S.cards.has(sharedCard)) openCard(sharedCard);
   await sessionP;
   // silently resume a prior pairing: WalletConnect first (persists for
   // days), else MetaMask Snap when it was the last wallet used here

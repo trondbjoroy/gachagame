@@ -553,11 +553,50 @@ async function handleNode(req, res, ip) {
   return forward(res, NODE + rest);
 }
 
+// champion share pages: /c/<uid> serves the crawler meta X needs to show the
+// art under a post (the web intent cannot attach images), then sends humans
+// into the game with the card open
+const STATIONS = ['Footman', 'Knight', 'Highlord', 'Sovereign'];
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+function cardSharePage(req, res, uid) {
+  const c0 = cardCache.cards[uid];
+  const c = c0 && c0.name ? c0 : null;  // half-warmed entries read as unknown
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const origin = `${proto}://${req.headers.host}`;
+  const slug = c ? c.name.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, '-') : '';
+  const art = slug && fs.existsSync(path.join(PUB, 'cards', `${slug}.jpg`))
+    ? `${origin}/cards/${slug}.jpg` : `${origin}/logo.png`;
+  const title = c ? `${c.name} · ${STATIONS[c.tier] || 'Footman'} ⚡${c.power}` : 'A champion of Emberfall';
+  const asp = c && c.aspects ? c.aspects.split('|') : null;
+  const desc = (asp ? `Valor ${asp[0]} · Bulwark ${asp[1]} · Guile ${asp[2]} — ` : '')
+    + 'a champion bound in soulstone in Emberfall, the fully onchain TCG on Hathor. Free on testnet.';
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+  res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>${escHtml(title)} · Emberfall</title>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escHtml(title)}">
+<meta name="twitter:description" content="${escHtml(desc)}">
+<meta name="twitter:image" content="${escHtml(art)}">
+<meta property="og:title" content="${escHtml(title)}">
+<meta property="og:description" content="${escHtml(desc)}">
+<meta property="og:image" content="${escHtml(art)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${escHtml(`${origin}/c/${uid}`)}">
+<meta http-equiv="refresh" content="0;url=/?card=${uid}">
+</head><body></body></html>`);
+}
+
 http.createServer(async (req, res) => {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
   try {
     if (req.url.startsWith('/api/')) return await handleApi(req, res, ip);
     if (req.url.startsWith('/node/')) return await handleNode(req, res, ip);
+    const p0 = req.url.split('?')[0];
+    if (req.method === 'GET' && p0.startsWith('/c/') && HEX64.test(p0.slice(3)))
+      return cardSharePage(req, res, p0.slice(3));
     let p = decodeURIComponent(req.url.split('?')[0]);
     if (p === '/') p = '/index.html';
     const f = path.normalize(path.join(PUB, p));
