@@ -1445,7 +1445,7 @@ async function reclaimBanner() {
     if (!d.success) throw new Error(d.error || 'claim rejected');
     await loadNames();
     render();
-    ribbon(`Your banner still reads <b>${last}</b>`, 'level', 'deed');
+    ribbon(`You are playing as <b>${last}</b>`, 'level', 'deed');
     track('set_name', { ok: true, auto: true, wallet: walletKind() });
   } catch (e) {
     // someone else truly holds it, or the tx failed: the player can SET NAME
