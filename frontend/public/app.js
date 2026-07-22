@@ -134,11 +134,12 @@ async function loadContract(touch) {
       for (const li of chains) for (const a of li.addrs || []) lineage.add(a);
     } catch { /* lineage is a bonus, not a dependency */ }
     const others = [...lineage].filter(a => a !== S.addr).slice(0, 12);
+    S.lineage = lineage;  // deeds and standing read the whole family too
     const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
       'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,
       `get_trial_done("${S.addr}", ${now})`,
-      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`])]);
+      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`, `get_gems_balance("${a}")`])]);
     S.shards = me[`get_shards("${S.addr}")`] || 0;
     S.cleared = me[`get_gauntlet_cleared("${S.addr}")`] || 0;
     S.trialDoneChain = me[`get_trial_done("${S.addr}", ${now})`] === true;
@@ -151,6 +152,9 @@ async function loadContract(touch) {
     S.wins = winsNow;
     S.renown = (me[`get_renown("${S.addr}")`] || 0)
       + others.reduce((s, a) => s + (me[`get_renown("${a}")`] || 0), 0);
+    // gems held on other addresses of the lineage: counted for deeds,
+    // never spendable from here (the contract keys ledgers per address)
+    S.gemsLineageExtra = others.reduce((s, a) => s + (me[`get_gems_balance("${a}")`] || 0), 0);
     S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
     S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
     S.favorPool = me['get_favor_pool()'] || 0;
@@ -345,12 +349,15 @@ const DEEDS = [
 ];
 
 function deedState() {
+  // the standing follows the player, not the key: cards and gems held by
+  // any address in the lineage (main wallet, past sessions) count too
+  const fam = S.lineage && S.lineage.size ? S.lineage : new Set(S.addr ? [S.addr] : []);
   const owned = [...S.cards.values()].filter(c => c.tier >= 0 &&
-    (c.mine || (S.addr && (c.staker === S.addr || c.pending === S.addr || c.marketPending === S.addr))));
+    (c.mine || fam.has(c.staker) || fam.has(c.pending) || fam.has(c.marketPending)));
   return {
     owned,
-    staked: owned.filter(c => c.staker === S.addr).length,
-    gems: S.gemsLedger + S.gemsWallet,
+    staked: owned.filter(c => fam.has(c.staker)).length,
+    gems: S.gemsLedger + S.gemsWallet + (S.gemsLineageExtra || 0),
     wins: S.wins,
     power: owned.reduce((a, c) => a + (c.power || 0), 0),
   };
@@ -2188,6 +2195,7 @@ async function disconnectWallet() {
   await S.wallet?.disconnect?.().catch(() => {});
   S.wallet = null; S.addr = null; S.htr = 0; S.gemsWallet = 0;
   S.gemsLedger = 0; S.wins = 0; S.prevWins = undefined; S.selected.clear();
+  S.lineage = null; S.gemsLineageExtra = 0;
   for (const c of S.cards.values()) c.mine = false;
   localStorage.removeItem('gacha_wallet');
   $('overlay').hidden = true;
