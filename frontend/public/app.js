@@ -119,8 +119,9 @@ async function loadContract(touch) {
 
   if (S.addr) {
     // reputation is keyed per address on-chain, but the PLAYER spans their
-    // current key, their main wallet, and this device's retired sessions:
-    // sum renown and wins across the whole lineage so nothing seems lost
+    // current key, their main wallet, this device's retired sessions, and
+    // every address their banner name has lived on (server-tracked, so it
+    // works across devices): sum renown and wins across the whole lineage
     const lineage = new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
     try {
       for (const e of JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]')) {
@@ -128,7 +129,11 @@ async function loadContract(touch) {
         if (a) lineage.add(a);
       }
     } catch { /* archive is optional */ }
-    const others = [...lineage].filter(a => a !== S.addr).slice(0, 8);
+    try {
+      const li = await (await fetch(`/api/lineage?addr=${S.addr}`)).json();
+      for (const a of li.addrs || []) lineage.add(a);
+    } catch { /* lineage is a bonus, not a dependency */ }
+    const others = [...lineage].filter(a => a !== S.addr).slice(0, 12);
     const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
       'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,

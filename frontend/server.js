@@ -393,6 +393,8 @@ async function handleNameClaim(res, body) {
     delete names[wanted];
     names[heir] = {
       name: entry.name, tx: txId, ts: Math.floor(Date.now() / 1000),
+      // every address the name has lived on: the player's on-chain lineage
+      past: [wanted, ...(entry.past || [])].slice(0, 20),
       ...(reclaimHash || entry.reclaimHash
         ? { reclaimHash: reclaimHash || entry.reclaimHash } : {}),
     };
@@ -403,6 +405,7 @@ async function handleNameClaim(res, body) {
 
   if (!NAME_RE.test(name)) return deny(res, 400, 'names are 3-16 letters, numbers, spaces or _');
   const lower = name.toLowerCase();
+  let inheritedPast = null;
   for (const [a, n] of Object.entries(names)) {
     if (a !== wanted && n.name.toLowerCase() === lower) {
       // the name moves to the claimant if its holder let go of it (a swept,
@@ -422,11 +425,16 @@ async function handleNameClaim(res, body) {
           }
         }
       }
+      inheritedPast = [a, ...(n.past || [])];
       delete names[a];
     }
   }
+  const ownPast = names[wanted]?.past; // renames keep their chain
   names[wanted] = {
     name, tx: txId, ts: Math.floor(Date.now() / 1000),
+    ...(inheritedPast || ownPast
+      ? { past: [...new Set([...(inheritedPast || []), ...(ownPast || [])])].slice(0, 20) }
+      : {}),
     ...(reclaimHash ? { reclaimHash } : {}),
   };
   saveNames();
@@ -482,6 +490,21 @@ async function handleApi(req, res, ip) {
     if (touch.length) await refreshCards(touch).catch(() => {});
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify(cardCache));
+  }
+
+  if (req.method === 'GET' && url.pathname === '/lineage') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    // every address the caller's banner name has lived on, newest first
+    const a = q.get('addr') || '';
+    let chain = [];
+    for (const [holder, n] of Object.entries(names)) {
+      if (holder === a || (n.past || []).includes(a)) {
+        chain = [holder, ...(n.past || [])];
+        break;
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({ addrs: chain }));
   }
 
   if (req.method === 'GET' && url.pathname === '/names') {
