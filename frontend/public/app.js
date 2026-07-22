@@ -808,18 +808,25 @@ function bindListActions() {
   document.querySelectorAll('[data-open]').forEach(el => {
     const uid = el.dataset.open;
     let timer = null, held = false;
-    const fusable = () => {
-      const c = S.cards.get(uid);
-      return c && c.mine && c.tier < 3 && !S.legacy?.has(uid);
-    };
     el.onpointerdown = e => {
-      if (e.target.closest('button') || !fusable()) return;
+      const c = S.cards.get(uid);
+      if (e.target.closest('button') || !c?.mine) return;
       held = false;
       timer = setTimeout(() => {
         held = true;
+        window.haptic?.([20, 30, 20]);
+        // a hold on a champion that cannot fuse says WHY instead of nothing
+        if (S.legacy?.has(uid)) {
+          ribbon('A champion of the old realm cannot enter the Rite of Union: '
+            + 'its bloodline is sealed to the old Ledger');
+          return;
+        }
+        if (c.tier >= 3) {
+          ribbon('A Sovereign stands at the highest station; it cannot be fused further');
+          return;
+        }
         if (S.selected.has(uid)) S.selected.delete(uid);
         else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
-        window.haptic?.([20, 30, 20]);
         render();
       }, 450);
     };
@@ -827,7 +834,7 @@ function bindListActions() {
     el.onpointerup = cancel;
     el.onpointerleave = cancel;
     el.onpointercancel = cancel;
-    el.oncontextmenu = e => { if (fusable()) e.preventDefault(); };
+    el.oncontextmenu = e => { if (S.cards.get(uid)?.mine) e.preventDefault(); };
     el.onclick = e => {
       if (e.target.closest('button')) return;
       if (held) { held = false; return; } // the hold already did its work
