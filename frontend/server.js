@@ -50,7 +50,8 @@ setInterval(refreshPlayerAddress, 30_000);
 // ---- naive per-IP rate limiting (fixed 60s window) ----
 const buckets = new Map();
 function rateLimited(ip, kind) {
-  const limit = kind === 'tx' ? 6 : 90;
+  // reads run in parallel bursts since b=56, and the node behind us is ours
+  const limit = kind === 'tx' ? 6 : 240;
   const now = Date.now();
   const key = `${ip}:${kind}`;
   let b = buckets.get(key);
@@ -182,12 +183,15 @@ async function pollFeed() {
     if (!knownUids) knownUids = await contractUids();
     const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
     const fresh = [];
+    const touched = new Set();
     for (const tx of d.history || []) {
       if (feedSeen.has(tx.hash) || tx.is_voided) continue;
       feedSeen.add(tx.hash);
+      for (const u of touchFromTx(tx)) touched.add(u);
       const ev = feedEventFor(tx);
       if (ev) fresh.push(ev);
     }
+    if (touched.size) refreshCards([...touched]).catch(() => {});
     fresh.reverse(); // history is newest-first; process oldest first
     // name the cards minted since the last poll (summons and fusion children)
     const minted = fresh.filter(ev => ev.kind === 'pull' || ev.kind === 'fuse');
@@ -195,6 +199,7 @@ async function pollFeed() {
       const now = await contractUids();
       const newUids = [...now].filter(u => !knownUids.has(u));
       knownUids = now;
+      if (newUids.length) refreshCards(newUids.filter(u => u !== GEMS)).catch(() => {});
       const qs = newUids.slice(0, 20)
         .map(u => 'calls[]=' + encodeURIComponent(`get_card_name("${u}")`)).join('&');
       let named = {};
@@ -213,6 +218,85 @@ async function pollFeed() {
 }
 pollFeed();
 setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
+
+// ---- card-state cache: one request serves what cost clients ~500 view calls ----
+// Nano view calls run ~125ms each on the node, so clients reading every card
+// per refresh took 10-20s. The server keeps the card map warm instead,
+// updating incrementally from the same tx stream the feed watches; clients
+// pass ?touch=<uids> after their own tx for instant freshness on those cards.
+const OLD_NC = '00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258';
+const cardCache = { cards: {}, legacy: [], updatedAt: 0 };
+const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
+  'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
+  'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
+
+async function ncCalls(ncId, calls, concurrency = 8) {
+  const chunks = [];
+  for (let i = 0; i < calls.length; i += 30) chunks.push(calls.slice(i, i + 30));
+  const out = {};
+  let idx = 0;
+  await Promise.all([...Array(Math.min(concurrency, chunks.length))].map(async () => {
+    for (;;) {
+      const mine = idx++;
+      if (mine >= chunks.length) return;
+      const qs = chunks[mine].map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
+      const d = await (await fetch(`${NODE}/nano_contract/state?id=${ncId}&${qs}`)).json();
+      for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
+    }
+  }));
+  return out;
+}
+
+async function refreshCards(uids) {
+  if (!uids.length) return;
+  const v = await ncCalls(NC, uids.flatMap(u => CARD_VIEWS.map(f => `${f}("${u}")`)));
+  const legacySet = new Set(cardCache.legacy);
+  const legacyTouched = uids.filter(u => legacySet.has(u));
+  const ov = legacyTouched.length
+    ? await ncCalls(OLD_NC, legacyTouched.flatMap(u =>
+        [`get_staker("${u}")`, `get_pending_owner("${u}")`]))
+    : {};
+  for (const u of uids) {
+    const g = f => v[`${f}("${u}")`];
+    if (g('get_card_tier') == null) continue; // unknown to the contract
+    cardCache.cards[u] = {
+      name: g('get_card_name'), tier: g('get_card_tier'), power: g('get_card_power'),
+      aspects: g('get_card_aspects') || null, wins: g('get_card_wins') || 0,
+      cosmetics: g('get_card_cosmetics') || 0,
+      pending: g('get_pending_owner') ?? null, staker: g('get_staker') ?? null,
+      delveSince: g('get_delve_since') || 0, temperCost: g('get_temper_cost') || 0,
+      oldStaker: ov[`get_staker("${u}")`] ?? cardCache.cards[u]?.oldStaker ?? null,
+      oldPending: ov[`get_pending_owner("${u}")`] ?? cardCache.cards[u]?.oldPending ?? null,
+    };
+  }
+  cardCache.updatedAt = Math.floor(Date.now() / 1000);
+}
+
+async function sweepCards() {
+  const [cur, old] = await Promise.all([
+    (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json(),
+    (await fetch(`${NODE}/nano_contract/state?id=${OLD_NC}&balances[]=__all__`)).json(),
+  ]);
+  cardCache.legacy = Object.keys(old.balances || {}).filter(u => HEX64.test(u));
+  const uids = [...new Set([...Object.keys(cur.balances || {}), ...cardCache.legacy])]
+    .filter(u => HEX64.test(u) && u !== GEMS);
+  await refreshCards(uids);
+  console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
+}
+sweepCards().catch(e => console.error('card sweep failed:', e.message));
+setInterval(() => sweepCards().catch(() => {}), 10 * 60_000); // drift safety net
+
+// the feed poller calls this with uids seen in fresh transactions
+function touchFromTx(tx) {
+  const uids = new Set();
+  for (const a of tx.nc_args_decoded || []) {
+    if (typeof a === 'string' && HEX64.test(a)) uids.add(a);
+  }
+  for (const a of (tx.nc_context || {}).actions || []) {
+    if (a.token_uid && HEX64.test(a.token_uid) && a.token_uid !== GEMS) uids.add(a.token_uid);
+  }
+  return [...uids];
+}
 
 // ---- banner names: claims live on-chain as data outputs; this is an index ----
 // A claim tx's inputs are signed by the claimer, so a tx whose data output
@@ -388,6 +472,16 @@ async function handleApi(req, res, ip) {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ events: feed }));
+  }
+
+  if (req.method === 'GET' && url.pathname === '/cards') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    // ?touch=<uid,uid>: the caller just changed these cards; re-read them now
+    const touch = (q.get('touch') || '').split(',')
+      .filter(u => HEX64.test(u) && u !== GEMS).slice(0, 8);
+    if (touch.length) await refreshCards(touch).catch(() => {});
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify(cardCache));
   }
 
   if (req.method === 'GET' && url.pathname === '/names') {

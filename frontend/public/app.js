@@ -43,17 +43,24 @@ const ncState = qs => node(`/nano_contract/state?id=${NC}&` + qs);
 const callQs = cs => cs.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
 
 async function batchCalls(cs) {
+  const chunks = [];
+  for (let i = 0; i < cs.length; i += 30) chunks.push(cs.slice(i, i + 30));
+  // all batches in flight at once: a large host costs one round trip, not many
+  const results = await Promise.all(chunks.map(c => ncState(callQs(c))));
   const out = {};
-  for (let i = 0; i < cs.length; i += 30) {
-    const d = await ncState(callQs(cs.slice(i, i + 30)));
+  for (const d of results) {
     for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
   }
   return out;
 }
 
-async function loadContract() {
+async function loadContract(touch) {
   const now = Math.floor(Date.now() / 1000);
-  const base = await ncState('balances[]=__all__&fields[]=total_pulls' + '&' +
+  // the heavy per-card state comes pre-warmed from our server's cache (one
+  // request); everything below reads only globals and per-player views
+  const cardsP = fetch('/api/cards' + (touch && touch.length
+    ? '?touch=' + touch.slice(0, 8).join(',') : '')).then(r => r.json());
+  const base = await ncState('fields[]=total_pulls' + '&' +
     callQs(['get_pull_price()', 'get_duel_count()', 'get_writ_count()',
             `get_trial_today(${now})`, 'get_delve_seconds()']));
   // a rate-limited or hiccuping node answers without fields: name the real
@@ -69,87 +76,43 @@ async function loadContract() {
   const writCount = base.calls['get_writ_count()']?.value || 0;
   S.trialToday = base.calls[`get_trial_today(${now})`]?.value ?? null;
   S.delveSeconds = base.calls['get_delve_seconds()']?.value || 28800;
-  // adopted legacy cards live in wallets and never touched this contract:
-  // their uids come from the old arena's token list (metadata is adopted here)
-  let legacyUids = [];
-  if (window.GAME.oldNc) {
-    try {
-      const old = await node(`/nano_contract/state?id=${window.GAME.oldNc}&balances[]=__all__`);
-      legacyUids = Object.keys(old.balances || {});
-      // minted by the old arena: only IT holds melt authority, so the new
-      // contract cannot fuse them (fusion melts the parents)
-      S.legacy = new Set(legacyUids);
-    } catch { /* the legacy realm is optional; keep the last known set */ }
-  }
-  const uids = [...new Set([...Object.keys(base.balances), ...legacyUids])]
-    .filter(u => u !== HTR && u !== GEMS && u !== window.GAME.oldGems);
 
-  if (writCount && (!S.writs || S.writs.length !== writCount)) {
-    const wq = await batchCalls([...Array(writCount).keys()].map(i => `get_writ(${i})`));
+  const writsP = (writCount && (!S.writs || S.writs.length !== writCount))
+    ? batchCalls([...Array(writCount).keys()].map(i => `get_writ(${i})`))
+    : null;
+
+  const payload = await cardsP;
+  S.legacy = new Set(payload.legacy || []);
+  for (const [u, d] of Object.entries(payload.cards || {})) {
+    const c = S.cards.get(u) || { uid: u, mine: false, pendingGems: 0 };
+    c.name = d.name; c.tier = d.tier; c.power = d.power;
+    // [valor, bulwark, guile, tempers, hardened, xp, level, vet]
+    c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
+    c.level = c.aspects?.[6] || 0;
+    c.wins = d.wins; c.cosmetics = d.cosmetics;
+    c.pending = d.pending; c.staker = d.staker;
+    c.delveSince = d.delveSince; c.temperCost = d.temperCost;
+    c.oldStaker = d.oldStaker; c.oldPending = d.oldPending;
+    S.cards.set(u, c);
+  }
+
+  if (writsP) {
+    const wq = await writsP;
     S.writs = [...Array(writCount).keys()].map(i => {
       const [name, v, b, g] = (wq[`get_writ(${i})`] || '|||').split('|');
       return { id: i, name, valor: +v, bulwark: +b, guile: +g };
     });
   }
 
-  // static card info is immutable — fetch once
-  const fresh = uids.filter(u => !S.cards.has(u));
-  if (fresh.length) {
-    const info = await batchCalls(fresh.flatMap(u =>
-      [`get_card_name("${u}")`, `get_card_tier("${u}")`, `get_card_power("${u}")`]));
-    for (const u of fresh) {
-      S.cards.set(u, {
-        uid: u, name: info[`get_card_name("${u}")`],
-        tier: info[`get_card_tier("${u}")`], power: info[`get_card_power("${u}")`],
-        pending: null, staker: null, mine: false, pendingGems: 0,
-      });
-    }
-  }
-  const live = uids.filter(u => (S.cards.get(u)?.tier ?? -1) >= 0);
-  const dyn = await batchCalls(live.flatMap(u =>
-    [`get_pending_owner("${u}")`, `get_staker("${u}")`,
-     `get_card_aspects("${u}")`, `get_card_wins("${u}")`, `get_card_cosmetics("${u}")`,
-     `get_card_power("${u}")`]));
-  for (const u of live) {
-    const c = S.cards.get(u);
-    c.pending = dyn[`get_pending_owner("${u}")`] ?? null;
-    c.staker = dyn[`get_staker("${u}")`] ?? null;
-    // power grows with tempering and veterancy: not static after all
-    c.power = dyn[`get_card_power("${u}")`] ?? c.power;
-    const asp = dyn[`get_card_aspects("${u}")`] || '';
-    // [valor, bulwark, guile, tempers, hardened, xp, level, vet]
-    c.aspects = asp ? asp.split('|').map(Number) : null;
-    c.level = c.aspects?.[6] || 0;
-    c.wins = dyn[`get_card_wins("${u}")`] || 0;
-    c.cosmetics = dyn[`get_card_cosmetics("${u}")`] || 0;
-  }
-  // cards the retired realm still custodies (staked or pending there):
-  // owners recall them against the old contract, then play on here
-  if (window.GAME.oldNc && live.length) {
-    const oq = [];
-    for (const u of live) oq.push(`get_staker("${u}")`, `get_pending_owner("${u}")`);
-    const od = {};
-    for (let i = 0; i < oq.length; i += 30) {
-      const d = await node(`/nano_contract/state?id=${window.GAME.oldNc}&` + callQs(oq.slice(i, i + 30)));
-      for (const [k, v] of Object.entries(d.calls || {})) od[k] = v.value;
-    }
-    for (const u of live) {
-      const c = S.cards.get(u);
-      c.oldStaker = od[`get_staker("${u}")`] ?? null;
-      c.oldPending = od[`get_pending_owner("${u}")`] ?? null;
-    }
-  }
-
-  const stakedMine = live.filter(u => S.cards.get(u).staker === S.addr);
+  // per-player, time-sensitive card views: only the caller's staked cards
+  const stakedMine = [...S.cards.values()]
+    .filter(c => c.tier >= 0 && c.staker === S.addr).map(c => c.uid);
   if (stakedMine.length) {
     const pg = await batchCalls(stakedMine.flatMap(u =>
-      [`get_pending_gems("${u}", ${now})`, `get_temper_cost("${u}")`,
-       `get_delve_since("${u}")`, `get_writ_attempts("${u}", ${now})`]));
+      [`get_pending_gems("${u}", ${now})`, `get_writ_attempts("${u}", ${now})`]));
     for (const u of stakedMine) {
       const c = S.cards.get(u);
       c.pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
-      c.temperCost = pg[`get_temper_cost("${u}")`] || 0;
-      c.delveSince = pg[`get_delve_since("${u}")`] || 0;
       c.writFights = pg[`get_writ_attempts("${u}", ${now})`] || 0;
     }
   }
@@ -188,9 +151,11 @@ async function loadMarket() {
   if (!MKT) return;
   const mkState = qs => node(`/nano_contract/state?id=${MKT.nc}&` + qs);
   const mCalls = async cs => {
+    const chunks = [];
+    for (let i = 0; i < cs.length; i += 30) chunks.push(cs.slice(i, i + 30));
+    const results = await Promise.all(chunks.map(c => mkState(callQs(c))));
     const out = {};
-    for (let i = 0; i < cs.length; i += 30) {
-      const d = await mkState(callQs(cs.slice(i, i + 30)));
+    for (const d of results) {
       for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
     }
     return out;
@@ -289,13 +254,17 @@ async function loadNames() {
   } catch { /* names are cosmetic; addresses still show */ }
 }
 
-async function refresh() {
-  await loadContract();
+async function refresh(touch) {
+  // independent reads run together; only loadMarket (flags cards) and
+  // loadMine (needs the card set) wait for the contract
+  await Promise.all([
+    loadContract(touch),
+    loadRaffle(),
+    loadNames(),
+    loadFeed(),
+  ]);
   await loadMarket().catch(() => {});
   await loadMine();
-  await loadRaffle();
-  await loadNames();
-  await loadFeed();
   render();
   maybeAutoClaim();
 }
@@ -887,8 +856,10 @@ async function ensureLedgerGems(amount) {
 
 // confirmation wait for plain (non-nano) transactions: no execution logs exist
 async function waitForConfirm(hash) {
+  let wait = 1200; // check early, then settle into a steady cadence
   for (;;) {
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, wait));
+    wait = 2000;
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
     if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
@@ -898,8 +869,10 @@ async function waitForConfirm(hash) {
 
 async function waitForExecution(hash, onTick) {
   const start = Date.now();
+  let wait = 1200; // check early, then settle into a steady cadence
   for (;;) {
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, wait));
+    wait = 2000;
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
@@ -947,7 +920,13 @@ async function doTx(label, method, args, actions, { target } = {}) {
     track(method, { ok: true, target: target || 'game', wallet: walletKind() });
     window.trialEvent?.(method);
     setTimeout(() => el.remove(), 6000);
-    await refresh();
+    // the cards this tx touched are re-read server-side before answering
+    const touched = [
+      ...args.filter(a => typeof a === 'string' && /^[0-9a-f]{64}$/.test(a)),
+      ...actions.map(a => a.token).filter(t =>
+        t && t !== HTR && t !== GEMS && /^[0-9a-f]{64}$/.test(t)),
+    ];
+    await refresh(touched);
     return hash;
   } catch (e) {
     el.classList.add('fail');
@@ -2193,17 +2172,24 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
 (async () => {
   // a saved session or prior pairing will be restored below: say so in the
   // header right away so the player doesn't start a second connection
-  S.restoring = !!(localStorage.getItem(SESSION_LS)
-    || (window.GAME.wcProjectId && Object.keys(localStorage).some(k => k.startsWith('wc@2'))));
+  const savedSession = !!localStorage.getItem(SESSION_LS);
+  const savedPairing = window.GAME.wcProjectId
+    && Object.keys(localStorage).some(k => k.startsWith('wc@2'));
+  S.restoring = !!(savedSession || savedPairing);
   if (S.restoring) {
     $('walletAddr').textContent = 'Connecting…';
     $('walletBtn').classList.remove('beckon');
+    // start the heavy wallet bundle downloads before anything else
+    if (savedSession) window.WALLETS.prefetchSession();
+    else window.WALLETS.prefetchWc();
   }
+  // the session wallet syncs while the first realm read runs, not after it
+  const sessionP = resumeSession();
   await loadContract().catch(e => { $('pullNote').textContent = 'Failed to load: ' + e.message; });
   // the feed greets visitors before any wallet is connected
   loadNames().then(loadFeed).catch(() => {});
   render();
-  await resumeSession();
+  await sessionP;
   // silently resume a prior WalletConnect pairing (sessions persist for days);
   // only load the WC library if its storage says there was ever a pairing here
   if (!S.wallet && await restoreWcPairing()) {
