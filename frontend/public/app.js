@@ -922,8 +922,8 @@ async function doTx(label, method, args, actions, { target } = {}) {
     setTimeout(() => el.remove(), 6000);
     // the cards this tx touched are re-read server-side before answering
     const touched = [
-      ...args.filter(a => typeof a === 'string' && /^[0-9a-f]{64}$/.test(a)),
-      ...actions.map(a => a.token).filter(t =>
+      ...(args || []).filter(a => typeof a === 'string' && /^[0-9a-f]{64}$/.test(a)),
+      ...(actions || []).map(a => a.token).filter(t =>
         t && t !== HTR && t !== GEMS && /^[0-9a-f]{64}$/.test(t)),
     ];
     await refresh(touched);
