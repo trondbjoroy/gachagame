@@ -3,7 +3,7 @@ module.exports = {
   http_port: 8000,
 
   network: 'testnet',
-  server: 'https://node1.testnet.hathor.network/v1a/',
+  server: 'https://node-partners.testnet.hathor.network/v1a/',
 
   // Local mini tx-mining service (playground min_tx_weight=8)
   txMiningUrl: 'https://txmining.testnet.hathor.network/',

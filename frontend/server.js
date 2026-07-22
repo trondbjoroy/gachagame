@@ -15,7 +15,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
-const NODE = process.env.NODE_URL || 'https://node1.testnet.hathor.network/v1a';
+const NODE = process.env.NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
 const PUB = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -212,7 +212,7 @@ async function pollFeed() {
   } catch { /* the feed is decorative; next poll retries */ }
 }
 pollFeed();
-setInterval(pollFeed, 45_000);
+setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 
 // ---- banner names: claims live on-chain as data outputs; this is an index ----
 // A claim tx's inputs are signed by the claimer, so a tx whose data output

@@ -19,7 +19,7 @@ app.emberfall.fun {
 	# (some phones refuse direct connections to the node's host); this
 	# also carries the wallet's websocket
 	handle_path /hnode/* {
-		reverse_proxy https://node1.testnet.hathor.network {
+		reverse_proxy https://node-partners.testnet.hathor.network {
 			header_up Host {upstream_hostport}
 		}
 	}

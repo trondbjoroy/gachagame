@@ -22,7 +22,7 @@ import JSONBigIntFactory from 'json-bigint';
 })();
 
 const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessionNode)
-  || 'https://node1.testnet.hathor.network/v1a/';
+  || 'https://node-partners.testnet.hathor.network/v1a/';
 const NETWORK = 'testnet';
 const PIN = 'emberfall-session';
 

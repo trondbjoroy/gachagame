@@ -18,7 +18,7 @@ import os
 import urllib.parse
 import urllib.request
 
-NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
+NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
 # v3 arena; renown was migrated 1:1 via adopt_player, so existing baselines
 # stay valid. Player discovery still scans the retired v2.2 realm's history
 # because migration transactions carry only the operator's address.

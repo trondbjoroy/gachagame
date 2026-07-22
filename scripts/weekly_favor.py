@@ -25,7 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
+NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
 # v3 arena (renown migrated 1:1; discovery also scans the retired realm)
 ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
 OLD_ARENA = os.environ.get("OLD_ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
