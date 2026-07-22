@@ -1264,7 +1264,7 @@ function matchupHtml(mine, theirs) {
     const a = mine[i] || 0, b = theirs[i] || 0;
     const pct = a + b > 0 ? Math.round(100 * a / (a + b)) : 50;
     return `<div class="mu-row"><span class="mu-k">${icons[i]} ${names[i]}</span>
-      <span class="mono">${a} vs ${b}</span>
+      <span class="mono mu-a">${a}</span><span class="mu-vs">vs</span><span class="mono mu-b">${b}</span>
       <span class="mu-pct mono">${pct}% yours</span></div>`;
   }).join('');
   return `<div class="matchup">${rows}

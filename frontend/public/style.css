@@ -169,15 +169,19 @@ a.x-link { text-decoration: none; display: inline-flex; align-items: center; jus
 .feed-row b { color: var(--ink); font-weight: 600; }
 .feed-ago { flex-shrink: 0; font-size: 10.5px; color: var(--ink-dim); min-width: 62px; }
 
-/* fight matchup breakdown */
-.matchup { max-width: 340px; margin: 18px auto 0; text-align: left; }
+/* fight matchup breakdown: fixed-width number cells so the three rows
+   line up as columns around the "vs" */
+.matchup { max-width: 360px; margin: 18px auto 0; text-align: left; }
 .mu-row {
-  display: flex; justify-content: space-between; gap: 12px; padding: 6px 2px;
+  display: flex; align-items: baseline; padding: 6px 2px;
   font-size: 13px; color: var(--ink-muted); border-top: 1px solid rgba(255,255,255,.05);
 }
 .mu-row:first-child { border-top: none; }
-.mu-k { color: var(--ink); }
-.mu-pct { color: var(--ink-dim); }
+.mu-k { color: var(--ink); flex: 1; }
+.mu-a { width: 44px; text-align: right; }
+.mu-vs { width: 30px; text-align: center; color: var(--ink-dim); font-size: 11px; }
+.mu-b { width: 44px; text-align: left; }
+.mu-pct { color: var(--ink-dim); width: 96px; text-align: right; }
 .mu-note { margin-top: 8px; font-size: 11px; color: var(--ink-dim); text-align: center; }
 
 /* tab attention badge */
