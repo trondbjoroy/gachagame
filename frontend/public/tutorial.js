@@ -35,7 +35,7 @@ const TOUR = [
   {
     target: '#pane-arena', tab: 'arena',
     title: 'Arena',
-    body: 'Duels, best of three rounds: valor against valor, bulwark against bulwark, guile against guile. Wager gems; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
+    body: 'Duels, best of three rounds: attack against attack, defense against defense, cunning against cunning. Wager gems; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
   },
   {
     target: '#pane-market', tab: 'market',

@@ -465,7 +465,7 @@ function aspectsRow(c) {
   if (!c.aspects) return '';
   const [v, b, g, t, h] = c.aspects;
   const marks = (t > 0 ? ` · tempered ×${t}` : '') + (h > 0 ? ` · hardened ×${h}` : '');
-  return `<div class="ac-aspects" title="valor · bulwark · guile${marks}">
+  return `<div class="ac-aspects" title="attack · defense · cunning${marks}">
     ⚔ ${v} &nbsp; 🛡 ${b} &nbsp; 🗡 ${g}</div>`;
 }
 
@@ -1035,7 +1035,7 @@ async function doTemper(aspect) {
   const after = S.cards.get(uid)?.aspects;
   if (after) {
     const gain = after[aspect] - beforeAsp[aspect];
-    if (gain > 0) ribbon(`Tempered: <b>+${gain} ${['Valor', 'Bulwark', 'Guile'][aspect]}</b> for ${c.name}`);
+    if (gain > 0) ribbon(`Tempered: <b>+${gain} ${['Attack', 'Defense', 'Cunning'][aspect]}</b> for ${c.name}`);
   }
 }
 
@@ -1270,7 +1270,7 @@ async function fightWrit(uid, writ, tier) {
    reads as a story, not a coin flip */
 function matchupHtml(mine, theirs) {
   const icons = ['⚔', '🛡', '🗡'];
-  const names = ['Valor', 'Bulwark', 'Guile'];
+  const names = ['Attack', 'Defense', 'Cunning'];
   if (!mine || !theirs) return '';
   const rows = [0, 1, 2].map(i => {
     const a = mine[i] || 0, b = theirs[i] || 0;

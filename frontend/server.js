@@ -571,7 +571,7 @@ function cardSharePage(req, res, uid) {
     ? `${origin}/cards/${slug}.jpg` : `${origin}/logo.png`;
   const title = c ? `${c.name} · ${STATIONS[c.tier] || 'Footman'} ⚡${c.power}` : 'A champion of Emberfall';
   const asp = c && c.aspects ? c.aspects.split('|') : null;
-  const desc = (asp ? `Valor ${asp[0]} · Bulwark ${asp[1]} · Guile ${asp[2]} — ` : '')
+  const desc = (asp ? `Attack ${asp[0]} · Defense ${asp[1]} · Cunning ${asp[2]} — ` : '')
     + 'a champion bound in soulstone in Emberfall, the fully onchain TCG on Hathor. Free on testnet.';
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
   res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8">
