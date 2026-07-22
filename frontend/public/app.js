@@ -1637,7 +1637,10 @@ async function shareCard(uid) {
     msg.textContent = 'Forging the card image…';
     const blob = await cardShareImage(c);
     const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // the native sheet is only useful where X lives as an app (touch devices);
+    // on desktop the clipboard + prefilled composer is the shorter path
+    const touch = matchMedia('(pointer: coarse)').matches;
+    if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], text });
       msg.textContent = '';
       track('share_card', { method: 'native' });
@@ -2214,6 +2217,14 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('nameClaimBtn').onclick = claimName;
 $('cardShareBtn').onclick = () => cardDetailUid && shareCard(cardDetailUid);
+// the card and wallet views close like any lightbox: Escape or a click outside
+const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('overlay').hidden && dismissible()) $('overlay').hidden = true;
+});
+$('overlay').addEventListener('click', e => {
+  if (dismissible() && !e.target.closest('.stage')) $('overlay').hidden = true;
+});
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
