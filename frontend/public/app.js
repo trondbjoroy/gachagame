@@ -118,20 +118,34 @@ async function loadContract(touch) {
   }
 
   if (S.addr) {
+    // reputation is keyed per address on-chain, but the PLAYER spans their
+    // current key, their main wallet, and this device's retired sessions:
+    // sum renown and wins across the whole lineage so nothing seems lost
+    const lineage = new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
+    try {
+      for (const e of JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]')) {
+        const a = e.addr || e.address;
+        if (a) lineage.add(a);
+      }
+    } catch { /* archive is optional */ }
+    const others = [...lineage].filter(a => a !== S.addr).slice(0, 8);
     const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
       'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,
-      `get_trial_done("${S.addr}", ${now})`]);
+      `get_trial_done("${S.addr}", ${now})`,
+      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`])]);
     S.shards = me[`get_shards("${S.addr}")`] || 0;
     S.cleared = me[`get_gauntlet_cleared("${S.addr}")`] || 0;
     S.trialDoneChain = me[`get_trial_done("${S.addr}", ${now})`] === true;
     S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
-    const winsNow = me[`get_wins("${S.addr}")`] || 0;
+    const winsNow = (me[`get_wins("${S.addr}")`] || 0)
+      + others.reduce((s, a) => s + (me[`get_wins("${a}")`] || 0), 0);
     // covers wins as challenger too (someone answered while we were away)
     if (S.prevWins !== undefined && winsNow > S.prevWins) window.trialEvent?.('duel_win');
     S.prevWins = winsNow;
     S.wins = winsNow;
-    S.renown = me[`get_renown("${S.addr}")`] || 0;
+    S.renown = (me[`get_renown("${S.addr}")`] || 0)
+      + others.reduce((s, a) => s + (me[`get_renown("${a}")`] || 0), 0);
     S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
     S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
     S.favorPool = me['get_favor_pool()'] || 0;
@@ -1782,6 +1796,7 @@ async function endSession() {
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
     if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
     if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in your ledger (withdraw in The Mines)`);
+    if (S.favorOwed > 0) blockers.push(`a ${fmtHtr(S.favorOwed)} refund from the Weaver (claim it under SUMMON)`);
     if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in The Bazaar (withdraw them)`);
     const n4 = S.duels.filter(d => d.status === 'open' && d.challenger === S.addr).length;
     if (n4) blockers.push(`${n4} open challenge${n4 > 1 ? 's' : ''} in The Pit (cancel or see them fought)`);
