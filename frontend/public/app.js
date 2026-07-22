@@ -545,7 +545,10 @@ function render() {
   const hsb = $('headerSessionBtn');
   hsb.hidden = !S.addr;
   const inSess = S.wallet?.mode === 'session';
-  hsb.innerHTML = inSess ? '\u26a1 SESSION ACTIVE' : '\u26a1 PROMPTLESS PLAY';
+  // long and short labels; CSS picks per width so the chip never gets cut
+  hsb.innerHTML = inSess
+    ? '\u26a1 <span class="hs-l">SESSION ACTIVE</span><span class="hs-s">SESSION</span>'
+    : '\u26a1 <span class="hs-l">PROMPTLESS PLAY</span><span class="hs-s">PLAY</span>';
   hsb.classList.toggle('active', inSess);
   syncSessionBox();
 
@@ -2217,6 +2220,8 @@ for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectClose
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('nameClaimBtn').onclick = claimName;
 $('cardShareBtn').onclick = () => cardDetailUid && shareCard(cardDetailUid);
+// desktop lands in the X composer, mobile in the app-agnostic share sheet
+$('cardShareBtn').textContent = matchMedia('(pointer: coarse)').matches ? 'SHARE' : 'SHARE ON X';
 // the card and wallet views close like any lightbox: Escape or a click outside
 const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden;
 document.addEventListener('keydown', e => {
