@@ -1603,6 +1603,7 @@ async function connectWallet(kind) {
     };
     S.addr = await (kind === 'wc' ? w.connect(onUri) : w.connect());
     S.wallet = w;
+    localStorage.setItem('gacha_wallet', kind); // silent restores know what to try
     window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
     track('wallet_connect', { wallet: kind });
     $('overlay').hidden = true;
@@ -1839,9 +1840,9 @@ async function endSession() {
       S.wallet = null;
       S.addr = null;
       sessionNote('Session ended; reconnecting your wallet…');
-      if (await restoreWcPairing()) {
+      if (await restoreWcPairing() || await restoreSnap()) {
         sessionNote('Session ended; your wallet is connected again.');
-        track('wallet_connect', { wallet: 'wc-restored-after-session' });
+        track('wallet_connect', { wallet: `${walletKind()}-restored-after-session` });
       }
     }
     await refresh();
@@ -1961,6 +1962,20 @@ async function openSessionWallet(words, mainAddr) {
     }
   }
   throw last;
+}
+
+// silently reconnect MetaMask Snap: an installed, already-approved snap
+// resolves without prompts, so this only runs when Snap was the last wallet
+async function restoreSnap() {
+  if (localStorage.getItem('gacha_wallet') !== 'snap') return null;
+  try {
+    const w = new window.WALLETS.SnapWallet();
+    const addr = await w.connect();
+    if (!addr) return null;
+    S.wallet = w;
+    S.addr = addr;
+    return w;
+  } catch { return null; } // locked or removed: the player connects manually
 }
 
 // silently re-adopt a prior WalletConnect pairing, if a live one exists
@@ -2175,13 +2190,14 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   const savedSession = !!localStorage.getItem(SESSION_LS);
   const savedPairing = window.GAME.wcProjectId
     && Object.keys(localStorage).some(k => k.startsWith('wc@2'));
-  S.restoring = !!(savedSession || savedPairing);
+  const savedSnap = localStorage.getItem('gacha_wallet') === 'snap';
+  S.restoring = !!(savedSession || savedPairing || savedSnap);
   if (S.restoring) {
     $('walletAddr').textContent = 'Connecting…';
     $('walletBtn').classList.remove('beckon');
     // start the heavy wallet bundle downloads before anything else
     if (savedSession) window.WALLETS.prefetchSession();
-    else window.WALLETS.prefetchWc();
+    else if (savedPairing) window.WALLETS.prefetchWc();
   }
   // the session wallet syncs while the first realm read runs, not after it
   const sessionP = resumeSession();
@@ -2190,11 +2206,11 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   loadNames().then(loadFeed).catch(() => {});
   render();
   await sessionP;
-  // silently resume a prior WalletConnect pairing (sessions persist for days);
-  // only load the WC library if its storage says there was ever a pairing here
-  if (!S.wallet && await restoreWcPairing()) {
+  // silently resume a prior pairing: WalletConnect first (persists for
+  // days), else MetaMask Snap when it was the last wallet used here
+  if (!S.wallet && (await restoreWcPairing() || await restoreSnap())) {
     window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
-    track('wallet_connect', { wallet: 'wc-restored' });
+    track('wallet_connect', { wallet: `${walletKind()}-restored` });
     await refresh();
   }
   S.restoring = false;
