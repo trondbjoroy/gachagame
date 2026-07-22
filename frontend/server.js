@@ -224,8 +224,7 @@ setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 // per refresh took 10-20s. The server keeps the card map warm instead,
 // updating incrementally from the same tx stream the feed watches; clients
 // pass ?touch=<uids> after their own tx for instant freshness on those cards.
-const OLD_NC = '00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258';
-const cardCache = { cards: {}, legacy: [], updatedAt: 0 };
+const cardCache = { cards: {}, updatedAt: 0 };
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
   'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
@@ -250,12 +249,6 @@ async function ncCalls(ncId, calls, concurrency = 8) {
 async function refreshCards(uids) {
   if (!uids.length) return;
   const v = await ncCalls(NC, uids.flatMap(u => CARD_VIEWS.map(f => `${f}("${u}")`)));
-  const legacySet = new Set(cardCache.legacy);
-  const legacyTouched = uids.filter(u => legacySet.has(u));
-  const ov = legacyTouched.length
-    ? await ncCalls(OLD_NC, legacyTouched.flatMap(u =>
-        [`get_staker("${u}")`, `get_pending_owner("${u}")`]))
-    : {};
   for (const u of uids) {
     const g = f => v[`${f}("${u}")`];
     if (g('get_card_tier') == null) continue; // unknown to the contract
@@ -265,20 +258,14 @@ async function refreshCards(uids) {
       cosmetics: g('get_card_cosmetics') || 0,
       pending: g('get_pending_owner') ?? null, staker: g('get_staker') ?? null,
       delveSince: g('get_delve_since') || 0, temperCost: g('get_temper_cost') || 0,
-      oldStaker: ov[`get_staker("${u}")`] ?? cardCache.cards[u]?.oldStaker ?? null,
-      oldPending: ov[`get_pending_owner("${u}")`] ?? cardCache.cards[u]?.oldPending ?? null,
     };
   }
   cardCache.updatedAt = Math.floor(Date.now() / 1000);
 }
 
 async function sweepCards() {
-  const [cur, old] = await Promise.all([
-    (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json(),
-    (await fetch(`${NODE}/nano_contract/state?id=${OLD_NC}&balances[]=__all__`)).json(),
-  ]);
-  cardCache.legacy = Object.keys(old.balances || {}).filter(u => HEX64.test(u));
-  const uids = [...new Set([...Object.keys(cur.balances || {}), ...cardCache.legacy])]
+  const cur = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
+  const uids = Object.keys(cur.balances || {})
     .filter(u => HEX64.test(u) && u !== GEMS);
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);

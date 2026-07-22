@@ -23,7 +23,6 @@ NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/
 # stay valid. Player discovery still scans the retired v2.2 realm's history
 # because migration transactions carry only the operator's address.
 ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
-OLD_ARENA = os.environ.get("OLD_ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
 STATE = os.environ.get("SEASON_STATE", "/opt/gacha/season-state.json")
 OUT = os.environ.get("SEASON_OUT", "/opt/gacha/frontend/public/season.json")
 
@@ -51,7 +50,7 @@ def views(calls):
 
 def discover_players():
     addrs = set()
-    for nc in (ARENA, OLD_ARENA):
+    for nc in (ARENA,):
         after = None
         for _ in range(200):
             url = f"{NODE}/nano_contract/history?id={nc}&count=50"

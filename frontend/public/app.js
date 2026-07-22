@@ -82,7 +82,6 @@ async function loadContract(touch) {
     : null;
 
   const payload = await cardsP;
-  S.legacy = new Set(payload.legacy || []);
   for (const [u, d] of Object.entries(payload.cards || {})) {
     const c = S.cards.get(u) || { uid: u, mine: false, pendingGems: 0 };
     c.name = d.name; c.tier = d.tier; c.power = d.power;
@@ -92,7 +91,6 @@ async function loadContract(touch) {
     c.wins = d.wins; c.cosmetics = d.cosmetics;
     c.pending = d.pending; c.staker = d.staker;
     c.delveSince = d.delveSince; c.temperCost = d.temperCost;
-    c.oldStaker = d.oldStaker; c.oldPending = d.oldPending;
     S.cards.set(u, c);
   }
 
@@ -640,32 +638,17 @@ function render() {
       : `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
   $('pendingWrap').hidden = pend.length === 0;
 
-  // champions the retired realm still holds for this player
-  const oldHeld = [...S.cards.values()].filter(c => S.addr && c.tier >= 0
-    && (c.oldStaker === S.addr || c.oldPending === S.addr));
-  $('oldRealmWrap').hidden = oldHeld.length === 0;
-  $('oldRealmCards').innerHTML = oldHeld.map(c => cardBox(c,
-    c.oldStaker === S.addr
-      ? `<button class="mini-btn" data-oldunstake="${c.uid}">RECALL</button>`
-      : `<button class="mini-btn" data-oldclaim="${c.uid}">CLAIM</button>`)).join('');
-
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
   const fuseReady = selCount === 2 && sameTierSelected();
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
   const canPayFuse = S.gemsLedger + S.gemsWallet >= fuseFee;
-  // fusion melts the parents, and only the old arena holds melt rights over
-  // the champions it minted: recalled veterans cannot enter the Rite
-  const legacyPick = [...S.selected].some(u => S.legacy?.has(u));
-  $('fuseHint').textContent = legacyPick
-    ? 'A champion of the old realm cannot enter the Rite of Union: its bloodline '
-      + 'is sealed to the old Ledger. It still mines, fights, and trades as ever.'
-    : !fuseReady ? 'Press and hold two champions of the same station to select them.'
+  $('fuseHint').textContent = !fuseReady ? 'Press and hold two champions of the same station to select them.'
     : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
        : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
        : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
-  $('fuseBtn').disabled = !(fuseReady && canPayFuse) || legacyPick;
+  $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
@@ -816,11 +799,6 @@ function bindListActions() {
         held = true;
         window.haptic?.([20, 30, 20]);
         // a hold on a champion that cannot fuse says WHY instead of nothing
-        if (S.legacy?.has(uid)) {
-          ribbon('A champion of the old realm cannot enter the Rite of Union: '
-            + 'its bloodline is sealed to the old Ledger');
-          return;
-        }
         if (c.tier >= 3) {
           ribbon('A Sovereign stands at the highest station; it cannot be fused further');
           return;
@@ -858,12 +836,6 @@ function bindListActions() {
   });
   bind('[data-claimgems]', u => doTx('Claiming gems', 'claim_gems', [u], []));
   bind('[data-temper]', u => openTemper(u));
-  const OLD_REALM = window.GAME.oldNc
-    ? { nc: window.GAME.oldNc, blueprint: window.GAME.oldBlueprint } : null;
-  bind('[data-oldunstake]', u =>
-    doTx('Recalling from the old realm', 'unstake', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
-  bind('[data-oldclaim]', u =>
-    doTx('Claiming from the old realm', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: OLD_REALM }));
   bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u]));
   bind('[data-claimdelve]', claimDelve);
   bind('[data-dress]', openDress);

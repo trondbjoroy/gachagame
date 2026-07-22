@@ -26,9 +26,8 @@ import urllib.parse
 import urllib.request
 
 NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
-# v3 arena (renown migrated 1:1; discovery also scans the retired realm)
+# v3 arena
 ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
-OLD_ARENA = os.environ.get("OLD_ARENA_NC", "00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258")
 WALLET = os.environ.get("WALLET_URL", "http://localhost:8000")
 WALLET_ID = os.environ.get("WALLET_ID", "operator")
 STATE = os.environ.get("RAFFLE_STATE", "/opt/gacha/raffle-state.json")
@@ -55,7 +54,7 @@ def views(calls):
 def discover_players():
     """Every address that ever called either arena, from public history."""
     addrs = set()
-    for nc in (ARENA, OLD_ARENA):
+    for nc in (ARENA,):
         addrs |= _discover_one(nc)
     return sorted(addrs)
 
