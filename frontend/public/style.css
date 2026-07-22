@@ -172,6 +172,9 @@ a.x-link { text-decoration: none; display: inline-flex; align-items: center; jus
 .feed-row b { color: var(--ink); font-weight: 600; }
 .feed-ago { flex-shrink: 0; font-size: 10.5px; color: var(--ink-dim); min-width: 62px; }
 
+/* press-and-hold selects for fusion: keep the browser's long-press menus away */
+.card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
 /* card detail view */
 .detail-card {
   width: min(86vw, 360px); margin: 0 auto; cursor: default;
@@ -887,7 +890,9 @@ body.land-flash::before {
 .session-box p { margin: 6px 0 12px; font-size: 12px; color: var(--ink-muted); line-height: 1.55; }
 .session-box .mini-btn { margin-right: 8px; }
 
-.wallet-area { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; justify-content: flex-end; }
+.wallet-area { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; justify-content: flex-end; flex-wrap: wrap; }
+/* the chip claims a readable width or wraps onto its own row */
+.wallet-chip.as-btn { flex: 1 1 auto; min-width: 220px; max-width: 400px; }
 .header-session { white-space: nowrap; flex-shrink: 0; }
 .header-session.active { background: none; color: var(--acid); border: 1px solid rgba(212, 168, 67, .4); }
 /* tighter widths: drop the advisory hint first (balance keeps its tooltip) */

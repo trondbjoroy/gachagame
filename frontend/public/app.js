@@ -130,8 +130,10 @@ async function loadContract(touch) {
       }
     } catch { /* archive is optional */ }
     try {
-      const li = await (await fetch(`/api/lineage?addr=${S.addr}`)).json();
-      for (const a of li.addrs || []) lineage.add(a);
+      const keys = [...new Set([S.addr, S.wallet?.mainAddr].filter(Boolean))];
+      const chains = await Promise.all(keys.map(a =>
+        fetch(`/api/lineage?addr=${a}`).then(r => r.json()).catch(() => ({}))));
+      for (const li of chains) for (const a of li.addrs || []) lineage.add(a);
     } catch { /* lineage is a bonus, not a dependency */ }
     const others = [...lineage].filter(a => a !== S.addr).slice(0, 12);
     const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
@@ -656,7 +658,7 @@ function render() {
   $('fuseHint').textContent = legacyPick
     ? 'A champion of the old realm cannot enter the Rite of Union: its bloodline '
       + 'is sealed to the old Ledger. It still mines, fights, and trades as ever.'
-    : !fuseReady ? 'Open two champions of the same station and SELECT FOR FUSION.'
+    : !fuseReady ? 'Press and hold two champions of the same station to select them.'
     : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
        : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
        : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
@@ -799,10 +801,35 @@ function sameTierSelected() {
 }
 
 function bindListActions() {
-  // every card opens the detail view; fusion selection lives inside it
-  document.querySelectorAll('[data-open]').forEach(el => el.onclick = e => {
-    if (e.target.closest('button')) return;
-    openCard(el.dataset.open);
+  // tap opens the detail view; press-and-hold selects for fusion
+  document.querySelectorAll('[data-open]').forEach(el => {
+    const uid = el.dataset.open;
+    let timer = null, held = false;
+    const fusable = () => {
+      const c = S.cards.get(uid);
+      return c && c.mine && c.tier < 3 && !S.legacy?.has(uid);
+    };
+    el.onpointerdown = e => {
+      if (e.target.closest('button') || !fusable()) return;
+      held = false;
+      timer = setTimeout(() => {
+        held = true;
+        if (S.selected.has(uid)) S.selected.delete(uid);
+        else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
+        window.haptic?.([20, 30, 20]);
+        render();
+      }, 450);
+    };
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    el.onpointerup = cancel;
+    el.onpointerleave = cancel;
+    el.onpointercancel = cancel;
+    el.oncontextmenu = e => { if (fusable()) e.preventDefault(); };
+    el.onclick = e => {
+      if (e.target.closest('button')) return;
+      if (held) { held = false; return; } // the hold already did its work
+      openCard(uid);
+    };
   });
   const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el =>
     el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
@@ -1528,19 +1555,6 @@ function openCard(uid) {
         <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
         ${aspectsRow(c)}
       </div>`;
-  // fusion selection lives here now that a click opens the detail view
-  const selBtn = $('cardSelectBtn');
-  const fusable = c.mine && c.tier < 3 && !S.legacy?.has(uid);
-  selBtn.hidden = !fusable;
-  if (fusable) {
-    selBtn.textContent = S.selected.has(uid) ? 'UNSELECT' : 'SELECT FOR FUSION';
-    selBtn.onclick = () => {
-      if (S.selected.has(uid)) S.selected.delete(uid);
-      else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
-      $('overlay').hidden = true;
-      render();
-    };
-  }
   $('cardShareMsg').textContent = '';
   showStage('stageCard');
   $('overlay').hidden = false;
@@ -1616,9 +1630,9 @@ async function shareCard(uid) {
   if (!c) return;
   const msg = $('cardShareMsg');
   const t = TIERS[c.tier] || TIERS[0];
-  const text = `${c.name} · ${t.name} ⚡${c.power} — bound to my banner in Emberfall, `
-    + `the fully onchain TCG on @hathornetwork. Free on testnet · play with $HTR, `
-    + `earn $GEMS → emberfall.fun`;
+  const text = `${c.name} · ${t.name} ⚡${c.power}, bound to my banner in Emberfall, `
+    + `the fully onchain TCG on @hathornetwork. Free on testnet. Play with $HTR, `
+    + `earn $GEMS at emberfall.fun`;
   try {
     msg.textContent = 'Forging the card image…';
     const blob = await cardShareImage(c);

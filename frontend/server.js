@@ -394,7 +394,8 @@ async function handleNameClaim(res, body) {
     names[heir] = {
       name: entry.name, tx: txId, ts: Math.floor(Date.now() / 1000),
       // every address the name has lived on: the player's on-chain lineage
-      past: [wanted, ...(entry.past || [])].slice(0, 20),
+      past: [...new Set([wanted, ...(entry.past || [])])]
+        .filter(a => a !== heir).slice(0, 20),
       ...(reclaimHash || entry.reclaimHash
         ? { reclaimHash: reclaimHash || entry.reclaimHash } : {}),
     };
@@ -499,7 +500,7 @@ async function handleApi(req, res, ip) {
     let chain = [];
     for (const [holder, n] of Object.entries(names)) {
       if (holder === a || (n.past || []).includes(a)) {
-        chain = [holder, ...(n.past || [])];
+        chain = [...new Set([holder, ...(n.past || [])])];
         break;
       }
     }
