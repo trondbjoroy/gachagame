@@ -172,6 +172,15 @@ a.x-link { text-decoration: none; display: inline-flex; align-items: center; jus
 .feed-row b { color: var(--ink); font-weight: 600; }
 .feed-ago { flex-shrink: 0; font-size: 10.5px; color: var(--ink-dim); min-width: 62px; }
 
+/* card detail view */
+.detail-card {
+  width: min(86vw, 360px); margin: 0 auto; cursor: default;
+  aspect-ratio: 3 / 4;
+}
+.detail-card .ac-name { font-size: 19px; }
+.detail-card .ac-flavor { display: block; }
+.detail-btns { justify-content: center; margin-top: 16px; }
+
 /* fight matchup breakdown: fixed-width number cells so the three rows
    line up as columns around the "vs" */
 .matchup { max-width: 360px; margin: 18px auto 0; text-align: left; }

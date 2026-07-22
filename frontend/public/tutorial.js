@@ -24,7 +24,7 @@ const TOUR = [
   {
     target: '#pane-collection', tab: 'collection',
     title: 'Your Host',
-    body: 'Champions sworn to your banner live here. New champions appear below until claimed; in a session they come home by themselves. Select two of the same station and FUSE them into the next station; each card also offers MINE, FIGHT, SELL, and TRADE.',
+    body: 'Champions sworn to your banner live here. Click any card to see it large, share it on X, or select it for fusion; open two of the same station and FUSE them into the next. New champions appear below until claimed; in a session they come home by themselves. Each card also offers MINE, FIGHT, SELL, and TRADE.',
   },
   {
     target: '#pane-farm', tab: 'farm',

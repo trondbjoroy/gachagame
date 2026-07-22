@@ -476,7 +476,7 @@ function cardBox(c, buttonsHtml, selectable) {
   const epLine = cos.epithet && EPITHETS[cos.epithet - 1]
     ? `<div class="ac-epithet">${EPITHETS[cos.epithet - 1]}</div>` : '';
   if (meta?.art) {
-    return `<div class="card art-card${sel}${cosCls}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+    return `<div class="card art-card${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
       <img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">
       <div class="ac-scrim"></div>
       <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
@@ -489,7 +489,7 @@ function cardBox(c, buttonsHtml, selectable) {
       </div>
     </div>`;
   }
-  return `<div class="card${sel}${cosCls}" style="--rc:${t.color}" ${selectable ? `data-select="${c.uid}"` : ''}>
+  return `<div class="card${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
     <div class="emoji">${artSvg(c.name)}</div>
     <div class="name">${c.name}</div>
     ${epLine}
@@ -656,7 +656,7 @@ function render() {
   $('fuseHint').textContent = legacyPick
     ? 'A champion of the old realm cannot enter the Rite of Union: its bloodline '
       + 'is sealed to the old Ledger. It still mines, fights, and trades as ever.'
-    : !fuseReady ? 'Select two champions of the same station.'
+    : !fuseReady ? 'Open two champions of the same station and SELECT FOR FUSION.'
     : (S.gemsLedger >= fuseFee ? `Forge into the next station for ${fmtGems(fuseFee)}:`
        : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
        : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more in the Mines.`);
@@ -799,12 +799,10 @@ function sameTierSelected() {
 }
 
 function bindListActions() {
-  document.querySelectorAll('[data-select]').forEach(el => el.onclick = e => {
+  // every card opens the detail view; fusion selection lives inside it
+  document.querySelectorAll('[data-open]').forEach(el => el.onclick = e => {
     if (e.target.closest('button')) return;
-    const u = el.dataset.select;
-    if (S.selected.has(u)) S.selected.delete(u);
-    else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(u); }
-    render();
+    openCard(el.dataset.open);
   });
   const bind = (sel, fn) => document.querySelectorAll(sel).forEach(el =>
     el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
@@ -1497,6 +1495,164 @@ async function claimName() {
   }
 }
 
+/* ---------------- card detail & sharing ---------------- */
+
+let cardDetailUid = null;
+
+function openCard(uid) {
+  const c = S.cards.get(uid);
+  if (!c || c.tier < 0) return;
+  cardDetailUid = uid;
+  const t = TIERS[c.tier] || TIERS[0];
+  const meta = cardMeta(c.name);
+  const cos = cosmeticsOf(c);
+  const cosCls = (cos.frame ? ` cframe-${cos.frame}` : '') + (cos.tint ? ` ctint-${cos.tint}` : '');
+  const epLine = cos.epithet && EPITHETS[cos.epithet - 1]
+    ? `<div class="ac-epithet">${EPITHETS[cos.epithet - 1]}</div>` : '';
+  $('cardDetail').innerHTML = meta?.art
+    ? `<div class="card art-card detail-card${cosCls}" style="--rc:${t.color}">
+        <img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">
+        <div class="ac-scrim"></div>
+        <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
+        <div class="ac-bottom">
+          ${epLine}
+          <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
+          ${aspectsRow(c)}
+          <div class="ac-flavor">${meta.flavor}</div>
+        </div>
+      </div>`
+    : `<div class="card detail-card${cosCls}" style="--rc:${t.color}">
+        <div class="emoji">${artSvg(c.name)}</div>
+        <div class="name">${c.name}</div>
+        ${epLine}
+        <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
+        ${aspectsRow(c)}
+      </div>`;
+  // fusion selection lives here now that a click opens the detail view
+  const selBtn = $('cardSelectBtn');
+  const fusable = c.mine && c.tier < 3 && !S.legacy?.has(uid);
+  selBtn.hidden = !fusable;
+  if (fusable) {
+    selBtn.textContent = S.selected.has(uid) ? 'UNSELECT' : 'SELECT FOR FUSION';
+    selBtn.onclick = () => {
+      if (S.selected.has(uid)) S.selected.delete(uid);
+      else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
+      $('overlay').hidden = true;
+      render();
+    };
+  }
+  $('cardShareMsg').textContent = '';
+  showStage('stageCard');
+  $('overlay').hidden = false;
+}
+
+/* Render a clean card image (art + stats, no buttons) for sharing. */
+async function cardShareImage(c) {
+  const meta = cardMeta(c.name);
+  const t = TIERS[c.tier] || TIERS[0];
+  const W = 760, H = 1000;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  await document.fonts.ready.catch(() => {});
+  g.fillStyle = '#0c0a08';
+  g.fillRect(0, 0, W, H);
+  if (meta?.art) {
+    const img = new Image();
+    img.src = `cards/${slugOf(c.name)}.jpg`;
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    // cover-fit into the art area
+    const AH = H - 180;
+    const scale = Math.max(W / img.width, AH / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    g.drawImage(img, (W - dw) / 2, (AH - dh) / 2, dw, dh);
+    const grad = g.createLinearGradient(0, AH - 320, 0, AH);
+    grad.addColorStop(0, 'rgba(12,10,8,0)');
+    grad.addColorStop(1, 'rgba(12,10,8,.96)');
+    g.fillStyle = grad;
+    g.fillRect(0, AH - 320, W, 320);
+    g.fillStyle = '#0c0a08';
+    g.fillRect(0, AH, W, H - AH);
+  }
+  const cos = cosmeticsOf(c);
+  let y = H - 180 - 96;
+  g.textBaseline = 'alphabetic';
+  if (cos.epithet && EPITHETS[cos.epithet - 1]) {
+    g.font = 'italic 24px Outfit, sans-serif';
+    g.fillStyle = '#b9a97f';
+    g.fillText(EPITHETS[cos.epithet - 1], 40, y - 56);
+  }
+  g.font = '700 52px Cinzel, serif';
+  g.fillStyle = '#f2ead9';
+  g.fillText(c.name, 40, y);
+  g.font = '700 40px "Fragment Mono", monospace';
+  g.fillStyle = '#d4a843';
+  const pw = `⚡${c.power}`;
+  g.fillText(pw, W - 40 - g.measureText(pw).width, y);
+  y += 44;
+  g.font = '700 24px Outfit, sans-serif';
+  g.fillStyle = t.color.startsWith('var') ? '#d4a843' : t.color;
+  g.fillText(stationLine(c, t, meta).toUpperCase(), 40, y);
+  y += 52;
+  const [v, b, gu] = c.aspects || [0, 0, 0];
+  g.font = '32px "Fragment Mono", monospace';
+  g.fillStyle = '#e8dfc9';
+  g.fillText(`⚔ ${v}   🛡 ${b}   🗡 ${gu}`, 40, y);
+  // footer
+  g.fillStyle = 'rgba(212,168,67,.25)';
+  g.fillRect(0, H - 92, W, 1);
+  g.font = '700 30px Cinzel, serif';
+  g.fillStyle = '#d4a843';
+  g.fillText('EMBERFALL', 40, H - 36);
+  g.font = '24px "Fragment Mono", monospace';
+  g.fillStyle = '#8d8574';
+  const site = 'emberfall.fun';
+  g.fillText(site, W - 40 - g.measureText(site).width, H - 36);
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+
+async function shareCard(uid) {
+  const c = S.cards.get(uid);
+  if (!c) return;
+  const msg = $('cardShareMsg');
+  const t = TIERS[c.tier] || TIERS[0];
+  const text = `${c.name} · ${t.name} ⚡${c.power} — bound to my banner in Emberfall, `
+    + `the fully onchain TCG on @hathornetwork. Free on testnet · play with $HTR, `
+    + `earn $GEMS → emberfall.fun`;
+  try {
+    msg.textContent = 'Forging the card image…';
+    const blob = await cardShareImage(c);
+    const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+      msg.textContent = '';
+      track('share_card', { method: 'native' });
+      return;
+    }
+    // desktop: put the image on the clipboard, open the X composer prefilled
+    let copied = false;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      copied = true;
+    } catch {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slugOf(c.name)}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+    }
+    window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+    msg.textContent = copied
+      ? 'Card image copied. Paste it into the post, edit the words as you like.'
+      : 'Card image downloaded. Attach it to the post, edit the words as you like.';
+    track('share_card', { method: copied ? 'clipboard' : 'download' });
+  } catch (e) {
+    if ((e && e.name) === 'AbortError') { msg.textContent = ''; return; }
+    msg.textContent = 'Could not build the card image: ' + ((e && e.message) || e);
+    track('share_card', { method: 'failed' });
+  }
+}
+
 let pickCtx = null;
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
@@ -1638,7 +1794,7 @@ async function connectWallet(kind) {
 /* ---------------- misc / boot ---------------- */
 
 function showStage(id) {
-  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress', 'stageName'])
+  for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress', 'stageName', 'stageCard'])
     $(s).hidden = s !== id;
   $('overlay').hidden = false;
 }
@@ -2040,9 +2196,10 @@ $('headerSessionBtn').onclick = () => {
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
-for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel'])
+for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel', 'cardCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('nameClaimBtn').onclick = claimName;
+$('cardShareBtn').onclick = () => cardDetailUid && shareCard(cardDetailUid);
 $('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
