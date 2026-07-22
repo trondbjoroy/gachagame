@@ -9,46 +9,47 @@ const TOUR = [
   {
     target: '.machine-panel', tab: 'collection',
     title: 'The Brazier',
-    body: 'Every summoning binds a champion into soulstone: one of a kind, with a station (Footman to Sovereign), a power, and three aspects rolled at birth. The price in coin is shown on the button; the Blind Weaver answers within moments. Roughly 1 in 25 summonings, she returns your coin from the favor pool.',
+    body: 'Every summoning binds a champion into soulstone: one of a kind, with a rarity (Footman to Sovereign), a power, and three aspects rolled at birth. The price in coin is shown on the button; the Blind Weaver answers within moments. Roughly 1 in 25 summonings, she returns your coin from the favor pool.',
   },
   {
     target: '#trialLine', tab: 'collection',
     title: 'The daily trial',
-    body: 'Each dawn (midnight UTC) the Crown asks one deed of the realm. Keep it and your streak grows in the Codex. Renown earned during the eight-week season also ranks you in the season standings, and the highest banners bear titles when it closes.',
+    body: 'Each day (midnight UTC) the game asks one task of everyone. Complete it and your streak grows.'
+      + ' Renown earned during the eight-week season also ranks you in the season standings, and the highest banners bear titles when it closes.',
   },
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The realm keeps count: your gems, trials won, renown with your vigil streak, and your standing. Below the numbers, THE REALM STIRS shows what other lords are doing right now; it starts folded, so click its title to open it. Everything here is read from the Great Ledger; nothing is stored on our servers. Fancy a banner name instead of an address? Click your wallet chip and SET BANNER NAME.',
+    body: 'The game keeps count: your gems, duels won, renown with your daily streak, and your level. Below the numbers, WORLD FEED shows what other players are doing right now; it starts folded, so click its title to open it. Everything here is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',
-    title: 'Your Host',
-    body: 'Champions sworn to your banner live here. Tap any card to see it large and share it; press and hold to select it for fusion, then FUSE two of the same station into the next. New champions appear below until claimed; in a session they come home by themselves. Each card also offers MINE, FIGHT, SELL, and TRADE.',
+    title: 'Collection',
+    body: 'Champions sworn to your banner live here. Tap any card to see it large and share it; press and hold to select it for fusion, then FUSE two of the same rarity into the next. New champions appear below until claimed; in a session they come home by themselves. Each card also offers MINE, FIGHT, SELL, and TRADE.',
   },
   {
     target: '#pane-farm', tab: 'farm',
-    title: 'The Mines',
-    body: 'Send champions to toil and they sweat gems by the minute, faster for higher stations. Gems pay for fusion and wagers. While a champion toils you may TEMPER it (pay gems to raise one aspect), send it DELVING (an eight-hour gamble for gems or relic shards), or DRESS it in frames, tints, and epithets that travel with the card forever.',
+    title: 'Mining',
+    body: 'Send champions mining and they earn gems by the minute, faster for higher rarities. Gems pay for fusion and wagers. While a champion mines you can TEMPER it (pay gems to raise one aspect), send it on a DELVE (an eight-hour gamble for gems or relic shards), or STYLE it with frames, tints, and epithets that travel with the card forever.',
   },
   {
     target: '#pane-arena', tab: 'arena',
-    title: 'The Pit',
-    body: 'Trial by combat, best of three rounds: valor against valor, bulwark against bulwark, guile against guile. Wager gems; the winner takes the pot minus the Crown’s 5% tithe. Champions are never lost, and every settled fight earns them experience. Below the duels waits THE GAUNTLET: ten writs posted by the Crown, fought solo by your staked champions, three fights per champion per day.',
+    title: 'Arena',
+    body: 'Duels, best of three rounds: valor against valor, bulwark against bulwark, guile against guile. Wager gems; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
   },
   {
     target: '#pane-market', tab: 'market',
-    title: 'The Bazaar',
-    body: 'Sell champions for coin at your asking price, or offer a trade for one specific champion you want. Purchases settle through the guild’s escrow: claim your side from "Held in escrow" after the deal closes.',
+    title: 'Market',
+    body: 'Sell champions for coin at your asking price, or offer a trade for one specific champion you want. Purchases settle through escrow: claim your side from "In escrow" after the deal closes.',
   },
   {
     target: '#pane-learn', tab: 'learn',
-    title: 'The Codex',
-    body: 'The chronicle of the realm, the how-to-play guide, your Deeds of Renown (eighteen deeds, Wanderer to Sovereign’s Hand), the Muster Roll of every champion you have ever sworn, and the season standings. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
+    title: 'Info',
+    body: 'The lore of the realm, the how-to-play guide, your achievements (eighteen of them, Wanderer to Sovereign’s Hand), the collection tracker for every champion you have ever owned, and the season standings. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
   },
   {
     target: '#headerSessionBtn', tab: 'collection',
-    title: 'Promptless play',
+    title: 'Quick play',
     body: 'Fund a session once and everything after that signs instantly, with no wallet popups. END SESSION & RETURN ALL sends every champion, gem, and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
   },
   {
@@ -58,7 +59,7 @@ const TOUR = [
   },
   {
     title: 'The realm is yours',
-    body: 'Summon, mine, fight, trade, and let every deed be witnessed. If your purse is light, the faucet in the Codex guide pays enough testnet coin for a small army. Fortune favors the vigilant.',
+    body: 'Summon, mine, fight, trade, and let every deed be witnessed. If you are short on coin, the faucet in the Info guide pays enough testnet HTR for a small army. Fortune favors the vigilant.',
   },
 ];
 

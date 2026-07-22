@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=70" />
+<link rel="stylesheet" href="style.css?b=71" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -38,10 +38,10 @@
          viewBox="0 0 24 24" fill="currentColor" aria-label="Telegram"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></a>
       <button class="mini-btn alt tour-btn" id="musicBtn" title="Music on">🎵</button>
       <button class="mini-btn alt tour-btn" id="muteBtn" title="Sound on">🔊</button>
-      <button class="mini-btn alt tour-btn" id="tutorialBtn" title="Tour the realm">?</button>
+      <button class="mini-btn alt tour-btn" id="tutorialBtn" title="How to play">?</button>
       <span class="wa-break"></span>
       <button class="mini-btn header-session" id="headerSessionBtn" hidden>&#9889;
-        <span class="hs-l">PROMPTLESS PLAY</span><span class="hs-s">PLAY</span></button>
+        <span class="hs-l">QUICK PLAY</span><span class="hs-s">PLAY</span></button>
       <button class="wallet-chip as-btn" id="walletBtn">
         <span class="dot off" id="walletDot"></span>
         <span id="walletAddr">Connect wallet</span>
@@ -83,29 +83,29 @@
   <section class="stats-row" id="statsRow"></section>
 
   <section class="feed-panel collapsed" id="feedPanel" hidden>
-    <button class="feed-title as-toggle" id="feedToggle" aria-expanded="false">THE REALM STIRS
+    <button class="feed-title as-toggle" id="feedToggle" aria-expanded="false">WORLD FEED
       <span class="feed-chev">&#9662;</span></button>
     <div id="feedList" hidden></div>
   </section>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="collection" class="tab active">Your Host</button>
-    <button data-tab="farm" class="tab">The Mines</button>
-    <button data-tab="arena" class="tab">The Pit</button>
-    <button data-tab="market" class="tab">The Bazaar</button>
-    <button data-tab="learn" class="tab">The Codex</button>
+    <button data-tab="collection" class="tab active">Collection</button>
+    <button data-tab="farm" class="tab">Mining</button>
+    <button data-tab="arena" class="tab">Arena</button>
+    <button data-tab="market" class="tab">Market</button>
+    <button data-tab="learn" class="tab">Info</button>
   </nav>
 
   <section class="shelf tabpane" id="pane-collection">
     <div class="pane-head">
-      <h2>Sworn to your banner</h2>
+      <h2>Your champions</h2>
       <div class="fuse-bar" id="fuseBar" hidden>
         <span id="fuseHint"></span>
         <button class="mini-btn" id="fuseBtn" disabled>FUSE</button>
       </div>
     </div>
     <div class="cards" id="collectionCards"></div>
-    <div class="empty" id="collectionEmpty" hidden>Your banner hangs bare. Summon a champion.</div>
+    <div class="empty" id="collectionEmpty" hidden>No champions yet. Summon your first.</div>
     <div id="pendingWrap" hidden>
       <h2 class="mt">New champions</h2>
       <div class="cards" id="pendingCards"></div>
@@ -114,35 +114,35 @@
 
   <section class="shelf tabpane" id="pane-farm" hidden>
     <div class="farm-summary" id="farmSummary"></div>
-    <h2>Toiling in the deep</h2>
+    <h2>Mining now</h2>
     <div class="cards" id="stakedCards"></div>
-    <div class="empty" id="stakedEmpty" hidden>The mines stand silent. Send a champion down from your host.</div>
+    <div class="empty" id="stakedEmpty" hidden>Nothing is mining. Send a champion from your collection.</div>
   </section>
 
   <section class="shelf tabpane" id="pane-arena" hidden>
     <div class="pane-head">
-      <h2>Trials by combat</h2>
-      <button class="mini-btn" id="newDuelBtn">ISSUE CHALLENGE</button>
+      <h2>Duels</h2>
+      <button class="mini-btn" id="newDuelBtn">NEW DUEL</button>
     </div>
     <div class="duels" id="duelList"></div>
-    <div class="empty" id="duelEmpty" hidden>The Pit sands are unbloodied. Issue a challenge.</div>
-    <h2 class="mt">The Gauntlet</h2>
+    <div class="empty" id="duelEmpty" hidden>No open duels. Start one.</div>
+    <h2 class="mt">Bosses</h2>
     <div class="lore"><p id="gauntletIntro"></p></div>
     <div class="duels" id="writList"></div>
   </section>
 
   <section class="shelf tabpane" id="pane-market" hidden>
     <div class="pane-head">
-      <h2>Champions for coin</h2>
+      <h2>For sale</h2>
       <div class="fuse-bar"><span id="marketFunds"></span>
         <button class="mini-btn" id="wdFundsBtn" hidden>WITHDRAW</button></div>
     </div>
     <div class="duels" id="listingList"></div>
-    <div class="empty" id="listingEmpty" hidden>No merchant cries their wares. SELL a champion from your host.</div>
+    <div class="empty" id="listingEmpty" hidden>Nothing for sale. List a champion with SELL.</div>
     <h2 class="mt">Trades</h2>
     <div class="duels" id="swapList"></div>
     <div class="empty" id="swapEmpty" hidden>No trades proposed. Offer one with TRADE on a champion you hold.</div>
-    <h2 class="mt">Held in escrow: claim yours</h2>
+    <h2 class="mt">In escrow: claim yours</h2>
     <div class="cards" id="marketPendingCards"></div>
   </section>
 
@@ -150,7 +150,7 @@
   <section class="shelf tabpane" id="pane-learn" hidden>
     <a class="codex-link" href="https://docs.emberfall.fun" target="_blank" rel="noopener"
        onclick="window.track&&track('guide_open',{})">
-      📖 The Emberfall Guide<span>every rule, rate, and rite of the realm, in one book</span></a>
+      📖 The Emberfall Guide<span>every rule and rate of the game, in one book</span></a>
     <details class="codex-sec" data-sec="chronicle">
     <summary>The chronicle of Emberfall</summary>
     <div class="sec-body">
@@ -177,7 +177,7 @@
     </details>
 
     <details class="codex-sec" data-sec="deeds">
-    <summary>Deeds of renown</summary>
+    <summary>Achievements</summary>
     <div class="sec-body">
     <div class="lore"><p id="deedsSummary"></p></div>
     <div class="deeds" id="deedsGrid"></div>
@@ -186,12 +186,12 @@
     </details>
 
     <details class="codex-sec" data-sec="muster">
-    <summary>The muster roll</summary>
+    <summary>Collection tracker</summary>
     <div class="sec-body"><div id="musterRoll"></div></div>
     </details>
 
     <details class="codex-sec" data-sec="season">
-    <summary>The season &amp; the daily trial</summary>
+    <summary>Season &amp; daily trial</summary>
     <div class="sec-body">
     <div class="lore"><p id="trialCodex"></p></div>
     <div id="seasonPanel"></div>
@@ -208,7 +208,7 @@
         <b>WalletConnect</b> for the Hathor mobile/desktop wallet, or
         <b>MetaMask (Hathor Snap)</b> on desktop. Everything is signed by you
         and owned by you; set your wallet's network to <b>testnet</b>. Then hit
-        <b>&#9889; Promptless play</b> to fund a session and skip approval
+        <b>&#9889; Quick play</b> to fund a session and skip approval
         popups entirely.</p>
       </li>
       <li>
@@ -220,17 +220,17 @@
       </li>
       <li>
         <h3>Summon a champion</h3>
-        <p>Light the brazier with <b>SUMMON</b>. The Blind Weaver rolls a station
+        <p>Light the brazier with <b>SUMMON</b>. The Blind Weaver rolls a rarity
         (<span class="mono">60% common &middot; 30% rare &middot; 9% epic &middot; 1% legendary</span>),
         picks a card, and mints it as a unique token with a random <b>power</b> stat.
         Rarer tiers roll higher power. The draw settles when the next block confirms.
         Blocks land about every 8 seconds, so it is usually done within
         a few heartbeats; a corner toast tracks it while you keep playing.
-        When it lands, claim the card to your wallet (in a promptless
+        When it lands, claim the card to your wallet (in a quick-play
         session it comes home by itself).</p>
       </li>
       <li>
-        <h3>Work the deep mines</h3>
+        <h3>Mine GEMS</h3>
         <p>Stake cards from your collection to earn <b>GEMS</b> per minute:
         <span class="mono">0.01 common &middot; 0.03 rare &middot; 0.10 epic &middot; 0.40 legendary</span>.
         Earnings accrue to your in-game ledger; claim them any time, and withdraw
@@ -238,14 +238,14 @@
         fusion and duel wagers.</p>
       </li>
       <li>
-        <h3>Forge the Rite of Union</h3>
+        <h3>Fuse cards</h3>
         <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
-        (a GEMS fee from your ledger that rises with the station being forged). Both cards are
+        (a GEMS fee from your ledger that rises with the rarity being forged). Both cards are
         burned and you receive a card of the next tier that inherits 10% of the
         parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
       </li>
       <li>
-        <h3>Face trial by combat</h3>
+        <h3>Fight duels</h3>
         <p>Open a duel with any card and an optional GEMS wager, or accept someone
         else&rsquo;s. The contract rolls a number below
         <span class="mono">powerA&nbsp;+&nbsp;powerB</span>; your chance to win is
@@ -253,18 +253,18 @@
         house rake. Cards always return to their owners; only the wager is at risk.</p>
       </li>
       <li>
-        <h3>Barter in the Bazaar</h3>
+        <h3>Buy, sell, and trade</h3>
         <p><b>SELL</b> lists a card at your asking price in HTR (2% fee on sale,
         proceeds withdrawable from the Market tab). <b>TRADE</b> offers your card
         for one specific card you want. Buying or swapping escrows through the
         market contract; claim your side from the escrow shelf after it settles.</p>
       </li>
       <li>
-        <h3>Claim a banner name</h3>
-        <p>Click your wallet chip in the header and hit <b>SET BANNER NAME</b>
-        to seal a name on the Ledger
+        <h3>Set your name</h3>
+        <p>Click your wallet chip in the header and hit <b>SET NAME</b>
+        to save a name on-chain
         (0.01 HTR, burned). Your name then stands in for your address everywhere
-        the realm speaks of you: the season standings, Pit challenges, Bazaar
+        it appears: season standings, duels, market
         listings. Names are 3-16 characters, first claimed, first kept; claim
         again any time to change yours. Ending a session sends your name home
         to your wallet, and your next session picks it up again automatically.</p>
@@ -280,7 +280,7 @@
       <div class="qa"><h4>Why do actions take a few seconds to land?</h4>
         <p>Every move is a real blockchain transaction. It confirms when the next
         Hathor block includes it. Blocks arrive roughly every 8 seconds, so
-        most deeds settle in about 5&ndash;15 seconds. Nothing is simulated; the
+        most actions settle in about 5&ndash;15 seconds. Nothing is simulated; the
         toast in the corner shows the live status.</p></div>
       <div class="qa"><h4>Is the randomness fair?</h4>
         <p>Draws use Hathor&rsquo;s built-in ChaCha20 RNG inside the contract. The seed
@@ -298,7 +298,7 @@
       <div class="qa"><h4>Ledger GEMS vs wallet GEMS?</h4>
         <p>The ledger is your balance inside the contract: where farming rewards
         land and what fusion fees and wagers draw from. Wallet GEMS are real tokens you
-        hold. Move between them any time with WITHDRAW and DEPOSIT on the Farm tab.</p></div>
+        hold. Move between them any time with WITHDRAW and DEPOSIT on the Mining tab.</p></div>
       <div class="qa"><h4>Can I lose my cards?</h4>
         <p>Only one action destroys cards: fusion burns both parents. Duels never take
         cards: win or lose, your fighter returns and only the GEMS wager changes
@@ -307,7 +307,7 @@
         <p>Your wallet is on a different Hathor network than the game. Emberfall runs
         on the public <b>testnet</b>; switch your wallet's network to testnet
         and try again.</p></div>
-      <div class="qa"><h4>What is promptless play?</h4>
+      <div class="qa"><h4>What is quick play?</h4>
         <p>Starting a session forges a fresh key that lives only in your browser and
         funds it with a fixed HTR stake from your wallet (one approval). Everything after that
         signs instantly, with no popups. <b>End session &amp; return all</b> returns all champions
@@ -317,11 +317,11 @@
         meantime. One caution: the session key lives in this browser's storage, so
         sweep before clearing site data or switching devices; unswept holdings
         stay locked to that browser.</p></div>
-      <div class="qa"><h4>What is the Gauntlet?</h4>
-        <p>Ten writs posted by the Crown, each a boss with a public aspect spread,
+      <div class="qa"><h4>What are bosses?</h4>
+        <p>Ten bosses posted by the Crown, each with a public aspect spread,
         fought best-of-three by your <b>staked</b> champions: three fights per
         champion per day, a small gems entry, bounty and renown for victories.
-        Fell a writ at Grim to face its Dire and Black; fell each writ to reach
+        Beat a boss at Grim to face its Dire and Black; beat each boss to reach
         the next. Every settled fight also earns the champion experience, and
         levels grant capped aspect gains.</p></div>
       <div class="qa"><h4>What are relic shards and adornments?</h4>
@@ -336,11 +336,11 @@
         eight-week <b>seasons</b>: renown earned inside the season ranks everyone
         in the standings, and the highest banners bear season titles when it
         closes. Lifetime renown stays on your ledger forever.</p></div>
-      <div class="qa"><h4>What is a banner name?</h4>
+      <div class="qa"><h4>What is a player name?</h4>
         <p>A name you seal on the Ledger yourself with a tiny transaction
         (0.01 HTR, burned) carrying <span class="mono">emberfall:name:YourName</span>.
         Because you sign it, nobody can claim a name for your address but you.
-        It replaces your address in the standings, the Pit, and the Bazaar.
+        It replaces your address in standings, duels, and market listings.
         First claimed, first kept; claim again to change it. Set yours behind
         the wallet chip in the header. Session keys are throwaway, but names
         are not: ending a session sends your name home to your main wallet (a
@@ -426,7 +426,7 @@
         <div class="wc-copied" id="wcCopied">copied to clipboard ✓</div>
       </div>
       <div class="session-box" id="sessionBox" hidden>
-        <b>&#9889; Promptless play</b>
+        <b>&#9889; Quick play</b>
         <p id="sessionInfo">Fund a session key held in this browser and play without
         approval popups. End the session anytime to return everything to your wallet.</p>
         <button class="mini-btn" id="sessionStartBtn">START SESSION</button>
@@ -434,7 +434,7 @@
         <button class="mini-btn alt" id="sessionEndBtn" hidden>END SESSION &amp; RETURN ALL</button>
       </div>
       <div class="wait-sub" id="connectMsg"></div>
-      <button class="mini-btn alt" id="setNameBtn" hidden>SET BANNER NAME</button>
+      <button class="mini-btn alt" id="setNameBtn" hidden>SET NAME</button>
       <button class="mini-btn alt" id="disconnectBtn" hidden>DISCONNECT</button>
       <button class="ghost-btn" id="connectCloseBtn">close</button>
     </div>
@@ -452,7 +452,7 @@
       <button class="ghost-btn" id="dressCloseBtn">close</button>
     </div>
     <div class="stage" id="stageName" hidden>
-      <div class="wait-title">Claim a banner name</div>
+      <div class="wait-title">Set your name</div>
       <div class="wait-sub">Your name replaces your address everywhere in the game:
         season standings, fights, market listings. 3-16 characters (letters,
         numbers, spaces, _). Costs 0.01 HTR, written on-chain. First claimed,
@@ -469,22 +469,22 @@
       <div class="cards pick-cards" id="pickCards"></div>
       <div class="pick-wager" id="pickWagerRow">
         <label>Wager (GEMS-cents): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
-        <div class="wait-sub">name your stake; 0 is a friendly spar, no gems change hands</div>
+        <div class="wait-sub">name your wager; 0 is a free duel, no gems change hands</div>
       </div>
       <button class="ghost-btn" id="pickCloseBtn">cancel</button>
     </div>
   </div>
 </div>
 
-<script>window.BUILD = 70;</script>
-<script src="analytics.js?b=70"></script>
-<script src="config.js?b=70"></script>
-<script src="art.js?b=70"></script>
-<script src="catalog.js?b=70"></script>
-<script src="wallets.js?b=70"></script>
-<script src="app.js?b=70"></script>
-<script src="progress.js?b=70"></script>
-<script src="sounds.js?b=70"></script>
-<script src="tutorial.js?b=70"></script>
+<script>window.BUILD = 71;</script>
+<script src="analytics.js?b=71"></script>
+<script src="config.js?b=71"></script>
+<script src="art.js?b=71"></script>
+<script src="catalog.js?b=71"></script>
+<script src="wallets.js?b=71"></script>
+<script src="app.js?b=71"></script>
+<script src="progress.js?b=71"></script>
+<script src="sounds.js?b=71"></script>
+<script src="tutorial.js?b=71"></script>
 </body>
 </html>

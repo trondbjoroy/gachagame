@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>The Emberfall Guide · everything about the game</title>
-<meta name="description" content="The complete guide to Emberfall: summoning, aspects, the Mines, tempering, the Rite of Union, trial by combat, the Bazaar, renown, standing, the Weaver's favor, and the economy underneath it all." />
+<meta name="description" content="The complete guide to Emberfall: summoning, aspects, the mines, tempering, fusion, duels, the Market, renown, standing, the favor pool, and the economy underneath it all." />
 <link rel="icon" href="favicon.ico" sizes="48x48" />
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -166,7 +166,7 @@
   <div class="wordmark">EMBERFALL</div>
   <div class="sub">THE GUIDE</div>
   <p class="lede">Everything about the game, in one place: how champions are born and grown,
-  how coin and gems move, how trials are decided, and how to verify all of it yourself
+  how coin and gems move, how duels are decided, and how to verify all of it yourself
   on a Ledger nobody can edit.</p>
   <div class="cta"><a class="btn" href="https://app.emberfall.fun">PLAY THE GAME</a></div>
 </header>
@@ -178,17 +178,17 @@
   <a href="#currencies">3 · The three currencies</a>
   <a href="#summoning">4 · Summoning</a>
   <a href="#champions">5 · Champions &amp; aspects</a>
-  <a href="#host">6 · Your Host</a>
-  <a href="#mines">7 · The Mines</a>
-  <a href="#tempering">8 · The Rite of Tempering</a>
-  <a href="#union">9 · The Rite of Union</a>
-  <a href="#pit">10 · The Pit</a>
-  <a href="#gauntlet">11 · The Gauntlet</a>
-  <a href="#bazaar">12 · The Bazaar</a>
-  <a href="#renown">13 · Renown &amp; the Vigil</a>
-  <a href="#standing">14 · Deeds &amp; standing</a>
-  <a href="#favor">15 · The Weaver's favor</a>
-  <a href="#sessions">16 · Promptless play</a>
+  <a href="#host">6 · Collection</a>
+  <a href="#mines">7 · Mining</a>
+  <a href="#tempering">8 · Tempering</a>
+  <a href="#union">9 · Fusion</a>
+  <a href="#pit">10 · Duels</a>
+  <a href="#gauntlet">11 · Bosses</a>
+  <a href="#bazaar">12 · Market</a>
+  <a href="#renown">13 · Renown &amp; streaks</a>
+  <a href="#standing">14 · Achievements &amp; levels</a>
+  <a href="#favor">15 · The favor pool</a>
+  <a href="#sessions">16 · Quick play</a>
   <a href="#economy">17 · The economy</a>
   <a href="#verify">18 · Verify it yourself</a>
   <a href="#tips">19 · Field advice</a>
@@ -207,23 +207,23 @@
   <a class="h3" href="#start-tutorial">The tutorial</a>
   <a class="h2" href="#currencies">3 · The three currencies</a>
   <a class="h2" href="#summoning">4 · Summoning</a>
-  <a class="h3" href="#summon-odds">Stations &amp; odds</a>
+  <a class="h3" href="#summon-odds">Rarities &amp; odds</a>
   <a class="h3" href="#summon-reveal">The reveal</a>
   <a class="h2" href="#champions">5 · Champions &amp; aspects</a>
-  <a class="h2" href="#host">6 · Your Host</a>
-  <a class="h2" href="#mines">7 · The Mines</a>
-  <a class="h2" href="#tempering">8 · The Rite of Tempering</a>
-  <a class="h2" href="#union">9 · The Rite of Union</a>
-  <a class="h2" href="#pit">10 · The Pit</a>
+  <a class="h2" href="#host">6 · Collection</a>
+  <a class="h2" href="#mines">7 · Mining</a>
+  <a class="h2" href="#tempering">8 · Tempering</a>
+  <a class="h2" href="#union">9 · Fusion</a>
+  <a class="h2" href="#pit">10 · Duels</a>
   <a class="h3" href="#pit-rounds">Best of three</a>
   <a class="h3" href="#pit-hardened">Battle-hardened</a>
-  <a class="h2" href="#gauntlet">11 · The Gauntlet</a>
-  <a class="h2" href="#bazaar">12 · The Bazaar</a>
-  <a class="h2" href="#renown">13 · Renown &amp; the Vigil</a>
-  <a class="h3" href="#renown-names">Banner names</a>
-  <a class="h2" href="#standing">14 · Deeds &amp; standing</a>
-  <a class="h2" href="#favor">15 · The Weaver's favor</a>
-  <a class="h2" href="#sessions">16 · Promptless play</a>
+  <a class="h2" href="#gauntlet">11 · Bosses</a>
+  <a class="h2" href="#bazaar">12 · Market</a>
+  <a class="h2" href="#renown">13 · Renown &amp; streaks</a>
+  <a class="h3" href="#renown-names">Player names</a>
+  <a class="h2" href="#standing">14 · Achievements &amp; levels</a>
+  <a class="h2" href="#favor">15 · The favor pool</a>
+  <a class="h2" href="#sessions">16 · Quick play</a>
   <a class="h2" href="#economy">17 · The economy</a>
   <a class="h2" href="#verify">18 · Verify it yourself</a>
   <a class="h2" href="#tips">19 · Field advice</a>
@@ -250,11 +250,11 @@ and <a href="#verify">anyone can verify</a>.</p>
 <p>The game is played in six halls, reached by the tabs at the top of the game:</p>
 <ul>
   <li><b>The Summoning</b>: spend coin at the brazier; the Weaver binds a champion for you.</li>
-  <li><b>Your Host</b>: the champions you hold, sorted by power.</li>
-  <li><b>The Mines</b>: stake champions to earn gems over time, and temper them there.</li>
-  <li><b>The Pit</b>: wager gems on trial by combat, best of three rounds.</li>
-  <li><b>The Bazaar</b>: sell champions for coin or swap them with other players.</li>
-  <li><b>The Codex</b>: your deeds, your standing, the lore, and this guide.</li>
+  <li><b>Collection</b>: the champions you hold, sorted by power.</li>
+  <li><b>The mines</b>: stake champions to earn gems over time, and temper them there.</li>
+  <li><b>The Arena</b>: wager gems on duels, best of three rounds.</li>
+  <li><b>The Market</b>: sell champions for coin or swap them with other players.</li>
+  <li><b>The Codex</b>: your achievements, your standing, the lore, and this guide.</li>
 </ul>
 
 <h2 id="start"><span class="num">2</span>Getting started</h2>
@@ -268,7 +268,7 @@ and a little testnet coin.</p>
 There is nothing to download or install; open
 <a href="https://app.emberfall.fun">app.emberfall.fun</a> and play. The game is fully
 optimized for mobile: champions swipe side by side, the wallet pairs with one tap,
-and Promptless Play removes approval popups entirely. Any modern browser works
+and Quick Play removes approval popups entirely. Any modern browser works
 (Safari, Chrome, Firefox, Edge). All you need besides the browser is a Hathor
 wallet, covered next.</p>
 
@@ -283,7 +283,7 @@ wallet, covered next.</p>
   to install the Snap on first connect.</li>
 </ul>
 <p>Don't have either? The connect panel links you to the right download for your device.
-Your wallet is yours: the game never sees your keys, and every deed is signed by you.</p>
+Your wallet is yours: the game never sees your keys, and every achievement is signed by you.</p>
 
 <h3 id="start-coin">Getting coin</h3>
 <p>Summons cost testnet HTR. The
@@ -297,60 +297,60 @@ time. You can step back and forth, close it whenever you like, and restart it an
 from the <b>?</b> button in the header. There are also toggles for sound effects and
 music next to it.</p>
 <div class="note"><span class="tag">RECOMMENDED</span>
-<p>After connecting, press <b>⚡ Promptless Play</b>. It funds a small session purse
+<p>After connecting, press <b>⚡ Quick Play</b>. It funds a small session purse
 (10 HTR) once, and from then on every action happens instantly, with no wallet approval
-per move. See <a href="#sessions">Promptless play</a> for how it works and why it's safe.</p></div>
+per move. See <a href="#sessions">Quick play</a> for how it works and why it's safe.</p></div>
 
-<p>Once you are in, the front page carries <b>The realm stirs</b>, a live feed of
-what other lords are doing: summonings, fusions, marches on the Gauntlet,
+<p>Once you are in, the front page carries <b>World feed</b>, a live feed of
+what other lords are doing: summonings, fusions, marches on the bosses,
 challenges, and delves, read straight from the contract's public history. The
 feed starts folded; click its title to open or close it. And
-when a staked champion's delve is done, The Mines tab and your browser tab both
+when a staked champion's delve is done, The mines tab and your browser tab both
 show a counter until you claim it.</p>
 
 <h2 id="currencies"><span class="num">3</span>The three currencies</h2>
 <hr class="rule" />
-<p><b>Coin (HTR)</b> is the realm's money. It buys summons, funds promptless sessions,
-and is what sellers earn in the Bazaar. On the test realm it is free from the faucet.</p>
+<p><b>Coin (HTR)</b> is the realm's money. It buys summons, funds quick-play sessions,
+and is what sellers earn in the Market. On the test realm it is free from the faucet.</p>
 <p><b>Gems (GEMS)</b> are the realm's working currency: earned, never bought. Gems
-enter the world through exactly one gate: champions toiling in the Mines (plus a few
-one-time deed bounties). Gems pay for fusion and tempering, and are what you wager in
-the Pit. Because the only gem faucet is rate-limited by real champions staked over real
+enter the world through exactly one gate: champions mining (plus a few
+one-time achievement bounties). Gems pay for fusion and tempering, and are what you wager in
+the Arena. Because the only gem faucet is rate-limited by real champions staked over real
 time, gems cannot be farmed by bots or printed into worthlessness.</p>
 <p><b>Champions</b> are the cards themselves: each one a unique token in your wallet,
-with its name, station, power, aspects, and victory count written on the Ledger at
+with its name, rarity, power, aspects, and victory count written on-chain at
 birth and updated only by the game's own rites. There are <b>180 champions</b> in the
-catalog across four stations; every summon binds a fresh, individually rolled copy.
+catalog across four rarities; every summon binds a fresh, individually rolled copy.
 Because champions live in your own Hathor wallet, they are not locked to the game:
-trade them in the Bazaar, or send them anywhere any other token can go, including
+trade them in the Market, or send them anywhere any other token can go, including
 secondary marketplaces such as
 <a href="https://nileswap.com" target="_blank" rel="noopener">NileSwap</a>.</p>
 
 <h2 id="summoning"><span class="num">4</span>Summoning</h2>
 <hr class="rule" />
 <p>Approach the brazier, pay the summon price (<b>1 HTR</b> on the test realm), and the
-Weaver rolls three things: the champion's <b>station</b>, its <b>identity</b> (one of the
-catalog's champions of that station), and its <b>power</b>, split at birth into three
+Weaver rolls three things: the champion's <b>rarity</b>, its <b>identity</b> (one of the
+catalog's champions of that rarity), and its <b>power</b>, split at birth into three
 aspects. All three rolls happen inside the contract, from chain randomness; the game's
 keepers can neither see nor steer them.</p>
 
-<h3 id="summon-odds">Stations and odds</h3>
+<h3 id="summon-odds">Rarities and odds</h3>
 <div class="tbl-scroll"><table>
-  <tr><th>Station</th><th>Odds per summon</th><th>Power at birth</th><th>Mine rate</th></tr>
+  <tr><th>Rarity</th><th>Odds per summon</th><th>Power at birth</th><th>Mine rate</th></tr>
   <tr><td>Footman</td><td>60%</td><td>10 – 19</td><td>0.01 GEMS/min</td></tr>
   <tr><td>Knight</td><td>30%</td><td>25 – 49</td><td>0.03 GEMS/min</td></tr>
   <tr><td>Highlord</td><td>9%</td><td>60 – 119</td><td>0.10 GEMS/min</td></tr>
   <tr><td>Sovereign</td><td>1%</td><td>150 – 299</td><td>0.40 GEMS/min</td></tr>
 </table></div>
-<p class="muted">Every summon also earns <b>10 renown</b>, feeds the Weaver's favor pool,
+<p class="muted">Every summon also earns <b>10 renown</b>, feeds the favor pool pool,
 and has a 1-in-25 chance of the Weaver returning your coin; see
-<a href="#favor">The Weaver's favor</a>.</p>
+<a href="#favor">The favor pool</a>.</p>
 
 <h3 id="summon-reveal">The reveal</h3>
 <p>Each summon plays a reveal, grander for rarer champions, up to a full ceremony for a
 Sovereign. Click anywhere to skip it. If you summon several times in a row, the reveals
-queue politely and play one at a time. When a champion joins Your Host it crash-lands,
-and higher stations land harder.</p>
+queue politely and play one at a time. When a champion joins Collection it crash-lands,
+and higher rarities land harder.</p>
 
 <h2 id="champions"><span class="num">5</span>Champions and their aspects</h2>
 <hr class="rule" />
@@ -365,53 +365,53 @@ exact sum of the three:</p>
 <p>The split is random at birth (every aspect gets at least 1), and it is what gives
 champions personality. A 19-power Footman might be a balanced 7/6/6, or a 14/2/3
 berserker who crushes the Valor round and prays through the other two. Neither is
-strictly better; see <a href="#pit">the Pit</a> for why.</p>
+strictly better; see <a href="#pit">the Arena</a> for why.</p>
 <p>A champion grows in exactly four ways, each costing something different:</p>
 <ul>
-  <li><b><a href="#union">The Rite of Union</a></b>: costs champions and gems. Two become one of the next station.</li>
-  <li><b><a href="#tempering">The Rite of Tempering</a></b>: costs gems and time in the Mines. Raises one chosen aspect.</li>
+  <li><b><a href="#union">Fusion</a></b>: costs champions and gems. Two become one of the next rarity.</li>
+  <li><b><a href="#tempering">Tempering</a></b>: costs gems and time in the mines. Raises one chosen aspect.</li>
   <li><b><a href="#pit-hardened">Battle-hardening</a></b>: costs risk. Won wagers against worthy foes leave a mark.</li>
-  <li><b>Veterancy</b>: costs nothing but battles. Every settled fight, in the Pit or
-  against <a href="#gauntlet">the Gauntlet</a>, writes experience onto the card
-  (a writ pays 2 on victory and 1 on defeat; a duel pays 4 and 2). Levels come at
+  <li><b>Veterancy</b>: costs nothing but battles. Every settled fight, in the Arena or
+  against <a href="#gauntlet">the bosses</a>, writes experience onto the card
+  (a boss pays 2 on victory and 1 on defeat; a duel pays 4 and 2). Levels come at
   fixed thresholds, and every second level grants +1 to a random aspect, capped by
-  station at 2 / 3 / 4 / 6. A champion's level travels with the card: a veteran is
+  rarity at 2 / 3 / 4 / 6. A champion's level travels with the card: a veteran is
   provably a veteran, wherever it is sold.</li>
 </ul>
 <h3 id="champ-adorn">Adornments</h3>
 <p>Champions can also be dressed, never strengthened: <b>frames</b> and <b>tints</b>
-cost gems (dearer for higher stations), and <b>epithets</b>, a chosen byline such as
+cost gems (dearer for higher rarities), and <b>epithets</b>, a chosen byline such as
 "the Unbowed", cost three <b>relic shards</b> from <a href="#mines-delves">delves</a>.
 Adornments are written on the card and travel with it to every new owner. They grant
 no power, only identity.</p>
-<p>Champions also carry their record: every settled victory in the Pit is written on the
+<p>Champions also carry their record: every settled victory in the Arena is written on the
 card itself as a ★ count. A ten-victory veteran is provably a ten-victory veteran to any
-buyer in the Bazaar, forever.</p>
+buyer in the Market, forever.</p>
 
-<h2 id="host"><span class="num">6</span>Your Host</h2>
+<h2 id="host"><span class="num">6</span>Collection</h2>
 <hr class="rule" />
-<p>Your Host is your army: every champion currently in your wallet, sorted by power,
+<p>Collection is your army: every champion currently in your wallet, sorted by power,
 highest first. Click any card to see it large, with a <b>SHARE</b> button: on a
 phone it forges a clean card image (art and stats) for the share sheet; on
 desktop the post carries a champion link and X shows the art under it by
 itself. Press and hold a card
-to select it for fusion instead. Each card shows its station frame, aspects, tempering marks, and ★
+to select it for fusion instead. Each card shows its rarity frame, aspects, tempering marks, and ★
 victories, with buttons for everything the champion can do from home: send it to the
-Mines, challenge or answer trials in the Pit, offer it in the Bazaar, or give it to the
-Rite of Union.</p>
+Mines, challenge or answer duels in the Arena, offer it in the Market, or give it to the
+fusion.</p>
 <p>Champions returning from elsewhere (a freshly summoned recruit, a fighter back from
-the Pit, a miner recalled from the deep) are held briefly by the contract until claimed.
-In a promptless session the game claims them for you automatically; connected by wallet
+the Arena, a miner recalled from the deep) are held briefly by the contract until claimed.
+In a quick-play session the game claims them for you automatically; connected by wallet
 alone, you'll see a claim button per returning champion (one signature each).</p>
 
-<h2 id="mines"><span class="num">7</span>The Mines</h2>
+<h2 id="mines"><span class="num">7</span>The mines</h2>
 <hr class="rule" />
 <p>Stake a champion into the deep Mines and it sweats gems by the minute, faster for
-higher stations; the rates are in the <a href="#summon-odds">station table</a> above.
+higher rarities; the rates are in the <a href="#summon-odds">rarity table</a> above.
 Gems accrue continuously; collect them whenever you like with <b>Claim gems</b>, and the
 claim is written to your ledger inside the contract. Withdraw them to your wallet at any
 time, or spend them straight from the ledger on fusion, tempering, and wagers.</p>
-<p>A staked champion is safe. It cannot be fought or sold while it toils, and you can
+<p>A staked champion is safe. It cannot be fought or sold while it mines, and you can
 recall it whenever you wish; the moment it returns it brings its unclaimed gems along.</p>
 <div class="facts">
   <div class="fact"><div class="k">FOOTMAN</div><div class="v">0.6 / hr</div></div>
@@ -419,7 +419,7 @@ recall it whenever you wish; the moment it returns it brings its unclaimed gems 
   <div class="fact"><div class="k">HIGHLORD</div><div class="v">6.0 / hr</div></div>
   <div class="fact"><div class="k">SOVEREIGN</div><div class="v">24 / hr</div></div>
 </div>
-<p class="muted">Gems per hour of staking, by station. A Sovereign out-mines forty Footmen.</p>
+<p class="muted">Gems per hour of staking, by rarity. A Sovereign out-mines forty Footmen.</p>
 
 <h3 id="mines-delves">Delves</h3>
 <p>A staked champion may be sent <b>delving</b>: locked for eight hours, in which it
@@ -435,16 +435,16 @@ neither mines nor fights nor tempers, and returning to a roll of fortune:</p>
 <p class="muted">The expected haul edges out patient mining, paid for in variance and
 the lockout. Mining stays the safe baseline; the delve is the gamble.</p>
 
-<h2 id="tempering"><span class="num">8</span>The Rite of Tempering</h2>
+<h2 id="tempering"><span class="num">8</span>Tempering</h2>
 <hr class="rule" />
-<p>While a champion toils in the Mines, and only there, you may pay gems to raise
+<p>While a champion is mining, and only then, you may pay gems to raise
 <b>one chosen aspect by 1–3</b>. The forge needs the mine's heat: that is why tempering
 is offered on staked champions only, and it also means a tempering champion keeps
 earning gems while it deepens.</p>
 <p>Each tempering of the same champion costs roughly half again as much as the last, and
-every station has a hard cap on how many times it can be tempered:</p>
+every rarity has a hard cap on how many times it can be tempered:</p>
 <div class="tbl-scroll"><table>
-  <tr><th>Station</th><th>First tempering</th><th>Cap</th><th>Max total gain</th></tr>
+  <tr><th>Rarity</th><th>First tempering</th><th>Cap</th><th>Max total gain</th></tr>
   <tr><td>Footman</td><td>0.10 GEMS</td><td>3 temperings</td><td>about +9</td></tr>
   <tr><td>Knight</td><td>0.20 GEMS</td><td>5</td><td>about +15</td></tr>
   <tr><td>Highlord</td><td>0.80 GEMS</td><td>8</td><td>about +24</td></tr>
@@ -455,11 +455,11 @@ a fully tempered Footman (~29 power) still loses to an average Knight (~37). Hal
 every tempering fee is destroyed forever (making everyone's remaining gems a
 little scarcer) and half goes to the Crown. Each tempering also earns <b>5 renown</b>.</p>
 
-<h2 id="union"><span class="num">9</span>The Rite of Union</h2>
+<h2 id="union"><span class="num">9</span>Fusion</h2>
 <hr class="rule" />
-<p>Give two champions of the same station to the forge, pay the gems fee, and they are
-<b>burned forever</b>, reborn as one champion of the next station. The child rolls a
-fresh identity, fresh power, and fresh aspects for its new station, plus a bonus of
+<p>Give two champions of the same rarity to the forge, pay the gems fee, and they are
+<b>burned forever</b>, reborn as one champion of the next rarity. The child rolls a
+fresh identity, fresh power, and fresh aspects for its new rarity, plus a bonus of
 <b>10% of the parents' combined power</b>. Tempering and hardening do <em>not</em> carry
 through the forge: fuse for the power, not to smuggle bonuses upward.</p>
 <div class="tbl-scroll"><table>
@@ -471,17 +471,17 @@ through the forge: fuse for the power, not to smuggle bonuses upward.</p>
 <p>Every fusion permanently shrinks the supply of lesser champions: two cards become
 one, forever. Rarity comes from the summoning odds; <b>scarcity</b> comes from the forge.</p>
 
-<h2 id="pit"><span class="num">10</span>The Pit: trial by combat</h2>
+<h2 id="pit"><span class="num">10</span>The Arena: duels</h2>
 <hr class="rule" />
 <p>Post a champion with a gems wager as an open challenge, or answer someone else's by
 matching it. Name your stake when you issue the challenge; a wager of 0 is a friendly
-spar where no gems change hands. When a challenge is answered, the trial settles
-instantly on the Ledger.
+spar where no gems change hands. When a challenge is answered, the duel settles
+instantly on-chain.
 <b>Champions are never at risk</b>: win or lose, both fighters return home; only the
 wagered gems change hands. The winner takes the pot minus the Crown's <b>5% tithe</b>.</p>
 
 <h3 id="pit-rounds">Best of three</h3>
-<p>A trial is three rounds, one per aspect: Valor against Valor, Bulwark against Bulwark,
+<p>A duel is three rounds, one per aspect: Valor against Valor, Bulwark against Bulwark,
 Guile against Guile. Each round is a weighted draw: your chance to take it equals
 <b>your aspect over the sum of both</b>. Twelve Valor against six wins that round two
 times in three. Take two rounds and the pot is yours.</p>
@@ -494,49 +494,49 @@ times in three. Take two rounds and the pot is yours.</p>
   specialists are streakier.</li>
   <li><b>Everything is public.</b> Your opponent's aspects are on their card before you
   accept. Reading a matchup ("my Guile edges theirs, their Valor round is lost anyway,
-  so contest Bulwark") is the actual skill of the Pit. Temper accordingly.</li>
+  so contest Bulwark") is the actual skill of the Arena. Temper accordingly.</li>
 </ul>
 
 <h3 id="pit-hardened">Battle-hardened</h3>
-<p>A champion that wins a trial gains <b>+1 to a random aspect</b>, but only if the
+<p>A champion that wins a duel gains <b>+1 to a random aspect</b>, but only if the
 fight was worth something and the foe was worthy. Both must hold:</p>
 <ul>
-  <li>the wager was at least your station's fusion fee in gems, and</li>
+  <li>the wager was at least your rarity's fusion fee in gems, and</li>
   <li>the defeated champion's power was equal to or greater than yours.</li>
 </ul>
 <p>Beating weaklings, or fighting for free, teaches nothing, so hardening cannot be
-farmed. It caps at about half of tempering's ceiling per station (2 / 3 / 4 / 6).
+farmed. It caps at about half of tempering's ceiling per rarity (2 / 3 / 4 / 6).
 Separately from hardening, <em>every</em> settled victory adds a ★ to the card,
-without limit. Fighting a settled trial earns <b>5 renown</b> for each side, and the
+without limit. Fighting a settled duel earns <b>5 renown</b> for each side, and the
 winner earns <b>10 more</b>. Cancelling an unanswered challenge costs nothing and earns
 nothing, by design.</p>
 
-<h2 id="gauntlet"><span class="num">11</span>The Gauntlet</h2>
+<h2 id="gauntlet"><span class="num">11</span>The bosses</h2>
 <hr class="rule" />
-<p>The Sundering left worse things than an empty throne. The Crown posts <b>writs</b>
+<p>The Sundering left worse things than an empty throne. The Crown posts <b>bosses</b>
 against them: ten named horrors, each with a <b>public aspect spread</b>, each fought
-with the same best-of-three combat as the Pit. Because the spread is known, every writ
+with the same best-of-three combat as the Arena. Because the spread is known, every boss
 is a puzzle: concede the round you cannot win and temper for the two you can.</p>
 <ul>
-  <li><b>Champions march from the Mines.</b> Only a staked champion may answer a writ;
+  <li><b>Champions march from the mines.</b> Only a staked champion may answer a boss;
   the muster ground and the battlefield are one. Three fights per champion per day.</li>
-  <li><b>Three tiers per writ</b>: Grim, then Dire (its aspects doubled), then Black
-  (quadrupled). Fell a writ at Grim to face its Dire; fell each writ to reach the
-  next. The last writs at Black are beyond any single newborn champion: they are what
+  <li><b>Three tiers per boss</b>: Grim, then Dire (its aspects doubled), then Black
+  (quadrupled). Beat a boss at Grim to face its Dire; beat each boss to reach the
+  next. The last bosses at Black are beyond any single newborn champion: they are what
   tempering, hardening, and veterancy are for.</li>
   <li><b>Entry and bounty</b>: marching costs a fifth of your champion's fusion fee in
   gems (half destroyed, half to the Crown). Victory pays four entries; the first clear
   of each stage pays ten more. Renown flows for every settled fight, less than the
   Pit's (fighting the realm's horrors is duty; fighting lords is glory).</li>
-  <li><b>Deeds</b>: the first writ felled and the first Black clear are recorded
-  deeds with gem bounties.</li>
+  <li><b>Achievements</b>: the first boss felled and the first Black clear are recorded
+  achievements with gem bounties.</li>
 </ul>
-<p>The Gauntlet asks nothing of other players: at any hour, alone, there is a fight
+<p>The bosses asks nothing of other players: at any hour, alone, there is a fight
 worth taking and a ladder worth climbing.</p>
 
-<h2 id="bazaar"><span class="num">12</span>The Bazaar</h2>
+<h2 id="bazaar"><span class="num">12</span>The Market</h2>
 <hr class="rule" />
-<p>The realm has always run on gold. In the Bazaar you can:</p>
+<p>The realm has always run on gold. In the Market you can:</p>
 <ul>
   <li><b>Sell</b>: list a champion at your price in HTR. When it sells, the coin (minus
   the Crown's <b>2% tithe</b>) waits in your Bazaar purse; withdraw it whenever you like.
@@ -546,30 +546,30 @@ worth taking and a ladder worth climbing.</p>
   player holds. If they accept, the two cards cross without any coin at all.</li>
 </ul>
 <p>Champions bought, swapped, or returned from cancelled offers wait under <b>Held by
-the guild</b> until claimed (automatic in a promptless session). A champion's full
+the guild</b> until claimed (automatic in a quick-play session). A champion's full
 pedigree (aspects, temperings, and ★ victories) travels with it to its new owner;
 provenance is real here, and it cannot be forged.</p>
 <div class="note"><span class="tag">BEYOND THE REALM</span>
-<p>The Bazaar is not a walled garden. Champions are ordinary Hathor tokens held in
+<p>The Market is not a walled garden. Champions are ordinary Hathor tokens held in
 your own wallet, so you can also trade them outside the game entirely, on any
 secondary marketplace that handles Hathor tokens, such as
 <a href="https://nileswap.com" target="_blank" rel="noopener">NileSwap</a>. Their
-pedigree is written on the Ledger and follows them wherever they go.</p></div>
+pedigree is written on-chain and follows them wherever they go.</p></div>
 
-<h2 id="renown"><span class="num">13</span>Renown and the Vigil</h2>
+<h2 id="renown"><span class="num">13</span>Renown and the daily streak</h2>
 <hr class="rule" />
 <p><b>Renown</b> is the realm's measure of what you have actually done, earned on the
-Ledger itself, only through real deeds:</p>
+Ledger itself, only through real achievements:</p>
 <div class="tbl-scroll"><table>
-  <tr><th>Deed</th><th>Renown</th></tr>
+  <tr><th>Achievement</th><th>Renown</th></tr>
   <tr><td>A summoning</td><td>10</td></tr>
-  <tr><td>A fusion</td><td>20 / 40 / 80, by the station fused</td></tr>
+  <tr><td>A fusion</td><td>20 / 40 / 80, by the rarity fused</td></tr>
   <tr><td>A tempering</td><td>5</td></tr>
-  <tr><td>Fighting a settled trial</td><td>5, each side</td></tr>
-  <tr><td>Winning that trial</td><td>+10 more</td></tr>
+  <tr><td>Fighting a settled duel</td><td>5, each side</td></tr>
+  <tr><td>Winning that duel</td><td>+10 more</td></tr>
 </table></div>
 <p><b>The Vigil</b> multiplies it: play on consecutive days and your renown earnings
-climb steadily, up to <b>double at a seven-day vigil</b>. Miss a day and the vigil resets
+climb steadily, up to <b>double at a seven-day vigil</b>. Miss a day and the daily streak resets
 to one. Because every point of renown costs something real to earn, there is no
 profitable way to bot it; the cheapest path to renown is simply playing.</p>
 <p>Renown feeds two things: the <a href="#favor">Weaver's weekly drawing</a> (every point
@@ -577,36 +577,36 @@ earned that week is one ticket) and your bragging rights, since it is public and
 unfakeable.</p>
 
 <h3 id="renown-trials">Daily trials and seasons</h3>
-<p>Each dawn (midnight UTC) the Crown asks one deed of the realm: summon, stake,
-fuse, temper, claim gems, recall a long-toiling miner, win in the Pit, or fell a
-writ. The first matching act each day is paid <b>on the Ledger itself</b>: bonus
-renown and a small gems bounty. Keep the trial and the Codex remembers your
+<p>Each dawn (midnight UTC) the Crown asks one achievement of the realm: summon, stake,
+fuse, temper, claim gems, recall a long-serving miner, win in the Arena, or beat a
+boss. The first matching act each day is paid <b>by the contract itself</b>: bonus
+renown and a small gems bounty. Keep the duel and the Codex remembers your
 streak. Beyond the day-to-day, the realm plays in <b>seasons</b> of eight weeks:
 renown earned inside the season ranks everyone in the Codex standings, and the
 highest banners bear season titles when it closes. Lifetime renown remains on
 your ledger forever; the season is the sprint, the ledger is the legend.</p>
 <p>The Codex also keeps your <b>Muster Roll</b>: which of the 180 champions have
-ever sworn to your banner, by station and by kind. Complete a station or a kind
-and the deed is remembered.</p>
+ever sworn to your banner, by rarity and by kind. Complete a rarity or a kind
+and the achievement is remembered.</p>
 
-<h3 id="renown-names">Banner names</h3>
+<h3 id="renown-names">Player names</h3>
 <p>A lord should be known by a name, not a string of letters. Click your wallet
-chip in the header, hit <b>SET BANNER NAME</b>, and choose one: 3 to 16 characters of letters,
+chip in the header, hit <b>SET NAME</b>, and choose one: 3 to 16 characters of letters,
 numbers, spaces or underscores. The claim is a real transaction you sign
 yourself, carrying the words <span class="mono">emberfall:name:YourName</span>
-on the Ledger and burning 0.01 HTR as the seal. Because only your key can sign
+on-chain and burning 0.01 HTR as the fee. Because only your key can sign
 for your address, nobody can claim a name on your behalf, and the claim itself
 is public and permanent like everything else in the realm.</p>
-<p>Once sealed, your name stands in for your address wherever the realm speaks
-of you: the season standings, challenges in the Pit, listings and trades in the
+<p>Once saved, your name stands in for your address wherever the game speaks
+of you: the season standings, challenges in the Arena, listings and trades in the
 Bazaar. Names are unique and first claimed, first kept; claim again at any time
-to change yours, which frees the old name for others. In a promptless session
+to change yours, which frees the old name for others. In a quick-play session
 the seal signs instantly; through a wallet it is one approval that appears in
 the wallet app itself, so switch to the wallet to approve it. If your wallet
 signs from a different address than the one playing, the claim is refused;
-a promptless session always signs with the right key.</p>
+a quick-play session always signs with the right key.</p>
 <p>Session keys are throwaway; names are not. When you end a session, the
-session key signs one last deed before the sweep: it bequeaths your name to
+session key signs one last achievement before the sweep: it bequeaths your name to
 your main wallet, so the name shows whether you play through a session or
 straight through the wallet. When that wallet later funds a new session, the
 new session key re-claims the name automatically; the funding transaction is
@@ -618,13 +618,13 @@ claimed off a completely empty address (a dead session that never said
 goodbye). An address in active use always holds something, so a living name
 cannot be taken from you.</p>
 
-<h2 id="standing"><span class="num">14</span>Deeds of Renown and your standing</h2>
+<h2 id="standing"><span class="num">14</span>Achievements and levels</h2>
 <hr class="rule" />
 <p>Your <b>standing</b> is the long game: seven levels, earned by completing the eighteen
-<b>Deeds of Renown</b> recorded in the Codex, from <em>First Muster</em> (one champion
-sworn) up to commanding forty champions at once and winning fifteen trials.</p>
+<b>Achievements of Renown</b> recorded in the Codex, from <em>First Muster</em> (one champion
+sworn) up to commanding forty champions at once and winning fifteen duels.</p>
 <div class="tbl-scroll"><table>
-  <tr><th>Level</th><th>Title</th><th>Deeds required</th></tr>
+  <tr><th>Level</th><th>Title</th><th>Achievements required</th></tr>
   <tr><td>1</td><td>Wanderer</td><td>0</td></tr>
   <tr><td>2</td><td>Footman</td><td>2</td></tr>
   <tr><td>3</td><td>Man-at-Arms</td><td>4</td></tr>
@@ -637,19 +637,19 @@ sworn) up to commanding forty champions at once and winning fifteen trials.</p>
 real host, hours of mining, a Sovereign in your ranks, and a fighting record. Standing
 is <b>prestige, not power</b>: it grants no combat advantage and cannot be bought,
 only assembled.</p>
-<p>Six deeds are milestones the contract itself rewards with one-time gem bounties,
+<p>Six achievements are milestones the contract itself rewards with one-time gem bounties,
 paid straight to your ledger:</p>
 <div class="tbl-scroll"><table>
   <tr><th>Milestone</th><th>Bounty</th></tr>
   <tr><td>Your first summoning</td><td>0.10 GEMS</td></tr>
-  <tr><td>Your first Rite of Union</td><td>0.20 GEMS</td></tr>
+  <tr><td>Your first fusion</td><td>0.20 GEMS</td></tr>
   <tr><td>Forging a Highlord</td><td>0.50 GEMS</td></tr>
   <tr><td>Forging a Sovereign</td><td>2.00 GEMS</td></tr>
-  <tr><td>Your first trial won</td><td>0.25 GEMS</td></tr>
-  <tr><td>Ten trials won</td><td>1.00 GEMS</td></tr>
+  <tr><td>Your first duel won</td><td>0.25 GEMS</td></tr>
+  <tr><td>Ten duels won</td><td>1.00 GEMS</td></tr>
 </table></div>
 
-<h2 id="favor"><span class="num">15</span>The Weaver's favor</h2>
+<h2 id="favor"><span class="num">15</span>The favor pool</h2>
 <hr class="rule" />
 <p>The Weaver keeps a shared pot, filled by <b>10% of every summon</b> in the realm.
 Two blessings flow from it:</p>
@@ -663,9 +663,9 @@ The draw runs on a published, deterministic algorithm over public Ledger data; a
 can re-run it and check the winner. The Codex shows the current week's pot and your
 tickets.</p>
 
-<h2 id="sessions"><span class="num">16</span>Promptless play</h2>
+<h2 id="sessions"><span class="num">16</span>Quick play</h2>
 <hr class="rule" />
-<p>Signing every move in your wallet is safe but slow. <b>⚡ Promptless Play</b> forges a
+<p>Signing every move in your wallet is safe but slow. <b>⚡ Quick Play</b> forges a
 <b>session key</b> that lives only in your browser, funds it once from your wallet
 (<b>10 HTR</b>), and then plays every action through it instantly: no approval popups,
 no app-switching, just play. If the transfer is manual, the funding step shows the
@@ -676,7 +676,7 @@ scan.</p>
   Your main wallet's keys are never shared, and nothing else in it can be touched.</li>
   <li><b>Everything comes home.</b> Press <b>End session</b> and the game sweeps every
   champion, gem, and leftover coin back to your main wallet in one motion. It will warn
-  you first if anything is still out (champions in the Mines, open challenges, unsold
+  you first if anything is still out (champions in the mines, open challenges, unsold
   listings) so nothing is left behind. One thing cannot be hurried: a champion
   <b>mid-delve</b> is sealed in the deep until the delve ends and its haul is claimed,
   so the sweep waits for the delve. Your session keeps safely in the meantime;
@@ -689,7 +689,7 @@ scan.</p>
   for you automatically.</li>
 </ul>
 <div class="note"><span class="tag">GOOD TO KNOW</span>
-<p>The session key never leaves your browser, so a promptless session belongs to that
+<p>The session key never leaves your browser, so a quick-play session belongs to that
 browser on that device. End the session before switching devices and start a fresh one
 there.</p></div>
 
@@ -703,11 +703,11 @@ from real proceeds, never conjured from nothing.</p></div>
 absorb them, the currency collapses, and with it every reason to play. So Emberfall's
 flows are built to breathe with the realm instead of bleeding it:</p>
 <p><b>Where coin goes.</b> Each summon splits three ways: a slice becomes the collateral
-that backs every gem ever minted; <b>10%</b> feeds the Weaver's favor pool; the rest is
+that backs every gem ever minted; <b>10%</b> feeds the favor pool pool; the rest is
 the realm's keep: the operator's revenue, for a game must feed its keepers. The Crown
 also takes <b>5%</b> of every Pit pot and <b>2%</b> of every Bazaar sale.</p>
-<p><b>Where gems go.</b> One faucet: the Mines (plus capped one-time bounties). Several
-drains: fusion fees, tempering fees (half of which are burned outright), trial tithes,
+<p><b>Where gems go.</b> One faucet: the mines (plus capped one-time bounties). Several
+drains: fusion fees, tempering fees (half of which are burned outright), duel tithes,
 and wagers lost to better fighters. The faucet is rate-limited by real champions staked
 over real time; gem value is anchored to the one thing nobody can fake.</p>
 <p><b>Where champions go.</b> Summons mint them; the forge burns them, two for one,
@@ -725,18 +725,18 @@ testnet, and every claim in this guide can be checked against them:</p>
 <div class="tbl-scroll"><table>
   <tr><th>What</th><th>Where</th></tr>
   <tr><td>The Arena contract</td><td><a href="https://explorer.testnet.hathor.network/nano_contract/detail/00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258" target="_blank" rel="noopener"><code>00599b4b…c8b3c9258</code></a>: summons, Mines, Pit, fusion, tempering, renown, favor</td></tr>
-  <tr><td>The Bazaar contract</td><td><a href="https://explorer.testnet.hathor.network/nano_contract/detail/0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b" target="_blank" rel="noopener"><code>0033955d…055bf5c48b</code></a>: listings, sales, swaps</td></tr>
+  <tr><td>The Market contract</td><td><a href="https://explorer.testnet.hathor.network/nano_contract/detail/0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b" target="_blank" rel="noopener"><code>0033955d…055bf5c48b</code></a>: listings, sales, swaps</td></tr>
 </table></div>
 <p>Your champions are ordinary Hathor tokens: look any of them up in the explorer, or in
-your wallet, and the Ledger shows its full history: birth, fights, and every owner it
+your wallet, and the chain shows its full history: birth, fights, and every owner it
 has ever had.</p>
 
 <h2 id="tips"><span class="num">19</span>Field advice</h2>
 <hr class="rule" />
 <ul>
-  <li><b>Stake early, stake always.</b> Idle champions earn nothing; the Mines are the
+  <li><b>Stake early, stake always.</b> Idle champions earn nothing; the mines are the
   only gem faucet, and everything interesting costs gems. Even Footmen add up.</li>
-  <li><b>Keep the Vigil.</b> A single action a day keeps your streak alive; at seven days
+  <li><b>Keep the daily streak.</b> A single action a day keeps your streak alive; at seven days
   every point of renown you earn is doubled, which also doubles your weekly raffle tickets.</li>
   <li><b>Read the matchup before you fight.</b> Aspects are public. Pick fights where
   two of your three rounds are favored, not where your total power merely looks bigger.</li>
@@ -746,7 +746,7 @@ has ever had.</p>
   or more, against an equal-or-stronger foe. Cheap wins build ★ count but not strength.</li>
   <li><b>Fuse the fodder, keep the veterans.</b> Fusion re-rolls aspects and erases
   temperings and hardening; feed the forge your plain champions and keep the shaped ones.</li>
-  <li><b>Chase deeds deliberately.</b> The Codex shows exactly what each deed needs;
+  <li><b>Chase achievements deliberately.</b> The Codex shows exactly what each achievement needs;
   six of them pay gem bounties, and your first fusion nearly pays for itself.</li>
   <li><b>Check the Weaver.</b> If she owed you a favor, the claim button is waiting in
   the Summoning hall. Coin left unclaimed helps no one.</li>
@@ -760,41 +760,41 @@ hands (minus the 5% tithe).</p>
 <h3>What are the odds of a Sovereign?</h3>
 <p>1 in 100 per summon. Or forge one: two Highlords and 0.50 GEMS.</p>
 <h3>Do tempering and hardening survive fusion?</h3>
-<p>No. The child rolls fresh aspects for its new station (plus 10% of the parents'
+<p>No. The child rolls fresh aspects for its new rarity (plus 10% of the parents'
 combined power). ★ victory counts belong to the burned parents and do not transfer.</p>
-<h3>Why can I only temper champions in the Mines?</h3>
+<h3>Why can I only temper champions in the mines?</h3>
 <p>The forge needs the mine's heat. Mechanically, it keeps tempering tied to
 champions that are committed and earning, not idling in a binder. The champion keeps
 mining while it tempers.</p>
 <h3>Is any of this pay-to-win?</h3>
 <p>Coin buys summons; it cannot buy gems, renown, standing, or victories. Gems are earned
-by staking time, renown by playing, standing by deeds, and fights are decided by aspects
+by staking time, renown by playing, standing by achievements, and fights are decided by aspects
 that everyone can read before wagering.</p>
 <h3>What happens if my page reloads mid-action?</h3>
-<p>Nothing is lost. Every state that matters lives on the Ledger or is saved in your
+<p>Nothing is lost. Every state that matters lives on-chain or is saved in your
 browser before coin moves. Reload, reconnect, and the game picks up where it left off,
 including a half-finished session funding.</p>
-<h3>What is the Gauntlet?</h3>
-<p>A solo campaign: ten writs posted by the Crown, each a boss with a public aspect
+<h3>What is the bosses?</h3>
+<p>A solo campaign: ten bosses posted by the Crown, each a boss with a public aspect
 spread, fought best-of-three by your staked champions. Three fights per champion per
 day, a small gems entry, bounty and renown for victories, and tier gates (Grim, Dire,
 Black) that turn champion-building into the actual game. See
-<a href="#gauntlet">The Gauntlet</a>.</p>
+<a href="#gauntlet">The bosses</a>.</p>
 <h3>What are relic shards?</h3>
 <p>The adornments currency, found only by <a href="#mines-delves">delving</a>.
 Shards buy epithets; gems buy frames and tints. Adornments never grant power.</p>
 <h3>How do seasons and daily trials work?</h3>
-<p>Each dawn (midnight UTC) the Crown asks one deed; keeping it grows a streak in the
+<p>Each dawn (midnight UTC) the Crown asks one achievement; keeping it grows a streak in the
 Codex. Seasons run eight weeks: renown earned inside the window ranks the standings,
 and the highest banners bear season titles when it closes. See
 <a href="#renown-trials">Daily trials and seasons</a>.</p>
-<h3>How do banner names work?</h3>
-<p><b>SET BANNER NAME</b> behind the wallet chip seals a name of your choosing on the Ledger with a
+<h3>How do player names work?</h3>
+<p><b>SET NAME</b> behind the wallet chip saves a name of your choosing on-chain with a
 transaction only your key can sign (0.01 HTR, burned). It replaces your address
-in the standings, the Pit, and the Bazaar. Unique, first claimed, first kept;
+in the standings, the Arena, and the Market. Unique, first claimed, first kept;
 claim again to change it. Ending a session sends the name home to your wallet,
 and your next session re-claims it automatically. See
-<a href="#renown-names">Banner names</a>.</p>
+<a href="#renown-names">Player names</a>.</p>
 <h3>Something looks exploitable. Should I report it?</h3>
 <p>Please. If you find a way to climb any ladder without paying its intended cost, that
 is a bug, and hearing about it is exactly what the test realm is for.</p>
@@ -803,29 +803,29 @@ is a bug, and hearing about it is exactly what the test realm is for.</p>
 <hr class="rule" />
 <div class="tbl-scroll"><table>
   <tr><th>Term</th><th>Meaning</th></tr>
-  <tr><td>The Great Ledger</td><td>the Hathor blockchain, where every deed is recorded, forever</td></tr>
+  <tr><td>The Great Ledger</td><td>the Hathor blockchain, where every achievement is recorded, forever</td></tr>
   <tr><td>The Blind Weaver</td><td>the contract's randomness: unbribable, unreadable</td></tr>
   <tr><td>Soulstone</td><td>a champion card; a unique token in your wallet</td></tr>
-  <tr><td>Station</td><td>a champion's rank: Footman, Knight, Highlord, Sovereign</td></tr>
+  <tr><td>Rarity</td><td>a champion's rank: Footman, Knight, Highlord, Sovereign</td></tr>
   <tr><td>Aspects</td><td>Valor ⚔, Bulwark 🛡, Guile 🗡, the three parts of a champion's power</td></tr>
   <tr><td>The Crown</td><td>the realm's treasury; it collects tithes and half of tempering fees</td></tr>
-  <tr><td>Tithe</td><td>the Crown's cut: 5% of Pit pots, 2% of Bazaar sales</td></tr>
-  <tr><td>Renown</td><td>points earned on the Ledger for real deeds; weekly raffle tickets</td></tr>
-  <tr><td>The Vigil</td><td>your consecutive-day streak; doubles renown at seven days</td></tr>
-  <tr><td>Standing</td><td>your level and title, 1 Wanderer to 7 Sovereign's Hand, earned by deeds</td></tr>
-  <tr><td>The Weaver's favor</td><td>the 1-in-25 summon refund, and the weekly renown raffle</td></tr>
-  <tr><td>Writ</td><td>a Gauntlet boss posted by the Crown: a public aspect spread, three tiers, fought from the Mines</td></tr>
+  <tr><td>Tithe</td><td>the house cut: 5% of duel pots, 2% of market sales</td></tr>
+  <tr><td>Renown</td><td>points earned on-chain for real achievements; weekly raffle tickets</td></tr>
+  <tr><td>Daily streak</td><td>your consecutive-day streak; doubles renown at seven days</td></tr>
+  <tr><td>Standing</td><td>your level and title, 1 Wanderer to 7 Sovereign's Hand, earned by achievements</td></tr>
+  <tr><td>The favor pool</td><td>the 1-in-25 summon refund, and the weekly renown raffle</td></tr>
+  <tr><td>Boss</td><td>a Gauntlet boss posted by the Crown: a public aspect spread, three tiers, fought from the mines</td></tr>
   <tr><td>Delve</td><td>an eight-hour gamble for a staked champion: gems, shards, or dust</td></tr>
   <tr><td>Relic shards</td><td>the adornments currency, found only in delves</td></tr>
   <tr><td>Veterancy</td><td>a card's experience from settled fights; levels grant capped aspect gains</td></tr>
   <tr><td>Battle-hardened</td><td>aspect growth from wagered wins against equal-or-stronger foes</td></tr>
-  <tr><td>Banner name</td><td>a name sealed on the Ledger by your own signature; shown in place of your address</td></tr>
+  <tr><td>Player name</td><td>a name saved on-chain by your own signature; shown in place of your address</td></tr>
   <tr><td>Session key</td><td>a browser-held key that plays a funded session without wallet prompts</td></tr>
   <tr><td>The sweep</td><td>ending a session: everything returns to your main wallet in one motion</td></tr>
 </table></div>
 
 <p style="margin-top:48px" class="muted">The throne of Emberfall stays empty. But a host
-must still be raised, and every deed you do is witnessed forever.</p>
+must still be raised, and everything you do is witnessed forever.</p>
 <p><a class="btn" href="https://app.emberfall.fun">RAISE YOUR BANNER</a></p>
 
 </main>
@@ -837,7 +837,7 @@ must still be raised, and every deed you do is witnessed forever.</p>
   <a href="https://x.com/emberfall_fun" target="_blank" rel="noopener">𝕏 @emberfall_fun</a> ·
   <a href="https://t.me/emberfall_tcg" target="_blank" rel="noopener"><svg width="11" height="11"
   viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg> Telegram</a>
-  <br />Emberfall runs on the Hathor test network. Champions are tokens; deeds are transactions; the Ledger keeps the score.
+  <br />Emberfall runs on the Hathor test network. Champions are tokens; achievements are transactions; the Ledger keeps the score.
 </footer>
 
 </body>
