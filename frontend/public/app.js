@@ -223,6 +223,19 @@ async function loadMarket() {
     const [status, give, want] = (d[`get_swap(${i})`] || '||').split('|');
     return { id: i, status, give, want, maker: d[`get_swap_maker(${i})`] };
   }).reverse();
+  // counterfeit guard: the market contract accepts any 100-unit token as a
+  // "card", so a listing/swap whose card the gacha never minted is a fake.
+  // Pull any unknown referenced cards (real ones resolve server-side, fakes
+  // stay unknown), then drop what is still unknown so no fake is ever buyable.
+  const isHex = u => typeof u === 'string' && /^[0-9a-f]{64}$/.test(u);
+  const unknown = [...new Set([...S.listings.map(l => l.card), ...S.swaps.map(w => w.give)])]
+    .filter(u => isHex(u) && !S.cards.has(u)).slice(0, 8);
+  if (unknown.length) {
+    try { mergeCards(await (await fetch('/api/cards?touch=' + unknown.join(','))).json()); }
+    catch { /* on failure, err toward hiding the unknowns below */ }
+  }
+  S.listings = S.listings.filter(l => S.cards.has(l.card));
+  S.swaps = S.swaps.filter(w => S.cards.has(w.give));
   for (const c of S.cards.values()) c.marketPending = d[`get_pending_owner("${c.uid}")`] ?? null;
 }
 

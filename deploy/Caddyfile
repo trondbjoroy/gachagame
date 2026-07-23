@@ -24,7 +24,11 @@ app.emberfall.fun {
 		}
 	}
 	handle {
-		reverse_proxy 127.0.0.1:8090
+		reverse_proxy 127.0.0.1:8090 {
+			# stamp the real TCP peer; overwrites any client-sent value so the
+			# app can trust it for rate limiting (leftmost XFF is spoofable)
+			header_up X-Real-IP {remote_host}
+		}
 	}
 }
 

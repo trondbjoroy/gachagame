@@ -21,10 +21,9 @@ module.exports = {
 
   txMiningApiKey: null,
 
-  seeds: {
-    operator: 'opera trim input off muscle shove elevator shuffle practice filter lunch soldier train ramp gadget museum limb color october daring hurt also feel resist',
-    player: 'inspire outer march slab clap window mirror together pig style fan shrug trial expire emerge item task supply donkey bar gospel tennis worth goat',
-  },
+  // seeds live in ./wallet-seeds.js (gitignored) or OPERATOR_SEED/PLAYER_SEED
+  // env vars — never committed. See wallet-seeds.js for the mainnet rule.
+  seeds: require('./wallet-seeds.js'),
 
   multisig: {},
 

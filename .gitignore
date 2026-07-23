@@ -11,3 +11,6 @@ frontend/public/season.json
 
 # banner-name registry, written by server.js from on-chain claims
 frontend/names.json
+
+# wallet-headless seeds — secrets, never committed (env vars override)
+wallet-seeds.js

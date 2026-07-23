@@ -61,6 +61,34 @@ function rateLimited(ip, kind) {
   return b.count > limit;
 }
 
+// Real client IP. Behind our Caddy, X-Real-IP is stamped from the TCP peer and
+// overwrites any client-supplied value, so it cannot be spoofed; the Node
+// server binds to localhost, so nothing reaches it except through Caddy. Never
+// trust X-Forwarded-For's leftmost hop (client-chosen) for rate limiting.
+function clientIp(req) {
+  return req.headers['x-real-ip'] || req.socket.remoteAddress || '?';
+}
+
+// ---- daily ceiling on shared-wallet signing (griefing / drain guard) ----
+// /execute signs with one operator-funded wallet, so cap how much it will
+// sign per UTC day, globally and per client. Trustworthy IPs make the per-IP
+// cap meaningful. Legitimate players use their own wallet or a session key and
+// never touch this path; it backs only the walletless demo.
+const DAY_MS = 86_400_000;
+const EXEC_CAP_GLOBAL = Number(process.env.EXEC_CAP_GLOBAL || 400);
+const EXEC_CAP_IP = Number(process.env.EXEC_CAP_IP || 25);
+let execDay = 0, execGlobal = 0;
+const execByIp = new Map();
+function execDayLimited(ip) {
+  const day = Math.floor(Date.now() / DAY_MS);
+  if (day !== execDay) { execDay = day; execGlobal = 0; execByIp.clear(); }
+  const perIp = (execByIp.get(ip) || 0) + 1;
+  execByIp.set(ip, perIp);
+  execGlobal += 1;
+  if (execByIp.size > 50_000) execByIp.clear();
+  return execGlobal > EXEC_CAP_GLOBAL || perIp > EXEC_CAP_IP;
+}
+
 function deny(res, code, msg) {
   res.writeHead(code, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ success: false, error: msg }));
@@ -264,8 +292,15 @@ async function refreshCards(uids) {
 }
 
 async function sweepCards() {
-  const cur = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
-  const uids = Object.keys(cur.balances || {})
+  // union the gacha and market balances: a card escrowed in the market must
+  // still resolve its metadata, and refreshCards only caches uids the gacha
+  // actually minted (get_card_tier != null), so counterfeit tokens deposited
+  // into the market never enter the cache and the client can drop their listings
+  const [g, m] = await Promise.all([
+    fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`).then(r => r.json()),
+    fetch(`${NODE}/nano_contract/state?id=${MKT_NC}&balances[]=__all__`).then(r => r.json()).catch(() => ({})),
+  ]);
+  const uids = [...new Set([...Object.keys(g.balances || {}), ...Object.keys(m.balances || {})])]
     .filter(u => HEX64.test(u) && u !== GEMS);
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
@@ -294,6 +329,11 @@ const NAME_MAGIC = 'emberfall:name:';
 const BEQUEATH_MAGIC = 'emberfall:bequeath:'; // holder hands the name to another address
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/; // 3-16, no edge spaces
 const ADDR_RE = /^[A-Za-z0-9]{30,40}$/;
+const MAX_NAMES = Number(process.env.MAX_NAMES || 20000);
+// names the operator manages by editing names.json directly; never claimable
+// through the public endpoint, so nobody can impersonate the game or its staff
+const RESERVED = new Set(['the crown', 'crown', 'emberfall', 'admin',
+  'administrator', 'operator', 'official', 'support', 'team', 'mod', 'moderator']);
 let names = {};
 try { names = JSON.parse(fs.readFileSync(NAMES_FILE, 'utf8')); } catch { names = {}; }
 function saveNames() {
@@ -393,29 +433,37 @@ async function handleNameClaim(res, body) {
 
   if (!NAME_RE.test(name)) return deny(res, 400, 'names are 3-16 letters, numbers, spaces or _');
   const lower = name.toLowerCase();
+  if (RESERVED.has(lower)) return deny(res, 403, 'that name is reserved');
   let inheritedPast = null;
   for (const [a, n] of Object.entries(names)) {
     if (a !== wanted && n.name.toLowerCase() === lower) {
-      // the name moves to the claimant if its holder let go of it (a swept,
-      // empty address), if the holder signed the tx that first funded the
-      // claimant (a wallet spawning its next session key), or if the claimer
-      // presents the secret whose hash a previous claim of this name sealed
-      // on-chain (same browser, however the wallet shuffled its addresses)
-      if (!(await addressAbandoned(a))) {
-        const secretOk = n.reclaimHash && typeof body.secret === 'string'
-          && crypto.createHash('sha256').update(body.secret).digest('hex') === n.reclaimHash;
-        if (!secretOk) {
-          const fund = await firstFundingTx(wanted);
-          const funders = new Set((fund && fund.inputs || [])
-            .map(i => i.decoded && i.decoded.address).filter(Boolean));
-          if (!funders.has(a)) {
-            return deny(res, 409, 'that name is already claimed by another');
-          }
-        }
+      // the name moves to the claimant only with proof of continuity: the
+      // secret whose hash a previous claim sealed on-chain (same browser), or
+      // the holder having signed the tx that first funded the claimant (a
+      // wallet spawning its next session key). A name that ever sealed a
+      // secret or carries a lineage is NOT surrendered by an empty balance
+      // alone — that let anyone hijack a swept player's identity. Only a bare
+      // legacy name (no secret, no lineage) still yields to an empty address.
+      const secretOk = n.reclaimHash && typeof body.secret === 'string'
+        && crypto.createHash('sha256').update(body.secret).digest('hex') === n.reclaimHash;
+      let funderOk = false;
+      if (!secretOk) {
+        const fund = await firstFundingTx(wanted);
+        const funders = new Set((fund && fund.inputs || [])
+          .map(i => i.decoded && i.decoded.address).filter(Boolean));
+        funderOk = funders.has(a);
+      }
+      const hasContinuity = !!n.reclaimHash || !!(n.past && n.past.length);
+      const abandonedOk = !hasContinuity && await addressAbandoned(a);
+      if (!(secretOk || funderOk || abandonedOk)) {
+        return deny(res, 409, 'that name is already claimed by another');
       }
       inheritedPast = [a, ...(n.past || [])];
       delete names[a];
     }
+  }
+  if (!names[wanted] && !inheritedPast && Object.keys(names).length >= MAX_NAMES) {
+    return deny(res, 507, 'name registry full, try later');
   }
   const ownPast = names[wanted]?.past; // renames keep their chain
   names[wanted] = {
@@ -545,10 +593,17 @@ async function handleApi(req, res, ip) {
     try { body = JSON.parse(Buffer.concat(chunks)); } catch { return deny(res, 400, 'bad json'); }
     const err = validExecute(body);
     if (err) return deny(res, 403, err);
+    if (execDayLimited(ip)) return deny(res, 429, 'daily demo limit reached; connect your own wallet to keep playing');
+    // forward ONLY the validated fields, never the raw body: any extra field
+    // wallet-headless might honour would otherwise bypass validation
+    const data = body.data || {};
+    const clean = { nc_id: body.nc_id, method: body.method, address: body.address, data: {} };
+    if (Array.isArray(data.args)) clean.data.args = data.args;
+    if (Array.isArray(data.actions)) clean.data.actions = data.actions;
     return forward(res, `${WALLET}/wallet/nano-contracts/execute`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-wallet-id': WALLET_ID },
-      body: JSON.stringify(body),
+      body: JSON.stringify(clean),
     });
   }
 
@@ -601,7 +656,7 @@ function cardSharePage(req, res, uid) {
 }
 
 http.createServer(async (req, res) => {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+  const ip = clientIp(req);
   try {
     if (req.url.startsWith('/api/')) return await handleApi(req, res, ip);
     if (req.url.startsWith('/node/')) return await handleNode(req, res, ip);
