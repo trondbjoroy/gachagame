@@ -119,18 +119,11 @@ class SnapWallet {
         throw e;
       }
     }
-    // the snap signs and derives on ITS configured network; if that isn't the
-    // game's, addresses and funds land on the wrong chain. Catch it up front
-    // rather than silently binding a wrong-chain address (a mainnet wallet on
-    // a testnet game breaks auto-funding and every transaction).
-    try {
-      const n = await this.invoke('htr_getConnectedNetwork', {});
-      const snapNet = n?.network ?? n?.response?.network ?? (typeof n === 'string' ? n : null);
-      if (snapNet && snapNet !== window.GAME.network) throw wrongNetworkError(snapNet);
-    } catch (e) {
-      if (/Hathor snap is on/.test(e?.message || '')) throw e; // our own guard
-      // older snaps lack htr_getConnectedNetwork; the address-prefix check below catches it
-    }
+    // the snap signs and derives on ITS configured network (the per-call
+    // network param is ignored), so a mainnet snap on this testnet game binds a
+    // mainnet address and breaks auto-funding and every tx. Detect it and ask
+    // MetaMask to switch, exactly as other Hathor dapps do.
+    await this.ensureNetwork();
 
     const info = await this.invoke('htr_getWalletInformation', { network: window.GAME.network });
     this.address = info && (info.response?.address0 ?? info.address ?? info.response?.address);
@@ -141,11 +134,47 @@ class SnapWallet {
     if (!this.address || !/^[A-Za-z0-9]{30,40}$/.test(this.address)) {
       throw new Error('snap returned an unexpected address format');
     }
-    // final guard: the address prefix must match the game's network
+    // final guard: the address prefix must match the game's network (covers
+    // snaps too old for htr_getConnectedNetwork/htr_changeNetwork)
     if (addressNetwork(this.address) !== window.GAME.network) {
       throw wrongNetworkError(addressNetwork(this.address));
     }
     return this.address;
+  }
+
+  // the snap's current network, from htr_getConnectedNetwork with an
+  // address-prefix fallback for older snaps
+  async snapNetwork() {
+    try {
+      const n = await this.invoke('htr_getConnectedNetwork', {});
+      const net = n?.network ?? n?.response?.network ?? (typeof n === 'string' ? n : null);
+      if (net) return net;
+    } catch { /* older snap; infer from the address below */ }
+    try {
+      const info = await this.invoke('htr_getWalletInformation', {});
+      return addressNetwork(info?.response?.address0 ?? info?.address ?? info?.response?.address);
+    } catch { return null; }
+  }
+
+  // if the snap is on the wrong network, ask MetaMask to switch. htr_changeNetwork
+  // opens the snap's "New network" confirmation; on approval the snap updates its
+  // network and subsequent address reads/signing use it.
+  async ensureNetwork() {
+    const want = window.GAME.network;
+    const current = await this.snapNetwork();
+    if (!current || current === want) return; // already right, or unknown -> prefix guard catches it
+    try {
+      await this.invoke('htr_changeNetwork', { network: current, newNetwork: want });
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (/reject|denied|cancel/i.test(msg)) {
+        throw new Error(`Emberfall runs on ${want}. Approve the network change in MetaMask `
+          + `(or switch the Hathor snap to ${want} yourself), then connect again.`);
+      }
+      throw wrongNetworkError(current); // change unsupported: fall back to instructing
+    }
+    // confirm it took; if not, don't bind a wrong-chain address
+    if ((await this.snapNetwork()) !== want) throw wrongNetworkError(current);
   }
 
   async executeNano(method, args, actions, target) {
