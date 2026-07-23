@@ -8,6 +8,18 @@
 
 const SNAP_ID = 'npm:@hathor/snap';
 
+// Hathor base58 address prefixes: testnet P2PKH starts 'W', mainnet 'H'.
+function addressNetwork(addr) {
+  const c = (addr || '')[0];
+  return c === 'W' ? 'testnet' : c === 'H' ? 'mainnet' : null;
+}
+function wrongNetworkError(onNet) {
+  const want = window.GAME.network;
+  return new Error(
+    `Your MetaMask Hathor snap is on ${onNet || 'the wrong network'}, but Emberfall runs on `
+    + `${want}. Switch the Hathor snap to ${want} in MetaMask, then connect again.`);
+}
+
 // Locate a Snaps-capable MetaMask provider. Other wallet extensions
 // (Brave Wallet, Coinbase, ...) often shadow window.ethereum, and
 // MetaMask Mobile's in-app browser does not support Snaps at all.
@@ -107,6 +119,19 @@ class SnapWallet {
         throw e;
       }
     }
+    // the snap signs and derives on ITS configured network; if that isn't the
+    // game's, addresses and funds land on the wrong chain. Catch it up front
+    // rather than silently binding a wrong-chain address (a mainnet wallet on
+    // a testnet game breaks auto-funding and every transaction).
+    try {
+      const n = await this.invoke('htr_getConnectedNetwork', {});
+      const snapNet = n?.network ?? n?.response?.network ?? (typeof n === 'string' ? n : null);
+      if (snapNet && snapNet !== window.GAME.network) throw wrongNetworkError(snapNet);
+    } catch (e) {
+      if (/Hathor snap is on/.test(e?.message || '')) throw e; // our own guard
+      // older snaps lack htr_getConnectedNetwork; the address-prefix check below catches it
+    }
+
     const info = await this.invoke('htr_getWalletInformation', { network: window.GAME.network });
     this.address = info && (info.response?.address0 ?? info.address ?? info.response?.address);
     if (!this.address) {
@@ -115,6 +140,10 @@ class SnapWallet {
     }
     if (!this.address || !/^[A-Za-z0-9]{30,40}$/.test(this.address)) {
       throw new Error('snap returned an unexpected address format');
+    }
+    // final guard: the address prefix must match the game's network
+    if (addressNetwork(this.address) !== window.GAME.network) {
+      throw wrongNetworkError(addressNetwork(this.address));
     }
     return this.address;
   }
