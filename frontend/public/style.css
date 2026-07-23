@@ -51,7 +51,6 @@ header.top { display: flex; align-items: center; justify-content: space-between;
   filter: drop-shadow(0 6px 18px rgba(212, 168, 67, .35));
 }
 .wordmark { font-family: 'Cinzel', serif; font-size: 21px; letter-spacing: .12em; }
-.netline { font-size: 11.5px; color: var(--ink-dim); letter-spacing: .04em; margin-top: 2px; }
 .wallet-chip {
   display: flex; align-items: center; gap: 9px; min-width: 0; overflow: hidden;
   border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
@@ -977,7 +976,6 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
 
 @media (max-width: 600px) {
   main { padding-left: 14px; padding-right: 14px; }
-  .netline { display: none; }
   .brand { gap: 10px; }
   .brand .mark, .brand .mark img { width: 34px; height: 34px; }
   .wordmark { font-size: 18px; }
