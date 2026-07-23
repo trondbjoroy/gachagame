@@ -333,6 +333,15 @@ async function refresh(touch) {
   maybeAutoClaim();
 }
 
+// a refresh that syncs achievement/level/muster state WITHOUT replaying its
+// ribbons: used on connect, restore and session switches so a reconnect never
+// re-announces deeds the player already saw. Genuine play refreshes (doTx, the
+// 45s poll) stay noisy so new achievements still pop.
+async function silentRefresh(touch) {
+  S.silentSync = true;
+  try { await refresh(touch); } finally { S.silentSync = false; }
+}
+
 /* in promptless sessions, claimable champions walk home by themselves */
 const autoClaimed = new Set();
 let autoClaimBusy = false;
@@ -422,19 +431,21 @@ function announceNewDeeds(deeds) {
   const key = 'emberfall_deeds_' + S.addr;
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(key)); } catch { }
-  const first = saved == null;  // first sync: record silently, no ribbon storm
+  // record silently (no ribbon storm) on the first-ever sync AND on any
+  // reconnect / session switch — only deeds earned while connected announce
+  const silent = saved == null || S.silentSync;
   const seen = Array.isArray(saved) ? saved : (saved && saved.deeds) || [];
   const prevLevel = Array.isArray(saved) ? null : saved && saved.level;
   const done = deeds.filter(d => d.done).map(d => d.id);
   for (const id of done) if (!seen.includes(id)) {
     track('deed_complete', { deed: id });
-    if (!first) {
+    if (!silent) {
       const d = DEEDS.find(x => x.id === id);
       ribbon(`⚜ Achievement: <b>${d ? d.name : id}</b>`, null, 'deed');
     }
   }
   const lvl = levelFor(done.length);
-  if (!first && prevLevel != null && lvl > prevLevel)
+  if (!silent && prevLevel != null && lvl > prevLevel)
     ribbon(`Level up: <b>${lvl} · ${TITLES[lvl - 1]}</b>`, 'level', 'deed');
   localStorage.setItem(key, JSON.stringify({ deeds: done, level: lvl }));
 }
@@ -1830,7 +1841,7 @@ async function connectWallet(kind) {
     track('wallet_connect', { wallet: kind });
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
-    await refresh();
+    await silentRefresh();
     // first time in the realm: walk them through it, then point at quick play
     const firstVisit = !localStorage.getItem('emberfall_tutorial_seen');
     if (firstVisit) startTutorial();
@@ -1971,7 +1982,7 @@ async function startSession() {
     S.addr = sw.address;
     track('session_start', { funder: walletKindOf(main) });
     $('overlay').hidden = true;
-    await refresh();
+    await silentRefresh();
     reclaimBanner();
   } catch (e) {
     sessionNote(e.message || String(e));
@@ -2001,7 +2012,7 @@ async function endSession() {
   try {
     $('sessionEndBtn').disabled = true;
     sessionNote('Checking for anything still in play\u2026');
-    try { await refresh(); }
+    try { await silentRefresh(); }
     catch (e) {
       sessionNote((e && e.message) || 'the Ledger could not be read just now; try again in a moment');
       return;
@@ -2091,7 +2102,7 @@ async function endSession() {
         track('wallet_connect', { wallet: `${walletKind()}-restored-after-session` });
       }
     }
-    await refresh();
+    await silentRefresh();
   } catch (e) {
     sessionNote(e.message || String(e));
   } finally {
@@ -2155,7 +2166,7 @@ async function resumeSession() {
     const sw = await openSessionWallet(saved.words, saved.mainAddr);
     S.wallet = sw;
     S.addr = sw.address;
-    await refresh();
+    await silentRefresh();
     reclaimBanner();
   } catch (e) {
     console.warn('session resume failed:', e);
@@ -2183,7 +2194,7 @@ async function resumeFundingWait(saved) {
     track('session_start', { funder: 'resumed-funding' });
     ribbon('The funding arrived: your session is ready', 'level', 'coin');
     $('overlay').hidden = true;
-    await refresh();
+    await silentRefresh();
     reclaimBanner();
   } catch (e) {
     // the record stays saved; syncing is retried on the next visit
@@ -2493,7 +2504,7 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   if (!S.wallet && (await restoreWcPairing() || await restoreSnap())) {
     window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
     track('wallet_connect', { wallet: `${walletKind()}-restored` });
-    await refresh();
+    await silentRefresh();
   }
   S.restoring = false;
   render();

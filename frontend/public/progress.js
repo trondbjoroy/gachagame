@@ -63,7 +63,7 @@
     // the contract settled a trial we didn't catch locally (e.g. a duel or
     // writ won elsewhere): sync the streak and celebrate
     try {
-      if (S.addr && S.trialDoneChain === true && markDoneLocally()) {
+      if (S.addr && S.trialDoneChain === true && markDoneLocally() && !S.silentSync) {
         ribbon('Daily trial done: ' + todaysTrial().text + ' (bonus paid)', 'level', 'deed');
         track('trial_complete', { trial: todaysTrial().id, streak: tState().streak });
       }
@@ -152,9 +152,11 @@
     catch { seen = new Set(); }
     const checkSet = (label, pool) => {
       if (pool.length >= 4 && pool.every(n => ever.has(n)) && !seen.has(label)) {
-        seen.add(label);
-        ribbon('Set complete: ' + label, 'level', 'deed');
-        track('muster_set', { set: label });
+        seen.add(label);  // record silently on reconnect; only announce live
+        if (!S.silentSync) {
+          ribbon('Set complete: ' + label, 'level', 'deed');
+          track('muster_set', { set: label });
+        }
       }
     };
     for (const [st, pool] of Object.entries(byStation)) checkSet(PLURAL[st] || st, pool);
