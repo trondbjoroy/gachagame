@@ -25,6 +25,7 @@ class EmberfallCardMarket(Blueprint):
     owner: Address
     gacha: ContractId
     fee_bps: int
+    card_unit: int   # base units per card; must match the gacha realm (1 or 100)
     listing_card: dict[int, TokenUid]
     listing_price: dict[int, Amount]
     listing_seller: dict[int, Address]
@@ -41,12 +42,15 @@ class EmberfallCardMarket(Blueprint):
 
     @public
     def initialize(self, ctx: Context, owner: Address, gacha: ContractId,
-                   fee_bps: int) -> None:
+                   fee_bps: int, card_unit: int) -> None:
         if fee_bps < 0 or fee_bps > 2000:
             raise NCFail("fee must be 0-20%")
+        if card_unit != 1 and card_unit != 100:
+            raise NCFail("card_unit must be 1 (NFT spec) or 100 (legacy)")
         self.owner = owner
         self.gacha = gacha
         self.fee_bps = fee_bps
+        self.card_unit = card_unit
         self.listing_card = {}
         self.listing_price = {}
         self.listing_seller = {}
@@ -151,7 +155,7 @@ class EmberfallCardMarket(Blueprint):
         if len(ctx.actions_list) != 1:
             raise NCFail("expected exactly one action")
         action = ctx.actions_list[0]
-        if not isinstance(action, NCWithdrawalAction) or action.amount != 100:
+        if not isinstance(action, NCWithdrawalAction) or action.amount != self.card_unit:
             raise NCFail("expected a withdrawal of one full card")
         if self.pending.get(action.token_uid) != caller:
             raise NCFail("card not claimable by you")
@@ -237,12 +241,12 @@ class EmberfallCardMarket(Blueprint):
         if len(deposits) != 1:
             raise NCFail("expected exactly one card deposit")
         action = deposits[0]
-        if action.amount != 100:
-            raise NCFail("a card moves as 100 units")
+        if action.amount != self.card_unit:
+            raise NCFail("a card moves as one full unit")
         # authenticity is enforced ON-CHAIN: ask the gacha contract whether it
         # minted this token. get_card_tier returns -1 for anything it never
         # created, so a counterfeit token can never be listed or swapped here.
         gacha = self.syscall.get_contract(self.gacha, blueprint_id=None)
-        if gacha.view.get_card_tier(action.token_uid) < 0:
+        if gacha.view().get_card_tier(action.token_uid) < 0:
             raise NCFail("not a genuine Emberfall card")
         return action.token_uid
