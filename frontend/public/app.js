@@ -80,7 +80,11 @@ async function awaitNewCard(findIt) {
     won = findIt();
     if (!won) await new Promise(r => setTimeout(r, 2500));
   }
-  if (won) render();
+  if (won) {
+    render();
+    maybeAutoClaim();  // sessions: start the walk home with the reveal, not
+                       // on the next background refresh
+  }
   return won;
 }
 
@@ -224,13 +228,19 @@ async function loadMarket() {
 
 async function loadMine() {
   if (!S.wallet) return;
-  S.htr = await S.wallet.htrBalance().catch(() => 0);
-  S.gemsWallet = await S.wallet.tokenBalance(GEMS).catch(() => 0);
-  for (const c of S.cards.values()) {
-    if (c.tier < 0) { c.mine = false; continue; }
-    if (c.pending || c.staker || c.marketPending) { c.mine = false; continue; } // in custody
-    c.mine = (await S.wallet.tokenBalance(c.uid).catch(() => 0)) > 0;
-  }
+  // every balance in flight at once: dozens of sequential awaits used to
+  // stretch each refresh by seconds on prompt wallets
+  const loose = [...S.cards.values()].filter(c =>
+    c.tier >= 0 && !c.pending && !c.staker && !c.marketPending);
+  for (const c of S.cards.values()) if (!loose.includes(c)) c.mine = false;
+  const [htr, gems, ...held] = await Promise.all([
+    S.wallet.htrBalance().catch(() => 0),
+    S.wallet.tokenBalance(GEMS).catch(() => 0),
+    ...loose.map(c => S.wallet.tokenBalance(c.uid).catch(() => 0)),
+  ]);
+  S.htr = htr;
+  S.gemsWallet = gems;
+  loose.forEach((c, i) => { c.mine = held[i] > 0; });
 }
 
 async function loadRaffle() {
@@ -305,8 +315,7 @@ async function refresh(touch) {
     loadNames(),
     loadFeed(),
   ]);
-  await loadMarket().catch(() => {});
-  await loadMine();
+  await Promise.all([loadMarket().catch(() => {}), loadMine()]);
   render();
   maybeAutoClaim();
 }
@@ -908,10 +917,10 @@ async function ensureLedgerGems(amount) {
 
 // confirmation wait for plain (non-nano) transactions: no execution logs exist
 async function waitForConfirm(hash) {
-  let wait = 1200; // check early, then settle into a steady cadence
+  let wait = 800; // check early, then settle into a steady cadence
   for (;;) {
     await new Promise(r => setTimeout(r, wait));
-    wait = 2000;
+    wait = 1500;
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
     if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
@@ -921,10 +930,10 @@ async function waitForConfirm(hash) {
 
 async function waitForExecution(hash, onTick) {
   const start = Date.now();
-  let wait = 1200; // check early, then settle into a steady cadence
+  let wait = 800; // check early, then settle into a steady cadence
   for (;;) {
     await new Promise(r => setTimeout(r, wait));
-    wait = 2000;
+    wait = 1500;
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
