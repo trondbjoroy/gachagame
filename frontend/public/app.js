@@ -832,6 +832,7 @@ function render() {
     }).join('');
     $('swapEmpty').hidden = S.swaps.length > 0;
     const mpend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.marketPending === S.addr);
+    $('marketPendingWrap').hidden = mpend.length === 0;
     $('marketPendingCards').innerHTML = mpend.map(c =>
       cardBox(c, S.wallet?.mode === 'session'
         ? '<div class="pending-gems">coming home…</div>'
