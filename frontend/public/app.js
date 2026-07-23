@@ -1246,8 +1246,11 @@ function showRevealNow(won, tierLabel) {
   else revealTimer = setTimeout(() => finishReveal(tier), REVEAL_MS[tier]);
 }
 
+let fuseBusy = false;
 async function fuse() {
+  if (fuseBusy) return;  // a fuse is already in flight; ignore the extra tap
   const [a, b] = [...S.selected];
+  if (!a || !b) return;  // selection cleared (double-tap): nothing to fuse
   S.selected.clear();
   const fee = fuseFeeFor(S.cards.get(a)?.tier ?? 0);
   if (!(await ensureLedgerGems(fee))) {
@@ -1257,12 +1260,17 @@ async function fuse() {
     return;
   }
   const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
-  const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
-  if (!hash) return;
-  window.sfx?.('fuse');
-  const won = await awaitNewCard(() =>
-    [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid)));
-  if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
+  fuseBusy = true;
+  try {
+    const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
+    if (!hash) return;
+    window.sfx?.('fuse');
+    const won = await awaitNewCard(() =>
+      [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid)));
+    if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
+  } finally {
+    fuseBusy = false;
+  }
 }
 
 async function fightWrit(uid, writ, tier) {
