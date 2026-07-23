@@ -915,11 +915,15 @@ body.land-flash::before {
 /* below this the header genuinely can't fit one row — stack cleanly: icons
    with the brand row, then session button and chip SHARING one full row */
 .wa-break { display: none; }
+/* the tool icons live inside the wallet cluster on desktop; on narrow
+   screens they lift out and sit beside the logo instead */
+.hdr-tools { display: contents; }
 @media (max-width: 860px) {
-  header.top { flex-wrap: wrap; }
+  header.top { flex-wrap: wrap; position: relative; }
   .wallet-area { flex-basis: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
   .wallet-chip.as-btn { flex: 1 1 auto; min-width: 0; }
-  /* icons on one row, session button and chip together on the next */
+  .hdr-tools { display: flex; gap: 8px; position: absolute; right: 0; top: 4px; }
+  /* session button and chip together on their own full row */
   .wa-break { display: block; flex-basis: 100%; height: 0; }
 }
 
