@@ -1201,7 +1201,6 @@ function showRevealNow(won, tierLabel) {
     </div>`;
   const sessionMode = S.wallet?.mode === 'session';
   $('revealClaimBtn').textContent = sessionMode ? 'ONWARD' : 'CLAIM TO WALLET';
-  $('revealCloseBtn').hidden = sessionMode;  // auto-claim brings it home anyway
   $('revealClaimBtn').onclick = sessionMode
     ? () => { $('overlay').hidden = true; revealDismissed(); }
     : async () => {
@@ -2210,21 +2209,26 @@ $('headerSessionBtn').onclick = () => {
 $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
-for (const id of ['revealCloseBtn', 'errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel', 'cardCloseBtn'])
+for (const id of ['errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel', 'cardCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('nameClaimBtn').onclick = claimName;
 $('cardShareBtn').onclick = () => cardDetailUid && shareCard(cardDetailUid);
 // desktop lands in the X composer, mobile in the app-agnostic share sheet
 $('cardShareBtn').textContent = matchMedia('(pointer: coarse)').matches ? 'SHARE' : 'SHARE ON X';
-// the card and wallet views close like any lightbox: Escape or a click outside
-const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden;
+// the card, wallet, and reveal views close like any lightbox: Escape or a
+// click outside (a dismissed reveal keeps the champion under New champions)
+const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden || !$('stageReveal').hidden;
+function dismissLightbox() {
+  const wasReveal = !$('stageReveal').hidden;
+  $('overlay').hidden = true;
+  if (wasReveal) revealDismissed();
+}
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !$('overlay').hidden && dismissible()) $('overlay').hidden = true;
+  if (e.key === 'Escape' && !$('overlay').hidden && dismissible()) dismissLightbox();
 });
 $('overlay').addEventListener('click', e => {
-  if (dismissible() && !e.target.closest('.stage')) $('overlay').hidden = true;
+  if (dismissible() && !e.target.closest('.stage')) dismissLightbox();
 });
-$('revealCloseBtn').onclick = () => { $('overlay').hidden = true; revealDismissed(); };
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
 // no wallet yet? point at the right store for this device
