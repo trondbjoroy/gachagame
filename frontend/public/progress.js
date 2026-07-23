@@ -11,14 +11,14 @@
   // and the day's trial is ((day * 5 + 2) % 8). The contract pays the
   // bonus (renown + gems) on the first matching act each UTC day.
   const TRIALS = [
-    { id: 'pull', text: 'Summon a champion at the brazier' },
-    { id: 'stake', text: 'Send a champion down the Mines' },
-    { id: 'duel_win', text: 'Win a trial by combat in the Pit' },
-    { id: 'fuse', text: 'Give two champions to the Rite of Union' },
-    { id: 'temper', text: 'Temper a champion in the Mines' },
-    { id: 'claim_gems', text: 'Claim mined gems from the deep' },
-    { id: 'recall8', text: 'Recall a miner after 8+ hours of toil' },
-    { id: 'writ_win', text: 'Fell a writ in the Gauntlet' },
+    { id: 'pull', text: 'Summon a champion' },
+    { id: 'stake', text: 'Send a champion mining' },
+    { id: 'duel_win', text: 'Win a duel' },
+    { id: 'fuse', text: 'Fuse two champions' },
+    { id: 'temper', text: 'Temper a mining champion' },
+    { id: 'claim_gems', text: 'Claim mined gems' },
+    { id: 'recall8', text: 'Recall a miner after 8+ hours' },
+    { id: 'writ_win', text: 'Beat a boss' },
   ];
   const METHOD_KIND = {
     pull: 'pull', stake: 'stake', fuse: 'fuse', temper: 'temper',
@@ -53,7 +53,7 @@
       if (trial.id !== kind) return;
       if (kind === 'recall8' && !(data && data.hours >= 8)) return;
       if (!markDoneLocally()) return;
-      ribbon('Trial kept: ' + trial.text + ' (the Crown pays a bounty)', 'level', 'deed');
+      ribbon('Daily trial done: ' + trial.text + ' (bonus paid)', 'level', 'deed');
       track('trial_complete', { trial: trial.id, streak: tState().streak });
       renderProgress();
     } catch { /* progression must never break the game */ }
@@ -64,7 +64,7 @@
     // writ won elsewhere): sync the streak and celebrate
     try {
       if (S.addr && S.trialDoneChain === true && markDoneLocally()) {
-        ribbon('Trial kept: ' + todaysTrial().text + ' (the Crown pays a bounty)', 'level', 'deed');
+        ribbon('Daily trial done: ' + todaysTrial().text + ' (bonus paid)', 'level', 'deed');
         track('trial_complete', { trial: todaysTrial().id, streak: tState().streak });
       }
     } catch { /* progression must never break the game */ }
@@ -72,15 +72,15 @@
     const done = S.addr && trialDone();
     const line = $('trialLine');
     if (line) {
-      line.innerHTML = `⚜ Today the Crown asks: <b>${t.text}</b>`
-        + (done ? ' · <span class="trial-done">KEPT ✓</span>' : '');
+      line.innerHTML = `⚜ Daily trial: <b>${t.text}</b>`
+        + (done ? ' · <span class="trial-done">DONE ✓</span>' : '');
     }
     const c = $('trialCodex');
     if (c) {
       const st = tState();
-      c.innerHTML = `Each dawn (midnight UTC) the Crown asks one deed of the realm.
-        Today: <b>${t.text}</b>${done ? ' · <span class="trial-done">KEPT ✓</span>' : ''}
-        ${S.addr && st.streak ? `<br>Trials kept in a row: <b>${st.streak}</b>
+      c.innerHTML = `Each day (midnight UTC) there is one trial.
+        Today: <b>${t.text}</b>${done ? ' · <span class="trial-done">DONE ✓</span>' : ''}
+        ${S.addr && st.streak ? `<br>Days in a row: <b>${st.streak}</b>
         (best ${st.best || st.streak})` : ''}`;
     }
   }
@@ -103,8 +103,8 @@
     const el = $('musterRoll');
     if (!el) return;
     if (!S.addr) {
-      el.innerHTML = '<div class="lore"><p>Connect a wallet and the roll of your '
-        + 'sworn champions is kept here.</p></div>';
+      el.innerHTML = '<div class="lore"><p>Connect a wallet and every champion '
+        + 'you have ever owned is tracked here.</p></div>';
       return;
     }
     let ever;
@@ -126,8 +126,8 @@
         <span class="m-count mono">${have}/${total}</span></div>`;
     };
     const total = Object.keys(CATALOG).length;
-    let html = `<div class="lore"><p>Every champion ever sworn to your banner, of the
-      ${total} bound in soulstone. Complete a station or a kind and the deed is
+    let html = `<div class="lore"><p>Every champion you have ever owned, of the
+      ${total} in the game. Complete a rarity or a kind and it is
       remembered.</p></div>`;
     const PLURAL = { Footman: 'Footmen', Knight: 'Knights', Highlord: 'Highlords', Sovereign: 'Sovereigns' };
     html += bar('All champions', [...ever].length, total);
@@ -153,7 +153,7 @@
     const checkSet = (label, pool) => {
       if (pool.length >= 4 && pool.every(n => ever.has(n)) && !seen.has(label)) {
         seen.add(label);
-        ribbon('The muster is full: ' + label, 'level', 'deed');
+        ribbon('Set complete: ' + label, 'level', 'deed');
         track('muster_set', { set: label });
       }
     };
@@ -175,7 +175,7 @@
     if (!el) return;
     const sn = S.season;
     if (!sn) {
-      el.innerHTML = '<div class="lore"><p>The first season is being inscribed…</p></div>';
+      el.innerHTML = '<div class="lore"><p>The first season is being prepared…</p></div>';
       return;
     }
     const days = Math.max(0, Math.ceil((sn.ends * 1000 - Date.now()) / 86400000));
@@ -193,7 +193,7 @@
       : 'Connect a wallet to take your place in the standings.';
     el.innerHTML = `<div class="lore"><p><b>Season ${sn.season} · ${sn.name}</b>
       closes in <b>${days} day${days === 1 ? '' : 's'}</b>. Renown earned during the
-      season ranks the realm; the highest banners will bear season titles when it
+      season ranks all players; the top players earn season titles when it
       closes. ${mineLine}</p></div>
       <div class="s-table">${rows || '<div class="lore"><p>No renown earned yet this season.</p></div>'}</div>`;
   }

@@ -969,7 +969,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
       msg = 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
         + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
-        + 'in the Codex.';
+        + 'under Info.';
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
@@ -1500,7 +1500,7 @@ async function claimName() {
   } catch (e) {
     const m = (e && e.message) || String(e);
     msg.textContent = /not enough|insufficient|no utxos/i.test(m)
-      ? 'You need 0.01 HTR to claim a name. Get free testnet coin from the faucet linked in the Codex.'
+      ? 'You need 0.01 HTR to claim a name. Get free testnet coin from the faucet linked under Info.'
       : /not signed by that address/i.test(m)
       ? 'Your wallet signed with a different address than the one playing. '
         + 'Start a promptless session and claim the name there; it signs with the right key.'
