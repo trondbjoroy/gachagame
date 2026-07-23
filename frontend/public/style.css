@@ -144,22 +144,16 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .stat .v { font-family: 'Fragment Mono', monospace; font-variant-numeric: tabular-nums; font-size: 22px; margin-top: 6px; color: var(--ink); }
 .stat .v small { font-size: 12px; color: var(--ink-dim); }
 
-/* header socials: quiet ghost icons, set apart from the app buttons */
-a.soc-link {
-  text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 5px; font-size: 13px; color: var(--ink-dim);
-  transition: color .15s;
-}
-a.soc-link:hover { color: var(--acid); }
-.soc-sep { width: 1px; height: 18px; background: var(--line); margin: 0 6px; align-self: center; }
-
-/* site footer */
+/* site footer: just the socials, larger */
 .site-foot {
-  margin-top: 56px; padding: 18px 0 6px; text-align: center;
-  font-size: 12px; color: var(--ink-dim); border-top: 1px solid var(--line);
+  margin-top: 56px; padding: 22px 0 8px; border-top: 1px solid var(--line);
+  display: flex; justify-content: center; align-items: center; gap: 26px;
 }
-.site-foot a { color: var(--ink-dim); text-decoration: none; }
-.site-foot a:hover { color: var(--ink-muted); }
+.site-foot a {
+  color: var(--ink-dim); text-decoration: none; font-size: 24px; line-height: 1;
+  display: inline-flex; align-items: center; transition: color .15s;
+}
+.site-foot a:hover { color: var(--acid); }
 
 /* realm activity feed */
 .feed-panel {
@@ -898,7 +892,6 @@ body.land-flash::before {
 .wallet-chip.as-btn { flex-shrink: 0; }
 .wallet-chip #walletAddr { max-width: 150px; }
 .header-session .hs-s { display: none; }
-@media (max-width: 1280px) { .wallet-area .x-link { display: none; } }
 @media (max-width: 1240px) {
   .header-session .hs-l { display: none; }
   .header-session .hs-s { display: inline; }
