@@ -11,21 +11,34 @@ const SNAP_ID = 'npm:@hathor/snap';
 // Locate a Snaps-capable MetaMask provider. Other wallet extensions
 // (Brave Wallet, Coinbase, ...) often shadow window.ethereum, and
 // MetaMask Mobile's in-app browser does not support Snaps at all.
-async function findMetaMask() {
-  const announced = [];
-  const onAnnounce = e => announced.push(e.detail);
-  window.addEventListener('eip6963:announceProvider', onAnnounce);
-  window.dispatchEvent(new Event('eip6963:requestProvider'));
-  await new Promise(r => setTimeout(r, 300));
-  window.removeEventListener('eip6963:announceProvider', onAnnounce);
-  const mm = announced.find(d => /metamask/i.test(d.info?.name || ''));
-  if (mm) return mm.provider;
-  const multi = window.ethereum?.providers;
-  if (Array.isArray(multi)) {
-    const p = multi.find(x => x.isMetaMask);
-    if (p) return p;
-  }
-  return window.ethereum || null;
+// The provider object is stable for the page's lifetime (account changes
+// fire events, they don't swap the provider), so we discover once and cache.
+let mmProvider = null;
+function findMetaMask() {
+  if (mmProvider) return Promise.resolve(mmProvider);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = p => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('eip6963:announceProvider', onAnnounce);
+      if (p) mmProvider = p;
+      resolve(p);
+    };
+    // resolve the instant MetaMask announces (usually within a frame) rather
+    // than waiting a fixed timeout — that delay was paid on every connect
+    const onAnnounce = e => {
+      if (/metamask/i.test(e.detail?.info?.name || '')) finish(e.detail.provider);
+    };
+    window.addEventListener('eip6963:announceProvider', onAnnounce);
+    window.dispatchEvent(new Event('eip6963:requestProvider'));
+    // fallback for wallets that don't do EIP-6963 or announce late
+    setTimeout(() => {
+      const multi = window.ethereum?.providers;
+      const legacy = (Array.isArray(multi) && multi.find(x => x.isMetaMask)) || window.ethereum || null;
+      finish(legacy);
+    }, 250);
+  });
 }
 
 // amounts in htr_sendNanoContractTx actions are strings per the spec.
@@ -73,16 +86,26 @@ class SnapWallet {
   async connect() {
     this.provider = await findMetaMask();
     if (!this.provider) throw new Error('MetaMask is not installed');
+    // wallet_getSnaps is a permission read (no popup, no registry fetch); if the
+    // Hathor snap is already connected to this dapp we skip wallet_requestSnaps,
+    // which otherwise re-checks the snap registry and stalls the popup for seconds
+    let connected = false;
     try {
-      await this.provider.request({ method: 'wallet_requestSnaps', params: { [SNAP_ID]: {} } });
-    } catch (e) {
-      const msg = e?.message || String(e);
-      if (/unsupported method|method not found|does not exist|not supported/i.test(msg)) {
-        throw new Error('This browser wallet cannot run MetaMask Snaps. ' +
-          'Use the MetaMask browser extension (v11+) on desktop Chrome/Firefox, and if you have ' +
-          'several wallet extensions, disable the others; Snaps do not work in MetaMask Mobile.');
+      const snaps = await this.provider.request({ method: 'wallet_getSnaps' });
+      connected = !!(snaps && snaps[SNAP_ID]);
+    } catch { /* older providers lack getSnaps; fall through to requestSnaps */ }
+    if (!connected) {
+      try {
+        await this.provider.request({ method: 'wallet_requestSnaps', params: { [SNAP_ID]: {} } });
+      } catch (e) {
+        const msg = e?.message || String(e);
+        if (/unsupported method|method not found|does not exist|not supported/i.test(msg)) {
+          throw new Error('This browser wallet cannot run MetaMask Snaps. ' +
+            'Use the MetaMask browser extension (v11+) on desktop Chrome/Firefox, and if you have ' +
+            'several wallet extensions, disable the others; Snaps do not work in MetaMask Mobile.');
+        }
+        throw e;
       }
-      throw e;
     }
     const info = await this.invoke('htr_getWalletInformation', { network: window.GAME.network });
     this.address = info && (info.response?.address0 ?? info.address ?? info.response?.address);
@@ -368,4 +391,7 @@ window.WALLETS = {
   addrHtr: a => addrBalance(a, '00'),
   prefetchSession: () => loadSessionLib().catch(() => {}),
   prefetchWc: () => loadWcLib().catch(() => {}),
+  // discover + cache the MetaMask provider ahead of the click so connect()
+  // reaches wallet_requestSnaps with no discovery delay
+  prefetchSnap: () => findMetaMask().catch(() => {}),
 };
