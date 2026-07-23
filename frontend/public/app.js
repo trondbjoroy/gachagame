@@ -2243,7 +2243,7 @@ async function disconnectWallet() {
 }
 
 $('walletBtn').onclick = () => {
-  $('connectMsg').textContent = S.addr ? `Connected: ${S.wallet.label} · ${who(S.addr)}` : '';
+  $('connectMsg').textContent = S.addr ? `Connected: ${S.wallet.label} · ${S.addr}` : '';
   syncSessionBox();
   // warm the WalletConnect bundle and discover the MetaMask provider while the
   // player reads the options, so whichever they pick opens without our delay
