@@ -1648,8 +1648,8 @@ async function shareCard(uid) {
   const msg = $('cardShareMsg');
   const t = TIERS[c.tier] || TIERS[0];
   const text = `${c.name} · ${t.name} ⚡${c.power}, bound to my banner in Emberfall, `
-    + `the fully onchain TCG on @hathornetwork. Free on testnet. Play with $HTR, `
-    + `earn $GEMS at emberfall.fun`;
+    + `the fully onchain TCG on @hathornetwork.\n\n`
+    + `Free on testnet. Play with $HTR, earn $GEMS at emberfall.fun`;
   try {
     // the native sheet is only useful where X lives as an app (touch devices)
     const touch = matchMedia('(pointer: coarse)').matches;
@@ -1667,8 +1667,8 @@ async function shareCard(uid) {
     // desktop: the champion travels with a link — X reads /c/<uid> and shows
     // the art under the post by itself (the composer cannot take attachments)
     const cardUrl = `${location.origin}/c/${uid}`;
-    window.open('https://x.com/intent/tweet?text=' + encodeURIComponent(text)
-      + '&url=' + encodeURIComponent(cardUrl), '_blank');
+    window.open('https://x.com/intent/tweet?text='
+      + encodeURIComponent(`${text}\n\n${cardUrl}`), '_blank');
     msg.textContent = 'The champion travels with the link and shows under the post. Edit the words as you like.';
     track('share_card', { method: 'link' });
   } catch (e) {
