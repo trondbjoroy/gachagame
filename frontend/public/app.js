@@ -596,6 +596,7 @@ function render() {
     ? '\u26a1 <span class="hs-l">SESSION ACTIVE</span><span class="hs-s">SESSION</span>'
     : '\u26a1 <span class="hs-l">QUICK PLAY</span><span class="hs-s">PLAY</span>';
   hsb.classList.toggle('active', inSess);
+  hsb.classList.toggle('beckon', !!S.qpBeckon && !inSess && !!S.addr);
   syncSessionBox();
 
   $('odds').innerHTML = TIERS.map(t =>
@@ -1830,8 +1831,15 @@ async function connectWallet(kind) {
     $('overlay').hidden = true;
     $('wcPair').hidden = true;
     await refresh();
-    // first time in the realm: walk them through it
-    if (!localStorage.getItem('emberfall_tutorial_seen')) startTutorial();
+    // first time in the realm: walk them through it, then point at quick play
+    const firstVisit = !localStorage.getItem('emberfall_tutorial_seen');
+    if (firstVisit) startTutorial();
+    if (S.wallet?.mode !== 'session') {
+      // the nudge would hide behind the tutorial overlay; defer it to when the
+      // tour closes, otherwise show it right away
+      if (firstVisit) window.pendingQpHint = true;
+      else showQpHint();
+    }
   } catch (e) {
     $('connectMsg').textContent = e.message || String(e);
   }
@@ -2253,7 +2261,22 @@ $('walletBtn').onclick = () => {
 $('disconnectBtn').onclick = disconnectWallet;
 $('setNameBtn').onclick = openName;
 $('sessionStartBtn').onclick = startSession;
+// a one-time nudge after a first-ever wallet connect: glow quick play and tag
+// it "recommended", then fade out. Shown once per device, cleared on engagement.
+function showQpHint() {
+  if (localStorage.getItem('emberfall_qp_hinted')) return;
+  localStorage.setItem('emberfall_qp_hinted', '1');
+  S.qpBeckon = true;
+  render();
+  setTimeout(() => { S.qpBeckon = false; render(); }, 18000);
+}
+function clearQpHint() {
+  if (!S.qpBeckon) return;
+  S.qpBeckon = false;
+  render();
+}
 $('headerSessionBtn').onclick = () => {
+  clearQpHint();
   $('walletBtn').onclick();
   if (S.wallet?.mode !== 'session') startSession();
 };

@@ -93,6 +93,8 @@ function endTutorial(finished) {
   localStorage.setItem('emberfall_tutorial_seen', '1');
   track(finished ? 'tutorial_done' : 'tutorial_closed', { step: tourIdx });
   tourIdx = -1;
+  // the post-first-connect quick-play nudge waits until the tour is gone
+  if (window.pendingQpHint) { window.pendingQpHint = false; window.showQpHint?.(); }
 }
 
 function tourKeys(e) {

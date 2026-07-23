@@ -903,8 +903,26 @@ body.land-flash::before {
   .header-session .hs-l { display: none; }
   .header-session .hs-s { display: inline; }
 }
-.header-session { white-space: nowrap; flex-shrink: 0; }
+.header-session { white-space: nowrap; flex-shrink: 0; position: relative; }
 .header-session.active { background: none; color: var(--acid); border: 1px solid rgba(212, 168, 67, .4); }
+
+/* first-connect nudge: point new players at quick play, then fade out */
+.header-session.beckon { animation: qpBeckon 2.2s ease-in-out infinite; }
+@keyframes qpBeckon {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 67, 0), 0 6px 16px -6px rgba(212, 168, 67, .45); }
+  50% { box-shadow: 0 0 0 3px rgba(212, 168, 67, .18), 0 0 22px -2px rgba(212, 168, 67, .7); }
+}
+.header-session.beckon::after {
+  content: 'RECOMMENDED';
+  position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  font-family: 'Cinzel', serif; font-size: 8.5px; letter-spacing: .16em; font-weight: 700;
+  color: #0b0a08; background: linear-gradient(180deg, #e2b44d, #c89a35);
+  padding: 3px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none;
+  box-shadow: 0 4px 12px -3px rgba(0, 0, 0, .5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-session.beckon { animation: none; box-shadow: 0 0 18px -4px rgba(212, 168, 67, .7); }
+}
 /* tighter widths: drop the advisory hint first (balance keeps its tooltip) */
 @media (max-width: 820px) { .wallet-chip .hint { display: none; } }
 /* below this the header genuinely can't fit one row — stack cleanly: icons
