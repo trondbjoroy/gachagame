@@ -471,6 +471,17 @@ async function handleApi(req, res, ip) {
   }
 
   if (req.method === 'GET' && url.pathname === '/cards') {
+    // discover=1: a client just minted (pull/fuse) and the 15s feed poll may
+    // not have seen it yet — diff the contract's balances and pull in any
+    // token the cache does not know, so the reveal never races the poller
+    if (url.searchParams.get('discover')) {
+      try {
+        const cur = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
+        const fresh = Object.keys(cur.balances || {})
+          .filter(u => HEX64.test(u) && u !== GEMS && !cardCache.cards[u]);
+        if (fresh.length) await refreshCards(fresh);
+      } catch { /* discovery is best-effort; the poller remains the backstop */ }
+    }
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     // ?touch=<uid,uid>: the caller just changed these cards; re-read them now
     const touch = (q.get('touch') || '').split(',')

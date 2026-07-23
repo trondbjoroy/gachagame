@@ -54,6 +54,36 @@ async function batchCalls(cs) {
   return out;
 }
 
+function mergeCards(payload) {
+  for (const [u, d] of Object.entries(payload.cards || {})) {
+    const c = S.cards.get(u) || { uid: u, mine: false, pendingGems: 0 };
+    c.name = d.name; c.tier = d.tier; c.power = d.power;
+    // [attack, defense, cunning, tempers, hardened, xp, level, vet]
+    c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
+    c.level = c.aspects?.[6] || 0;
+    c.wins = d.wins; c.cosmetics = d.cosmetics;
+    c.pending = d.pending; c.staker = d.staker;
+    c.delveSince = d.delveSince; c.temperCost = d.temperCost;
+    S.cards.set(u, c);
+  }
+}
+
+// a freshly minted card (pull/fuse) can beat the server's feed poller: ask
+// the server to diff the contract's balances until the newcomer appears
+async function awaitNewCard(findIt) {
+  let won = findIt();
+  for (let i = 0; i < 6 && !won; i++) {
+    try {
+      const payload = await (await fetch('/api/cards?discover=1')).json();
+      mergeCards(payload);
+    } catch { /* transient; the next lap retries */ }
+    won = findIt();
+    if (!won) await new Promise(r => setTimeout(r, 2500));
+  }
+  if (won) render();
+  return won;
+}
+
 async function loadContract(touch) {
   const now = Math.floor(Date.now() / 1000);
   // the heavy per-card state comes pre-warmed from our server's cache (one
@@ -81,18 +111,7 @@ async function loadContract(touch) {
     ? batchCalls([...Array(writCount).keys()].map(i => `get_writ(${i})`))
     : null;
 
-  const payload = await cardsP;
-  for (const [u, d] of Object.entries(payload.cards || {})) {
-    const c = S.cards.get(u) || { uid: u, mine: false, pendingGems: 0 };
-    c.name = d.name; c.tier = d.tier; c.power = d.power;
-    // [valor, bulwark, guile, tempers, hardened, xp, level, vet]
-    c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
-    c.level = c.aspects?.[6] || 0;
-    c.wins = d.wins; c.cosmetics = d.cosmetics;
-    c.pending = d.pending; c.staker = d.staker;
-    c.delveSince = d.delveSince; c.temperCost = d.temperCost;
-    S.cards.set(u, c);
-  }
+  mergeCards(await cardsP);
 
   if (writsP) {
     const wq = await writsP;
@@ -997,8 +1016,8 @@ async function pull() {
   if (S.favorOwed > favorBefore)
     ribbon(`Lucky pull: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> refunded`, 'level', 'favor');
   // with overlapping summons, exclude cards already claimed by another reveal
-  const won = [...S.cards.values()].find(c =>
-    c.pending === S.addr && !before.has(c.uid) && !revealSeen.has(c.uid));
+  const won = await awaitNewCard(() => [...S.cards.values()].find(c =>
+    c.pending === S.addr && !before.has(c.uid) && !revealSeen.has(c.uid)));
   if (!won) return;
   revealCard(won, TIERS[won.tier].name);
 }
@@ -1232,7 +1251,8 @@ async function fuse() {
   const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
   if (!hash) return;
   window.sfx?.('fuse');
-  const won = [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid));
+  const won = await awaitNewCard(() =>
+    [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid)));
   if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
 }
 
