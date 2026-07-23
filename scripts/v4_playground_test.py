@@ -418,6 +418,25 @@ check("session withdraws from the main ledger",
                         wallet="player", address=PL_S), "withdraw_gems via session"))
 check("main ledger debited", call1(f'get_gems_balance("{PL}")') == gems_pl2 - 5)
 
+# --------------------------------------------- M4: gem liability & reserve
+all_addrs = [OP, PL, PL_S, BET, BET2]
+ledger_sum = sum(call1(f'get_gems_balance("{a}")') for a in all_addrs)
+liability = call1('get_gem_liability()')
+check("gem_liability equals the sum of every ledger", liability == ledger_sum)
+
+proceeds = call1('get_proceeds()')
+reserve = (liability + 99) // 100
+available = max(0, proceeds - reserve)
+check("owner may withdraw revenue above the reserve",
+      available == 0 or wait_exec(execute("withdraw_proceeds", None,
+          [{"type": "withdrawal", "token": "00", "amount": available, "address": OP}],
+          wallet="operator", address=OP), "withdraw available proceeds"))
+# with only the reserve left, any further withdrawal is refused
+check("owner cannot touch the gem reserve",
+      not wait_exec(execute("withdraw_proceeds", None,
+          [{"type": "withdrawal", "token": "00", "amount": 1, "address": OP}],
+          wallet="operator", address=OP), "over-withdraw into reserve"))
+
 # ------------------------------------------------------------------ done
 print("\n==== SUMMARY ====", flush=True)
 fails = [l for l, ok in checks if not ok]

@@ -239,7 +239,10 @@ class EmberfallCardMarket(Blueprint):
         action = deposits[0]
         if action.amount != 100:
             raise NCFail("a card moves as 100 units")
-        # NOTE: authenticity is enforced client-side against the game's
-        # card registry; a cross-contract view call here failed on the
-        # current playground node version and was removed.
+        # authenticity is enforced ON-CHAIN: ask the gacha contract whether it
+        # minted this token. get_card_tier returns -1 for anything it never
+        # created, so a counterfeit token can never be listed or swapped here.
+        gacha = self.syscall.get_contract(self.gacha, blueprint_id=None)
+        if gacha.view.get_card_tier(action.token_uid) < 0:
+            raise NCFail("not a genuine Emberfall card")
         return action.token_uid
