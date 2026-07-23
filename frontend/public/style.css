@@ -471,15 +471,6 @@ body::after {
   position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(11, 10, 8, .3) 0%, transparent 25%, transparent 60%, rgba(11, 10, 8, .92) 100%);
 }
-.show-chip {
-  position: absolute; top: 12px; right: 12px;
-  font-size: 9px; letter-spacing: .26em; font-weight: 700;
-  color: var(--acid); border: 1px solid rgba(212, 168, 67, .45);
-  padding: 5px 9px 4px 11px; border-radius: 999px;
-  background: rgba(11, 10, 8, .55); backdrop-filter: blur(3px);
-  animation: chipPulse 2.4s ease-in-out infinite alternate;
-}
-@keyframes chipPulse { from { opacity: .65; } to { opacity: 1; } }
 .show-cap { position: absolute; left: 16px; right: 16px; bottom: 14px; pointer-events: none; }
 .show-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 19px; color: #f4efe6; text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
 .show-station { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; margin-top: 4px; }
@@ -501,7 +492,6 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .show-img { transition: opacity .3s; transform: none; }
   .show-img.on { transform: none; }
-  .show-chip { animation: none; }
   .pull-btn:not(:disabled) { animation: none; }
 }
 
