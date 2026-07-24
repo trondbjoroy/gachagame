@@ -388,6 +388,11 @@ async function pollFeed() {
     const touched = new Set();
     for (const tx of d.history || []) {
       if (feedSeen.has(tx.hash) || tx.is_voided) continue;
+      // a tx appears in history before consensus settles it; ingesting then
+      // lets soon-to-be-voided txs into the feed (a failed summon still read
+      // "summoned a champion"). Wait for confirmation: unseen + unconfirmed
+      // txs simply return on a later poll.
+      if (!tx.first_block) continue;
       feedSeen.add(tx.hash);
       for (const u of touchFromTx(tx)) touched.add(u);
       const ev = feedEventFor(tx);
