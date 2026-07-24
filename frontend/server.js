@@ -114,6 +114,9 @@ const isPerm = v => typeof v === 'string' && v.length === 3
   && v.includes('0') && v.includes('1') && v.includes('2');
 // v5 ranked: wager tiers 0 (free) / 1 (25 Ember) / 2 (100 Ember)
 const isTier = v => v === 0 || v === 1 || v === 2;
+// v5 guilds: 3-16 chars, same shape the banner-name registry allows
+const isGuildName = v => typeof v === 'string' && /^[A-Za-z0-9_ ]{3,16}$/.test(v)
+  && v.trim() === v;
 const isSide = v => v === 0 || v === 1;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
@@ -144,6 +147,11 @@ const METHODS = {
   reveal_squad:  { actions: [],                args: [isSmallInt, isPerm, isSalt] },
   join_ranked:   { actions: [cardDep],         args: [isTier] },
   leave_ranked:  { actions: [],                args: [isTier] },
+  create_guild:  { actions: [],                args: [isGuildName] },
+  join_guild:    { actions: [],                args: [isSmallInt] },
+  leave_guild:   { actions: [],                args: [] },
+  fight_world_boss:   { actions: [],           args: [isHex64] },
+  claim_world_bounty: { actions: [],           args: [isSmallInt] },
   claim_forfeit: { actions: [],                args: [isSmallInt] },
   place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
@@ -212,6 +220,7 @@ async function delegateOf(addr) {
 // haul. Baselines are seeded on first sight (a first sighting stays silent);
 // only round-by-round rolls remain unknowable without the event queue.
 const winsCache = new Map();    // identity -> wins
+const wbHpCache = new Map();    // week -> world-boss hp last seen
 const emberCache = new Map();   // identity -> Ember ledger
 const shardsCache = new Map();  // identity -> shards
 
@@ -294,6 +303,27 @@ async function enrichEvent(ev, tries) {
   if (ev.kind === 'delve_done') {
     if (tries === 0) return false;                 // let the claim tx confirm first
     ev.result = await delveVerdict(ev.who, ev.lone === true);
+    return true;
+  }
+  if (ev.kind === 'guild_join') {
+    const c = `get_guild(${ev.id})`;
+    ev.name = ((await feedViews([c]))[c] || '').split('|')[0] || null;
+    return true;
+  }
+  if (ev.kind === 'wb_fight') {
+    // boss name always; damage from the HP drawdown, only trusted when this
+    // was the identity's lone tx in the window (several fighters merge)
+    const cw = 'get_wb_week()';
+    const week = (await feedViews([cw]))[cw] || 0;
+    const cb = `get_world_boss(${week})`;
+    const boss = ((await feedViews([cb]))[cb] || '').split('|');
+    const hp = Number(boss[1] || 0);
+    const had = wbHpCache.has(week);
+    const dHp = (wbHpCache.get(week) ?? hp) - hp;
+    wbHpCache.set(week, hp);
+    ev.boss = boss[0] || null;
+    if (had && dHp > 0 && ev.lone === true) ev.damage = dHp;
+    if (boss[0] && hp === 0) ev.slain = true;
     return true;
   }
   if (ev.kind === 'ranked') {
@@ -381,6 +411,16 @@ function feedEventFor(tx) {
       return { ts, kind: 'ranked', who, tier: Number(args[0]) || 0 };
     case 'leave_ranked':
       return { ts, kind: 'ranked_leave', who, tier: Number(args[0]) || 0 };
+    case 'create_guild':
+      return { ts, kind: 'guild_new', who, name: String(args[0] || '') };
+    case 'join_guild':
+      return { ts, kind: 'guild_join', who, id: Number(args[0]) || 0 };
+    case 'leave_guild':
+      return { ts, kind: 'guild_leave', who };
+    case 'fight_world_boss':
+      return { ts, kind: 'wb_fight', who };
+    case 'claim_world_bounty':
+      return { ts, kind: 'wb_claim', who, week: Number(args[0]) || 0 };
     case 'claim_forfeit':
       return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
     case 'cancel_duel':
@@ -467,7 +507,8 @@ async function pollFeed() {
     }
     for (const ev of fresh) {
       try {
-        if (ev.kind === 'delve_done') ev.lone = perIdentity.get(ev.who) === 1;
+        if (ev.kind === 'delve_done' || ev.kind === 'wb_fight')
+          ev.lone = perIdentity.get(ev.who) === 1;
         // pre-boot events are history replay: their baselines were seeded
         // AFTER the settles they describe, so inference would misattribute —
         // they keep plain lines (challenges still seed future baselines)

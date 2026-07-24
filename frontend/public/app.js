@@ -19,6 +19,9 @@ const fmtEmber = n => n + ' Ember';
 const short = u => u.slice(0, 10) + '…';
 // banner name if the address claimed one, else the shortened address
 const who = a => (a && S.names[a]) || short(a || '?');
+// for on-chain text the CONTRACT only length-checks (guild names): escape it
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/;
 // v4 delegation: contract state (renown, Ember, wins, cards' staker/pending)
 // is keyed by the MAIN identity; a session acts as the wallet that offered it.
@@ -216,6 +219,38 @@ async function loadContract(touch) {
     }
     S.duels.reverse();
   } else S.duels = [];
+
+  // world boss + guild hall (public state; membership needs an identity)
+  try {
+    const gb = await batchCalls(['get_wb_week()', 'get_guild_count()']);
+    const wbWeek = gb['get_wb_week()'] || 0;
+    const gCount = Math.min(gb['get_guild_count()'] || 0, 30);
+    const me = S.addr ? identity() : null;
+    const calls = [];
+    if (wbWeek > 0) calls.push(`get_world_boss(${wbWeek})`);
+    for (let i = 0; i < gCount; i++) calls.push(`get_guild(${i})`);
+    if (me) {
+      calls.push(`get_member_guild("${me}")`);
+      if (wbWeek > 0) calls.push(`get_wb_damage(${wbWeek}, "${me}")`,
+        `get_wb_claimed(${wbWeek}, "${me}")`);
+    }
+    const d2 = calls.length ? await batchCalls(calls) : {};
+    const raw = wbWeek > 0 ? (d2[`get_world_boss(${wbWeek})`] || '') : '';
+    const bp = raw.split('|');
+    S.worldBoss = raw ? {
+      week: wbWeek, name: bp[0], hp: +bp[1], hp0: +bp[2],
+      valor: +bp[3], bulwark: +bp[4], guile: +bp[5],
+      pool: +bp[6], total: +bp[7], topGuild: +bp[8],
+      myDamage: me ? d2[`get_wb_damage(${wbWeek}, "${me}")`] || 0 : 0,
+      claimed: me ? d2[`get_wb_claimed(${wbWeek}, "${me}")`] === true : false,
+    } : null;
+    S.guilds = [];
+    for (let i = 0; i < gCount; i++) {
+      const [n, m] = (d2[`get_guild(${i})`] || '').split('|');
+      if (n) S.guilds.push({ id: i, name: n, members: Number(m) || 0 });
+    }
+    S.myGuild = me ? (d2[`get_member_guild("${me}")`] ?? -1) : -1;
+  } catch { S.worldBoss = null; S.guilds = []; S.myGuild = -1; }
 }
 
 async function loadMarket() {
@@ -355,6 +390,17 @@ function feedLine(ev) {
       return `${name} fought on the ranked ladder`;
     }
     case 'ranked_leave': return `${name} stepped out of the ranked queue`;
+    case 'guild_new': return `${name} raised the banner of <b>${esc(ev.name)}</b>`;
+    case 'guild_join': return ev.name
+      ? `${name} now rides under <b>${esc(ev.name)}</b>`
+      : `${name} joined a guild`;
+    case 'guild_leave': return `${name} left their guild`;
+    case 'wb_fight': {
+      const target = ev.boss ? `<b>${esc(ev.boss)}</b>` : 'the world boss';
+      if (ev.slain) return `${name} felled ${target} — the bounty is open!`;
+      return `${name} struck ${target}${ev.damage ? ` for ${ev.damage}` : ''}`;
+    }
+    case 'wb_claim': return `${name} claimed their world-boss bounty`;
     case 'delve': return `${name} started a delve`;
     case 'delve_done': {
       const r = ev.result;
@@ -916,6 +962,56 @@ function render() {
         : `<button class="mini-btn" data-rankedjoin="${t}">JOIN</button>`}
     </div>`).join('') : '';
 
+  // the world boss: one shared colossus a week, felled together
+  const wb = S.worldBoss;
+  $('wbIntro').textContent = wb
+    ? 'Once a week the Crown looses a colossus on the realm. Staked champions '
+      + 'strike it from the Mines (writ entry fee, three strikes each per day); '
+      + 'damage is rounds won times power. When it falls, a tenth of the '
+      + "week's summons pays out pro-rata by damage, and the top-damage "
+      + "guild's fighters take a quarter more."
+    : 'No world boss stands this week. The Crown looses one weekly.';
+  const hpPct = wb && wb.hp0 > 0 ? Math.round(100 * wb.hp / wb.hp0) : 0;
+  $('wbBox').innerHTML = wb ? `
+    <div class="duel ${wb.hp > 0 ? 'open' : ''}">
+      <span class="duel-emoji">👹</span>
+      <div class="duel-info"><b>${esc(wb.name)}</b>
+        <div class="duel-meta">⚔ ${wb.valor} · 🛡 ${wb.bulwark} · 🗡 ${wb.guile} · bounty ${fmtEmber(wb.pool)}</div>
+        <div class="duel-meta">HP ${wb.hp} / ${wb.hp0} (${hpPct}%)${wb.myDamage
+          ? ` · your damage ${wb.myDamage}` : ''}</div>
+      </div>
+      ${wb.hp > 0
+        ? (S.addr ? '<button class="mini-btn" data-wbfight="1">STRIKE</button>'
+                  : '<span class="duel-done">connect to fight</span>')
+        : wb.myDamage > 0 && !wb.claimed && S.addr
+          ? `<button class="mini-btn" data-wbclaim="${wb.week}">CLAIM BOUNTY</button>`
+          : '<span class="duel-done">felled</span>'}
+    </div>` : '';
+
+  // the guild hall
+  $('guildIntro').textContent = S.addr
+    ? 'Raise a banner for 500 Ember (burned) or ride under another. Guilds fight '
+      + 'as one on the world boss: the top-damage banner takes +25% bounty.'
+    : 'Connect a wallet to join a guild.';
+  const gRows = (S.guilds || []).map(g => `
+    <div class="duel open">
+      <span class="duel-emoji">🚩</span>
+      <div class="duel-info"><b>${esc(g.name)}</b>
+        <div class="duel-meta">${g.members} member${g.members === 1 ? '' : 's'}${
+          S.myGuild === g.id ? ' · your banner' : ''}</div>
+      </div>
+      ${S.myGuild === g.id
+        ? '<button class="mini-btn alt" data-guildleave="1">LEAVE</button>'
+        : S.myGuild < 0 && S.addr
+          ? `<button class="mini-btn" data-guildjoin="${g.id}">JOIN</button>` : ''}
+    </div>`).join('');
+  $('guildBox').innerHTML = (S.addr && S.myGuild < 0
+    ? `<div class="duel"><span class="duel-emoji">🏰</span><div class="duel-info">
+        <b>Raise a banner</b>
+        <div class="duel-meta">500 Ember, burned; the name is yours for as long as the realm stands</div></div>
+        <button class="mini-btn" data-guildcreate="1">CREATE</button></div>` : '')
+    + gRows;
+
   // the Gauntlet: writs of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
   $('gauntletIntro').textContent = S.addr
@@ -1055,6 +1151,22 @@ function bindListActions() {
   bind('[data-acceptsquad]', id => openPick('squadAccept', Number(id)));
   bind('[data-revealsquad]', id => revealSquad(Number(id)));
   bind('[data-rankedjoin]', t => openPick('ranked', Number(t)));
+  bind('[data-wbfight]', () => openPick('wbfight', null));
+  bind('[data-wbclaim]', async w => {
+    const e0 = S.ember;
+    const h = await doTx('Claiming the bounty', 'claim_world_bounty', [Number(w)], []);
+    if (h) ribbon(`The colossus paid out: +${fmtEmber(S.ember - e0)}`, 'level', 'coin');
+  });
+  bind('[data-guildjoin]', id => doTx('Joining the guild', 'join_guild', [Number(id)], []));
+  bind('[data-guildleave]', () => doTx('Leaving the guild', 'leave_guild', [], []));
+  bind('[data-guildcreate]', () => {
+    const name = prompt('Name your banner (3-16 chars: letters, numbers, spaces or _). Costs 500 Ember, burned:', '');
+    if (name === null) return;
+    const n = name.trim();
+    if (!/^[A-Za-z0-9_ ]{3,16}$/.test(n)) { alert('3-16 chars: letters, numbers, spaces or _.'); return; }
+    if (S.ember < 500) { alert(`Raising a banner costs 500 Ember; you hold ${fmtEmber(S.ember)}.`); return; }
+    doTx('Raising the banner', 'create_guild', [n], []);
+  });
   bind('[data-rankedleave]', async t => {
     const h = await doTx('Leaving the ranked queue', 'leave_ranked', [Number(t)], []);
     if (h) ribbon('You stepped out of the queue: wager returned, champion in Collection to claim', '', 'coin');
@@ -2143,6 +2255,27 @@ function openPick(kind, ref) {
     $('overlay').hidden = false;
     return;
   }
+  if (kind === 'wbfight') {
+    const marchers = [...S.cards.values()].filter(c =>
+      isMine(c.staker) && !(c.delveSince > 0));
+    if (!marchers.length) {
+      $('errTitle').textContent = 'No champion available';
+      $('errMsg').textContent = 'The world boss is struck by staked champions. '
+        + 'Stake one in The Mines (not delving) and try again.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    $('pickTitle').textContent = `Strike ${S.worldBoss?.name ?? 'the colossus'}: choose a mining champion`;
+    $('pickWagerRow').hidden = true;
+    $('pickStanceRow').hidden = true;
+    $('pickCards').innerHTML = marchers.map(c => cardBox(c,
+      `<button class="mini-btn" data-pick="${c.uid}">STRIKE</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
   if (kind === 'ranked') {
     const wager = [0, 25, 100][ref] || 0;
     if (wager > S.ember) {
@@ -2204,6 +2337,29 @@ function openPick(kind, ref) {
 async function submitPick(uid) {
   const { kind, ref } = pickCtx;
   $('overlay').hidden = true;
+  if (kind === 'wbfight') {
+    const hpBefore = S.worldBoss?.hp ?? 0;
+    const hash = await doTx('Striking the colossus', 'fight_world_boss', [uid], []);
+    if (!hash) return;
+    const dmg = hpBefore - (S.worldBoss?.hp ?? hpBefore);
+    const slain = (S.worldBoss?.hp ?? 1) === 0;
+    $('duelResult').innerHTML = slain
+      ? `<div class="duel-banner win">👹 THE COLOSSUS FALLS</div>
+         <div class="wait-sub">Your blow of ${dmg} damage ended it. Every fighter can now
+         claim their share of the bounty in the Arena.</div>`
+      : dmg > 0
+        ? `<div class="duel-banner win">⚔️ A TELLING BLOW</div>
+           <div class="wait-sub">${dmg} damage. ${S.worldBoss?.hp ?? '?'} HP still stands;
+           strike again or let the realm finish it.</div>`
+        : `<div class="duel-banner lose">💀 THE BLOW GLANCED OFF</div>
+           <div class="wait-sub">No round went your way. The entry is spent; your champion
+           learned from it.</div>`;
+    window.sfx?.('clash');
+    setTimeout(() => window.sfx?.(slain || dmg > 0 ? 'win' : 'lose'), 450);
+    showStage('stageDuel');
+    $('overlay').hidden = false;
+    return;
+  }
   if (kind === 'ranked') {
     const winsBefore = S.wins;
     const hash = await doTx('Entering the ranked ladder', 'join_ranked', [ref], [depAct(uid, CARD_AMT)]);

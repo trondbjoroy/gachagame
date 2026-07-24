@@ -112,6 +112,16 @@ skill ladder; the season stays the activity sprint).
   next week.
 - Feed: guild creations, joins, world-boss posts, big hits, the kill, and
   bounty claims (all via self.log + state-diff).
+- Implemented (phase 4): guild names unique case-insensitively, 500 Ember
+  burned outright; the +25% bounty bonus follows the banner an identity
+  FOUGHT under (recorded on their first hit of the week), so hopping into
+  the top guild after the kill earns nothing. The bounty pool accrues in
+  EMBER (pull_price // 10 per summon into the current unix-week, boss
+  posted or not) — no HTR reserve needed in the closed-points economy;
+  the +25% mints on top of the pool like other bounties. Boss fights
+  mirror writs (staked, 3/day per card via wb_attempts, fusion-fee//5
+  entry, abilities 1-7 apply). scripts/world_boss.py posts weekly
+  (dry-run default, WB_APPLY=1, no default ARENA_NC).
 
 ## Migration to v5
 

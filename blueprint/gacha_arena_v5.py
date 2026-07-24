@@ -37,6 +37,17 @@ class EmberfallArena(Blueprint):
       tx settles the fight at once; otherwise the joiner waits and
       leave_ranked refunds. No stances, no bets, no choosing opponents.
 
+    v5 phase 4 (guilds and the world boss):
+    - create_guild burns 500 Ember; one banner per identity; join/leave
+      freely. Names are unique, case-insensitively.
+    - One world boss per unix-week, posted by the Crown. Staked champions
+      fight it from the Mines (writ entry fee, three fights per champion
+      per day); damage = rounds won x power. Every summon feeds the
+      week's bounty pool (a tenth of the pull price, in Ember).
+    - When the boss falls, contributors claim the pool pro-rata by
+      damage; members of the top-damage guild (as fought, not as joined
+      afterwards) take +25%. An unslain boss rolls its pool forward.
+
 v4.1 additions (2026-07-24, pending publish):
     - accept_duel refuses a caller with a bet riding on that duel
       (closes bet-then-accept: place_bet already refused participants,
@@ -130,6 +141,26 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     ranked_addr: dict[int, Address]          # tier*4096+slot
     ranked_card: dict[int, TokenUid]
     ranked_active: dict[int, bool]
+    guild_count: int
+    guild_name: dict[int, str]
+    guild_taken: dict[str, bool]        # lowercase name -> raised
+    guild_members: dict[int, int]
+    member_guild: dict[Address, int]
+    wb_week: int                        # latest posted boss week (0 = none)
+    wb_name: dict[int, str]
+    wb_hp: dict[int, int]               # remaining
+    wb_hp0: dict[int, int]
+    wb_valor: dict[int, int]
+    wb_bulwark: dict[int, int]
+    wb_guile: dict[int, int]
+    wb_pool: dict[int, Amount]          # Ember bounty accrued per week
+    wb_total: dict[int, int]            # damage dealt in total
+    wb_damage: dict[str, int]           # "week|addr" -> damage
+    wb_fought_guild: dict[str, int]     # "week|addr" -> guild at first hit
+    wb_guild_damage: dict[str, int]     # "week|guild" -> damage
+    wb_top_guild: dict[int, int]
+    wb_claimed: dict[str, bool]
+    wb_attempts: dict[TokenUid, int]    # day*10+fights, like writ_attempts
     squad_card: dict[int, TokenUid]          # duel_id*4+slot, challenger
     squad_acceptor_card: dict[int, TokenUid] # duel_id*4+lane, acceptor
     duel_wager: dict[int, Amount]
@@ -226,6 +257,26 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.ranked_addr = {}
         self.ranked_card = {}
         self.ranked_active = {}
+        self.guild_count = 0
+        self.guild_name = {}
+        self.guild_taken = {}
+        self.guild_members = {}
+        self.member_guild = {}
+        self.wb_week = 0
+        self.wb_name = {}
+        self.wb_hp = {}
+        self.wb_hp0 = {}
+        self.wb_valor = {}
+        self.wb_bulwark = {}
+        self.wb_guile = {}
+        self.wb_pool = {}
+        self.wb_total = {}
+        self.wb_damage = {}
+        self.wb_fought_guild = {}
+        self.wb_guild_damage = {}
+        self.wb_top_guild = {}
+        self.wb_claimed = {}
+        self.wb_attempts = {}
         self.squad_card = {}
         self.squad_acceptor_card = {}
         self.duel_wager = {}
@@ -757,6 +808,10 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             share = self.proceeds
         self.proceeds -= share
         self.favor_pool += share
+        # the world boss eats too: a tenth of every summon, in Ember,
+        # into the CURRENT week's bounty pool (posted boss or not)
+        week = ctx.block.timestamp // 604_800
+        self.wb_pool[week] = self.wb_pool.get(week, 0) + self.pull_price // 10
         self._earn_renown(who, 10, ctx.block.timestamp)
         self._grant_deed(who, 0)
         self._trial_hit(who, 0, ctx.block.timestamp)
@@ -1035,6 +1090,206 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             f'"valor":{r0},"bulwark":{r1},"guile":{r2}}}'.encode()
         )
         return victory
+
+    # ------------------------------------------------------------------
+    # Guilds and the world boss
+    # ------------------------------------------------------------------
+
+    def _wb_key(self, week: int, who: Address) -> str:
+        return f"{week}|{who.hex()}"
+
+    @public
+    def create_guild(self, ctx: Context, name: str) -> int:
+        """Raise a banner for 500 Ember (burned). One guild per identity;
+        names are unique, case-insensitively."""
+        who = self._player(ctx)
+        if who in self.member_guild:
+            raise NCFail("you already ride under a banner")
+        if len(name) < 3 or len(name) > 16:
+            raise NCFail("guild name must be 3-16 chars")
+        key = name.lower()
+        if self.guild_taken.get(key, False):
+            raise NCFail("that banner is already raised")
+        balance = self.ember_ledger.get(who, 0)
+        if balance < 500:
+            raise NCFail("raising a banner costs 500 Ember")
+        self._debit_ember(who, 500)
+        gid = self.guild_count
+        self.guild_count = gid + 1
+        self.guild_name[gid] = name
+        self.guild_taken[key] = True
+        self.guild_members[gid] = 1
+        self.member_guild[who] = gid
+        self.log.info('guild_created', guild_id=gid)
+        self.syscall.emit_event(
+            f'{{"event":"guild_created","id":{gid}}}'.encode()
+        )
+        return gid
+
+    @public
+    def join_guild(self, ctx: Context, guild_id: int) -> None:
+        who = self._player(ctx)
+        if who in self.member_guild:
+            raise NCFail("you already ride under a banner")
+        if guild_id < 0 or guild_id >= self.guild_count:
+            raise NCFail("no such guild")
+        self.member_guild[who] = guild_id
+        self.guild_members[guild_id] = self.guild_members.get(guild_id, 0) + 1
+        self.log.info('guild_joined', guild_id=guild_id)
+
+    @public
+    def leave_guild(self, ctx: Context) -> None:
+        who = self._player(ctx)
+        if who not in self.member_guild:
+            raise NCFail("you ride under no banner")
+        gid = self.member_guild[who]
+        del self.member_guild[who]
+        self.guild_members[gid] = self.guild_members.get(gid, 1) - 1
+        self.log.info('guild_left', guild_id=gid)
+
+    @public
+    def post_world_boss(self, ctx: Context, name: str, hp: int,
+                        valor: int, bulwark: int, guile: int) -> int:
+        """The Crown posts the week's boss (a cron scales hp to the realm).
+        An unslain previous boss rolls its bounty pool forward."""
+        self._check_owner(ctx)
+        if len(name) < 1 or len(name) > 30:
+            raise NCFail("name must be 1-30 chars")
+        if hp < 100 or hp > 1_000_000:
+            raise NCFail("hp out of range")
+        if valor < 1 or bulwark < 1 or guile < 1:
+            raise NCFail("aspects must be positive")
+        if valor + bulwark + guile > 10_000:
+            raise NCFail("boss too mighty")
+        week = ctx.block.timestamp // 604_800
+        if week in self.wb_name:
+            raise NCFail("this week's boss already stands")
+        prev = self.wb_week
+        if prev > 0 and prev != week and self.wb_hp.get(prev, 0) > 0:
+            self.wb_pool[week] = self.wb_pool.get(week, 0) + self.wb_pool.get(prev, 0)
+            self.wb_pool[prev] = 0
+        self.wb_week = week
+        self.wb_name[week] = name
+        self.wb_hp[week] = hp
+        self.wb_hp0[week] = hp
+        self.wb_valor[week] = valor
+        self.wb_bulwark[week] = bulwark
+        self.wb_guile[week] = guile
+        self.log.info('world_boss_posted', week=week, hp=hp)
+        self.syscall.emit_event(
+            f'{{"event":"world_boss","week":{week},"hp":{hp}}}'.encode()
+        )
+        return week
+
+    @public
+    def fight_world_boss(self, ctx: Context, card: TokenUid) -> int:
+        """A staked champion strikes the week's boss. Entry: a fifth of the
+        champion's fusion fee (half burned, half Crown), three fights per
+        champion per day. Damage = rounds won x power. Returns the damage."""
+        who = self._player(ctx)
+        now = ctx.block.timestamp
+        week = now // 604_800
+        if week not in self.wb_name:
+            raise NCFail("no world boss stands this week")
+        if self.wb_hp.get(week, 0) <= 0:
+            raise NCFail("the boss has already fallen")
+        if self.staked.get(card) != who:
+            raise NCFail("champions march on the boss from the Mines")
+        self._check_not_delving(card)
+        day = now // 86400
+        packed = self.wb_attempts.get(card, 0)
+        used = packed % 10 if packed // 10 == day else 0
+        if used >= 3:
+            raise NCFail("this champion has fought enough for one day")
+        self.wb_attempts[card] = day * 10 + used + 1
+        entry = self._fusion_fee(self.card_tier[card]) // 5
+        if entry < 1:
+            entry = 1
+        balance = self.ember_ledger.get(who, 0)
+        if balance < entry:
+            raise NCFail(f"the boss demands an entry of {entry} Ember")
+        self._debit_ember(who, entry)
+        self._credit_ember(self.owner, entry // 2)
+
+        boss = [self.wb_valor[week], self.wb_bulwark[week], self.wb_guile[week]]
+        attrs = self.card_attrs[card]
+        ab = self.card_ability.get(card, 0)
+        weaker = 1 if self.card_power[card] < boss[0] + boss[1] + boss[2] else 0
+        rounds = 0
+        r0 = 0
+        r1 = 0
+        for aspect in range(3):
+            pc = self._attr_at(attrs, aspect)
+            pb = boss[aspect]
+            split = 1 if aspect == 2 and r0 + r1 == 1 else 0
+            pc = self._ability_boost(ab, aspect, r0, split, weaker, pc)
+            won = 1 if self.syscall.rng.randbelow(pc + pb) < pc else 0
+            rounds += won
+            if aspect == 0:
+                r0 = won
+            elif aspect == 1:
+                r1 = won
+        damage = rounds * self.card_power[card]
+        slain = 0
+        if damage > 0:
+            hp = self.wb_hp[week] - damage
+            if hp <= 0:
+                hp = 0
+                slain = 1
+            self.wb_hp[week] = hp
+            dkey = self._wb_key(week, who)
+            if dkey not in self.wb_damage:
+                # the bounty bonus follows the banner you FOUGHT under
+                self.wb_fought_guild[dkey] = self.member_guild.get(who, -1)
+            self.wb_damage[dkey] = self.wb_damage.get(dkey, 0) + damage
+            self.wb_total[week] = self.wb_total.get(week, 0) + damage
+            gid = self.wb_fought_guild.get(dkey, -1)
+            if gid >= 0:
+                gkey = f"{week}|{gid}"
+                gdmg = self.wb_guild_damage.get(gkey, 0) + damage
+                self.wb_guild_damage[gkey] = gdmg
+                top = self.wb_top_guild.get(week, -1)
+                if top < 0 or gid == top:
+                    self.wb_top_guild[week] = gid
+                elif gdmg > self.wb_guild_damage.get(f"{week}|{top}", 0):
+                    self.wb_top_guild[week] = gid
+        self._earn_renown(who, 3, now)
+        self._grant_xp(card, 2 if rounds > 0 else 1)
+        if slain == 1:
+            self.renown[who] = self.renown.get(who, 0) + 6
+            self.log.info('world_boss_slain', week=week)
+        self.log.info('world_boss_hit', week=week, damage=damage)
+        self.syscall.emit_event(
+            f'{{"event":"wb_hit","week":{week},"damage":{damage},"slain":{slain}}}'.encode()
+        )
+        return damage
+
+    @public
+    def claim_world_bounty(self, ctx: Context, week: int) -> Amount:
+        """After the boss falls, every contributor claims the pool pro-rata
+        by damage; the top-damage guild's fighters take +25%."""
+        who = self._player(ctx)
+        if week not in self.wb_name:
+            raise NCFail("no boss stood that week")
+        if self.wb_hp.get(week, 1) > 0:
+            raise NCFail("the boss still stands")
+        ckey = self._wb_key(week, who)
+        if self.wb_claimed.get(ckey, False):
+            raise NCFail("already claimed")
+        dmg = self.wb_damage.get(ckey, 0)
+        if dmg <= 0:
+            raise NCFail("you dealt no damage that week")
+        total = self.wb_total.get(week, 0)
+        pool = self.wb_pool.get(week, 0)
+        share = pool * dmg // total if total > 0 else 0
+        top = self.wb_top_guild.get(week, -1)
+        if top >= 0 and self.wb_fought_guild.get(ckey, -1) == top:
+            share += share // 4
+        self.wb_claimed[ckey] = True
+        if share > 0:
+            self._credit_ember(who, share)
+        self.log.info('world_bounty_claimed', week=week, share=share)
+        return share
 
     # ------------------------------------------------------------------
     # Cosmetics: bought identity that travels with the card, never power
@@ -1874,6 +2129,45 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             status = "closed"
         card = self.duel_card[duel_id]
         return f"{status}|{card.hex()}|{self.duel_wager[duel_id]}"
+
+    @view
+    def get_guild_count(self) -> int:
+        return self.guild_count
+
+    @view
+    def get_guild(self, guild_id: int) -> str:
+        """"name|members", empty when absent."""
+        if guild_id < 0 or guild_id >= self.guild_count:
+            return ""
+        return f"{self.guild_name[guild_id]}|{self.guild_members.get(guild_id, 0)}"
+
+    @view
+    def get_member_guild(self, who: Address) -> int:
+        return self.member_guild.get(who, -1)
+
+    @view
+    def get_wb_week(self) -> int:
+        return self.wb_week
+
+    @view
+    def get_world_boss(self, week: int) -> str:
+        """"name|hp|hp0|valor|bulwark|guile|pool|total|topguild", empty
+        when that week has no boss."""
+        if week not in self.wb_name:
+            return ""
+        return (f"{self.wb_name[week]}|{self.wb_hp.get(week, 0)}"
+                f"|{self.wb_hp0.get(week, 0)}|{self.wb_valor.get(week, 0)}"
+                f"|{self.wb_bulwark.get(week, 0)}|{self.wb_guile.get(week, 0)}"
+                f"|{self.wb_pool.get(week, 0)}|{self.wb_total.get(week, 0)}"
+                f"|{self.wb_top_guild.get(week, -1)}")
+
+    @view
+    def get_wb_damage(self, week: int, who: Address) -> int:
+        return self.wb_damage.get(f"{week}|{who.hex()}", 0)
+
+    @view
+    def get_wb_claimed(self, week: int, who: Address) -> bool:
+        return self.wb_claimed.get(f"{week}|{who.hex()}", False)
 
     @view
     def get_rating(self, who: Address) -> int:
