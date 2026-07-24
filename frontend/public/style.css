@@ -341,6 +341,14 @@ footer a { color: var(--cyan); text-decoration: none; }
 .duel-emoji { font-size: 30px; }
 .duel-info { flex: 1; font-size: 14px; }
 .duel-meta { font-size: 11.5px; color: var(--ink-dim); margin-top: 3px; }
+/* the two side-bet buttons stay a pair: side by side even when the duel
+   row is squeezed on a phone */
+.bet-btns { display: inline-flex; gap: 6px; align-items: stretch; }
+.bet-btns .mini-btn { flex: 0 1 auto; }
+@media (max-width: 600px) {
+  .bet-btns { display: flex; margin-top: 6px; }
+  .bet-btns .mini-btn { flex: 1 1 0; }
+}
 .duel-done { font-size: 11px; letter-spacing: .12em; color: var(--ink-dim); text-transform: uppercase; }
 
 .connect-list { display: flex; flex-direction: column; gap: 10px; margin: 22px auto 14px; max-width: 360px; }
@@ -361,6 +369,7 @@ footer a { color: var(--cyan); text-decoration: none; }
 }
 .pick-cards { max-width: 640px; margin: 22px auto; max-height: 46vh; overflow-y: auto; }
 .pick-wager { color: var(--ink-muted); font-size: 14px; }
+.pw-hint { color: var(--acid); }
 .pick-wager input {
   width: 90px; background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 7px;
   color: var(--ink); font-family: 'Fragment Mono', monospace; padding: 6px 9px; margin-left: 8px;
@@ -944,6 +953,10 @@ body.land-flash::before {
   .hdr-tools { display: flex; gap: 8px; position: absolute; right: 0; top: 4px; }
   /* session button and chip together on their own full row */
   .wa-break { display: block; flex-basis: 100%; height: 0; }
+  /* the wrapped row has a full width again: say SESSION ACTIVE, not SESSION
+     (short labels only serve the tight single-row band above this width) */
+  .header-session .hs-l { display: inline; }
+  .header-session .hs-s { display: none; }
 }
 
 /* beckon: draw the eye to the wallet chip until a wallet is sworn */
