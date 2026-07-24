@@ -175,12 +175,13 @@ async function loadContract(touch) {
     if (live.length) {
       const xq = await batchCalls(['get_reveal_window()', ...live.flatMap(d => [
         `get_duel_has_stances(${d.id})`, `get_duel_acceptor(${d.id})`,
-        `get_duel_accept_ts(${d.id})`,
+        `get_duel_acceptor_card(${d.id})`, `get_duel_accept_ts(${d.id})`,
         `get_bet_pool(${d.id}, 0)`, `get_bet_pool(${d.id}, 1)`])]);
       S.revealWindow = xq['get_reveal_window()'] || 21600;
       for (const d of live) {
         d.stances = xq[`get_duel_has_stances(${d.id})`] === true;
         d.acceptor = xq[`get_duel_acceptor(${d.id})`] || null;
+        d.acceptorCard = xq[`get_duel_acceptor_card(${d.id})`] || null;
         d.acceptTs = xq[`get_duel_accept_ts(${d.id})`] || 0;
         d.pools = [xq[`get_bet_pool(${d.id}, 0)`] || 0, xq[`get_bet_pool(${d.id}, 1)`] || 0];
       }
@@ -745,27 +746,46 @@ function render() {
   // arena: spectators see only open challenges; settled history needs a sworn wallet
   $('newDuelBtn').disabled = !S.addr;
   $('newDuelBtn').title = S.addr ? '' : 'Connect a wallet to issue a challenge';
+  assignSeals();
   const duelsShown = S.addr ? S.duels : S.duels.filter(d => d.status === 'open');
   $('duelList').innerHTML = duelsShown.map(d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
-    const cancellable = isMine(d.challenger); // sessions act for their main
+    const sealed = d.stances ? ' · 🔒 sealed stance' : '';
+    let act;
+    if (d.status === 'open') {
+      act = mineD
+        ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
+        : (S.addr
+          ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
+          : '<span class="duel-done">awaiting a challenger</span>');
+    } else if (d.status === 'reveal') {
+      const dueAt = ((d.acceptTs || 0) + (S.revealWindow || 21600)) * 1000;
+      const minsLeft = Math.max(0, Math.ceil((dueAt - Date.now()) / 60000));
+      act = mineD
+        ? `<button class="mini-btn" data-revealduel="${d.id}">REVEAL</button>`
+        : Date.now() >= dueAt && S.addr
+          ? `<button class="mini-btn alt" data-forfeitduel="${d.id}">CLAIM FORFEIT</button>`
+          : `<span class="duel-done">awaiting reveal · ${Math.floor(minsLeft / 60)}h ${minsLeft % 60}m left</span>`;
+    } else act = '<span class="duel-done">settled</span>';
+    // spectators can back either side while the duel is undecided
+    const canBet = S.addr && !mineD && !isMine(d.acceptor)
+      && (d.status === 'open' || d.status === 'reveal');
+    const pools = d.pools && (d.pools[0] || d.pools[1] || canBet)
+      ? `<div class="duel-meta">bets: ${fmtEmber(d.pools[0] || 0)} on the challenger · ${
+          fmtEmber(d.pools[1] || 0)} on the defender${canBet
+          ? ` <button class="mini-btn alt" data-bet="${d.id}:0">BACK CHALLENGER</button>
+              <button class="mini-btn alt" data-bet="${d.id}:1">BACK DEFENDER</button>` : ''}</div>`
+      : '';
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
-        <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}</div>
+        <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}${sealed}</div>
+        ${pools}
       </div>
-      ${d.status === 'open'
-        ? (mineD
-          ? (cancellable
-            ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
-            : '<span class="duel-done">yours · main wallet</span>')
-          : (S.addr
-            ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
-            : '<span class="duel-done">awaiting a challenger</span>'))
-        : '<span class="duel-done">settled</span>'}
+      ${act}
     </div>`;
   }).join('');
   $('duelEmpty').hidden = duelsShown.length > 0;
@@ -907,6 +927,12 @@ function bindListActions() {
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
+  bind('[data-revealduel]', id => revealDuel(Number(id)));
+  bind('[data-forfeitduel]', id => doTx('Calling the forfeit', 'claim_forfeit', [Number(id)], []));
+  document.querySelectorAll('[data-bet]').forEach(el => el.onclick = () => {
+    const [id, side] = el.dataset.bet.split(':').map(Number);
+    placeBet(id, side);
+  });
   bind('[data-sell]', u => {
     const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
     if (raw === null) return;
@@ -1320,6 +1346,81 @@ async function fightWrit(uid, writ, tier) {
   $('overlay').hidden = false;
 }
 
+/* ---------------- sealed stances & side bets ---------------- */
+
+// this browser is the only holder of the salts that unseal our stances:
+// {pending: [{stance,salt,ts}], byId: {duelId: {stance,salt}}}
+const SEALS_LS = 'emberfall_duel_seals';
+function loadSeals() {
+  try { return JSON.parse(localStorage.getItem(SEALS_LS)) || {}; } catch { return {}; }
+}
+function saveSeals(s) { localStorage.setItem(SEALS_LS, JSON.stringify(s)); }
+
+// a fresh seal is stored before its create-tx is even submitted (so a reload
+// can never lose it); once the duel shows on-chain it is keyed by duel id
+function assignSeals() {
+  const s = loadSeals();
+  const pend = s.pending || [];
+  if (!pend.length) return;
+  s.byId = s.byId || {};
+  const mine = S.duels.filter(d => d.stances && isMine(d.challenger)
+    && (d.status === 'open' || d.status === 'reveal') && !s.byId[d.id])
+    .sort((a, b) => a.id - b.id);
+  for (const d of mine) {
+    const seal = pend.shift();
+    if (!seal) break;
+    s.byId[d.id] = { stance: seal.stance, salt: seal.salt };
+  }
+  s.pending = pend;
+  saveSeals(s);
+}
+
+const STANCE_NAMES = ['Attack', 'Defense', 'Cunning'];
+const STANCE_ICONS = ['⚔', '🛡', '🗡'];
+
+function randSalt() {
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function revealDuel(id) {
+  const seal = (loadSeals().byId || {})[id];
+  if (!seal) {
+    $('errTitle').textContent = 'The sealed stance is missing';
+    $('errMsg').textContent = 'This browser does not hold the salt for that duel '
+      + '(storage was cleared, or it was sealed on another device). When the '
+      + 'reveal window ends, the fight forfeits to the defender.';
+    showStage('stageError');
+    return;
+  }
+  const winsBefore = S.wins;
+  const d = S.duels.find(x => x.id === id);
+  const hash = await doTx('Revealing your stance', 'reveal_duel',
+    [id, seal.stance, seal.salt], []);
+  if (!hash) return;
+  const won = S.wins > winsBefore;
+  const home = S.wallet?.mode === 'session'
+    ? 'Your champion is already on the way home.'
+    : 'Your champion returns; claim them under Collection.';
+  const mu = d ? matchupHtml(S.cards.get(d.card)?.aspects,
+    S.cards.get(d.acceptorCard)?.aspects) : '';
+  $('duelResult').innerHTML = (won
+    ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">Your ${STANCE_NAMES[seal.stance]} stance is unsealed and the pot is yours. ${home}</div>`
+    : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The stance is unsealed, the pot is lost, but your champion lives. ${home}</div>`) + mu;
+  window.sfx?.('clash');
+  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+  showStage('stageDuel');
+}
+
+async function placeBet(id, side) {
+  const raw = prompt(`Back the ${side === 0 ? 'challenger' : 'defender'} with how much Ember? (you have ${S.ember})`, '10');
+  if (raw === null) return;
+  const amt = Math.floor(Number(raw));
+  if (!Number.isInteger(amt) || amt < 1) { alert('Enter a whole number of Ember.'); return; }
+  if (amt > S.ember) { alert(`You have ${fmtEmber(S.ember)}.`); return; }
+  await doTx('Placing your bet', 'place_bet', [id, side, amt], []);
+}
+
 /* a fight is three rounds, one per aspect: show the matchup so the result
    reads as a story, not a coin flip */
 function matchupHtml(mine, theirs) {
@@ -1664,6 +1765,11 @@ async function shareCard(uid) {
 }
 
 let pickCtx = null;
+let pickStance = null; // -1 open (classic), 0..2 sealed/answering stance
+function syncStanceBtns() {
+  document.querySelectorAll('.stance-btn').forEach(el =>
+    el.classList.toggle('active', Number(el.dataset.stance) === pickStance));
+}
 function openPick(kind, ref) {
   pickCtx = { kind, ref };
   if (kind === 'writ') {
@@ -1711,6 +1817,18 @@ function openPick(kind, ref) {
     const d = S.duels.find(x => x.id === ref);
     $('pickTitle').textContent += ` (wager ${fmtEmber(d.wager)})`;
   }
+  // stances: optional on create (sealed), demanded when answering a sealed duel
+  const acceptStances = kind === 'accept' && !!S.duels.find(x => x.id === ref)?.stances;
+  const stanceRow = $('pickStanceRow');
+  if (stanceRow) {
+    stanceRow.hidden = !(kind === 'create' || acceptStances);
+    pickStance = kind === 'create' ? -1 : null; // create defaults open; accept must choose
+    $('stanceHint').textContent = acceptStances
+      ? 'This challenge is sealed: pick your stance. Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.'
+      : 'Optionally seal a stance (hidden until you reveal it after the fight is answered). Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.';
+    $('stanceNone').hidden = acceptStances;
+    syncStanceBtns();
+  }
   $('pickCards').innerHTML = mine.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
   document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
   if (kind === 'create' && typeof ref === 'string') {
@@ -1742,7 +1860,16 @@ async function submitPick(uid) {
     }
     const wager = Math.max(0, Number(raw) || 0);
     if (wager > S.ember) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtEmber(S.ember)}.`; showStage('stageError'); return; }
-    await doTx('Issuing challenge', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
+    let commit = '';
+    if (pickStance != null && pickStance >= 0) {
+      // the seal is saved BEFORE the tx goes out: a reload can never lose it
+      const salt = randSalt();
+      commit = sha3_256(`${pickStance}:${salt}`);
+      const s = loadSeals();
+      (s.pending = s.pending || []).push({ stance: pickStance, salt, ts: Date.now() });
+      saveSeals(s);
+    }
+    await doTx('Issuing challenge', 'create_duel', [wager, commit], [depAct(uid, CARD_AMT)]);
   } else {
     const duel = S.duels.find(x => x.id === ref);
     if (duel && duel.wager > 0 && S.ember < duel.wager) {
@@ -1751,8 +1878,29 @@ async function submitPick(uid) {
       showStage('stageError');
       return;
     }
+    if (duel?.stances && (pickStance == null || pickStance < 0)) {
+      $('errTitle').textContent = 'Pick a stance';
+      $('errMsg').textContent = 'This challenge is sealed: answer it with Attack, Defense or Cunning.';
+      showStage('stageError');
+      return;
+    }
+    if (duel?.stances) {
+      // sealed duels wait for the challenger's reveal; no instant verdict
+      const hash = await doTx('Answering the challenge', 'accept_duel',
+        [ref, pickStance], [depAct(uid, CARD_AMT)]);
+      if (!hash) return;
+      const hours = Math.round((S.revealWindow || 21600) / 3600);
+      $('duelResult').innerHTML = `<div class="duel-banner">🔒 THE DUEL IS SEALED</div>
+        <div class="wait-sub">Your ${STANCE_NAMES[pickStance]} stance is in. The challenger
+        now has ${hours}h to reveal theirs and settle the fight; if they never do,
+        you claim the pot by forfeit. Watch this duel in the Arena list.</div>`;
+      window.sfx?.('clash');
+      showStage('stageDuel');
+      $('overlay').hidden = false;
+      return;
+    }
     const winsBefore = S.wins;
-    const hash = await doTx('Trial by combat', 'accept_duel', [ref], [depAct(uid, CARD_AMT)]);
+    const hash = await doTx('Trial by combat', 'accept_duel', [ref, -1], [depAct(uid, CARD_AMT)]);
     if (!hash) return;
     const won = S.wins > winsBefore;
     const home = S.wallet?.mode === 'session'
@@ -1818,6 +1966,10 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
+document.querySelectorAll('.stance-btn').forEach(el => el.onclick = () => {
+  pickStance = Number(el.dataset.stance);
+  syncStanceBtns();
+});
 
 /* the realm feed folds away; closed until the player opens it */
 const FEED_LS = 'emberfall_feed_open';

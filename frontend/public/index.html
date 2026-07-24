@@ -235,16 +235,22 @@
         <h3>Fuse cards</h3>
         <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
         (an Ember fee that rises with the rarity being forged). Both cards are
-        burned and you receive a card of the next tier that inherits 10% of the
-        parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
+        locked away in the forge&rsquo;s vault forever and you receive a card of the
+        next tier that inherits 10% of the parents&rsquo; combined power. Legendary
+        cards cannot be fused further.</p>
       </li>
       <li>
         <h3>Fight duels</h3>
         <p>Open a duel with any card and an optional Ember wager, or accept someone
-        else&rsquo;s. The contract rolls a number below
-        <span class="mono">powerA&nbsp;+&nbsp;powerB</span>; your chance to win is
-        your card&rsquo;s share of the total power. Winner takes the pot minus a 5%
-        house rake. Cards always return to their owners; only the wager is at risk.</p>
+        else&rsquo;s. Fights are best of three rounds, one per aspect: Attack vs
+        Attack, Defense vs Defense, Cunning vs Cunning, each a weighted roll by
+        your aspect&rsquo;s share. You can also seal a hidden <b>stance</b> when you
+        challenge: Attack beats Defense beats Cunning beats Attack, and the winning
+        stance boosts every round by 20%. Sealed duels settle when you REVEAL
+        (within 6 hours of being answered, or the fight forfeits). Spectators can
+        bet Ember on either side of an open duel; winners split the losing pool.
+        Winner takes the pot minus a 5% house rake. Cards always return to their
+        owners; only the wager is at risk.</p>
       </li>
       <li>
         <h3>Buy, sell, and trade</h3>
@@ -260,8 +266,8 @@
         (0.01 HTR, burned). Your name then stands in for your address everywhere
         it appears: season standings, duels, market
         listings. Names are 3-16 characters, first claimed, first kept; claim
-        again any time to change yours. Ending a session sends your name home
-        to your wallet, and your next session picks it up again automatically.</p>
+        again any time to change yours. Quick play sessions act as your wallet,
+        so your name, level, and progress follow you in and out of them.</p>
       </li>
     </ol>
     </div>
@@ -291,7 +297,8 @@
         It is not a token, it never leaves the game, and it cannot be bought or
         cashed out.</p></div>
       <div class="qa"><h4>Can I lose my cards?</h4>
-        <p>Only one action destroys cards: fusion burns both parents. Duels never take
+        <p>Only one action takes cards out of play: fusion locks both parents in the
+        contract's vault forever. Duels never take
         cards: win or lose, your fighter returns and only the Ember wager changes
         hands. Staked, listed, and escrowed cards are always recoverable by you.</p></div>
       <div class="qa"><h4>My own wallet says &ldquo;Invalid blueprint ID&rdquo;.</h4>
@@ -299,15 +306,27 @@
         on the public <b>testnet</b>; switch your wallet's network to testnet
         and try again.</p></div>
       <div class="qa"><h4>What is quick play?</h4>
-        <p>Starting a session forges a fresh key that lives only in your browser and
-        funds it with a fixed HTR stake from your wallet (one approval). Everything after that
-        signs instantly, with no popups. <b>End session &amp; return all</b> returns all champions
-        and coin to your main wallet in one transaction, and sessions survive page
-        reloads. A champion mid-delve is sealed in the deep until the delve ends
-        and is claimed, so the sweep waits for it; the session keeps safely in the
-        meantime. One caution: the session key lives in this browser's storage, so
-        sweep before clearing site data or switching devices; unswept holdings
-        stay locked to that browser.</p></div>
+        <p>Starting a session forges a fresh key that lives only in your browser.
+        One wallet approval both funds it and <b>binds it to your identity in the
+        contract</b>, so everything the session does — pulls, wins, renown, Ember —
+        counts for your main wallet, and your name, level, and balances look
+        exactly the same in and out of a session. Everything after that one
+        approval signs instantly, with no popups. <b>End session &amp; return all</b>
+        returns all champions and coin to your main wallet in one transaction,
+        and sessions survive page reloads. Staked and delving champions are held
+        by the contract under your main identity, so ending a session never
+        strands them. One caution: the session key lives in this browser's
+        storage, so end the session before clearing site data.</p></div>
+      <div class="qa"><h4>What are stances and duel bets?</h4>
+        <p>When you issue a challenge you may seal a hidden <b>stance</b>: Attack,
+        Defense, or Cunning. Attack beats Defense, Defense beats Cunning, Cunning
+        beats Attack, and holding the winning stance boosts all three of your
+        rounds by 20%. The answering player picks their stance openly; yours stays
+        sealed until you hit REVEAL (within 6 hours of the answer, or the fight
+        forfeits to them — the seal lives in this browser, so reveal from the same
+        one). Anyone not in the fight can <b>bet Ember</b> on either side while a
+        duel is open; when it settles, the winning backers split the losing pool
+        minus a 5% cut.</p></div>
       <div class="qa"><h4>What are bosses?</h4>
         <p>Ten bosses posted by the Crown, each with a public aspect spread,
         fought best-of-three by your <b>staked</b> champions: three fights per
@@ -333,11 +352,9 @@
         Because you sign it, nobody can claim a name for your address but you.
         It replaces your address in standings, duels, and market listings.
         First claimed, first kept; claim again to change it. Set yours behind
-        the wallet chip in the header. Session keys are throwaway, but names
-        are not: ending a session sends your name home to your main wallet (a
-        parting deed signed by the session key itself), so it shows in session
-        and non-session play alike, and the next session funded by that wallet
-        re-claims it automatically.</p></div>
+        the wallet chip in the header. The name belongs to your main wallet:
+        quick play sessions are bound to it on-chain, so the same name shows in
+        session and non-session play alike, with nothing to hand back and forth.</p></div>
       <div class="qa"><h4>Is any of this real money?</h4>
         <p>No. Everything runs on a Hathor test network with valueless test HTR.
         The mechanics are real; the money is not.</p></div>
@@ -459,6 +476,15 @@
         <label>Wager (Ember): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
         <div class="wait-sub">name your wager; 0 is a free duel, no Ember changes hands</div>
       </div>
+      <div class="pick-wager" id="pickStanceRow" hidden>
+        <div class="wait-sub" id="stanceHint"></div>
+        <div class="row-btns">
+          <button class="mini-btn alt stance-btn" id="stanceNone" data-stance="-1">NO STANCE</button>
+          <button class="mini-btn alt stance-btn" data-stance="0">⚔ ATTACK</button>
+          <button class="mini-btn alt stance-btn" data-stance="1">🛡 DEFENSE</button>
+          <button class="mini-btn alt stance-btn" data-stance="2">🗡 CUNNING</button>
+        </div>
+      </div>
       <button class="ghost-btn" id="pickCloseBtn">cancel</button>
     </div>
   </div>
@@ -466,6 +492,7 @@
 
 <script>window.BUILD = 93;</script>
 <script src="analytics.js?b=93"></script>
+<script src="sha3.js?b=93"></script>
 <script src="config.js?b=93"></script>
 <script src="art.js?b=93"></script>
 <script src="catalog.js?b=93"></script>

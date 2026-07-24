@@ -64,7 +64,8 @@ press. Its value is anchored to the one thing nobody can fake: time.
 
 ## Where champions flow
 
-Summons mint champions in; fusion consumes them. Every fusion takes
+Summons mint champions in; fusion seals them away in the contract's
+vault, out of play forever. Every fusion takes
 **two** champions and creates **one** of the next rarity — so climbing
 toward Sovereigns permanently shrinks the supply of lesser champions.
 Rarity comes from the odds (60 / 30 / 9 / 1), but *scarcity* comes from

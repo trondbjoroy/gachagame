@@ -35,7 +35,7 @@ const TOUR = [
   {
     target: '#pane-arena', tab: 'arena',
     title: 'Arena',
-    body: 'Duels, best of three rounds: attack against attack, defense against defense, cunning against cunning. Wager Ember; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
+    body: 'Duels, best of three rounds: attack against attack, defense against defense, cunning against cunning. Wager Ember; the winner takes the pot minus a 5% house cut. You can also seal a hidden STANCE when you challenge (Attack beats Defense beats Cunning beats Attack, +20% to every round if yours wins), and spectators can bet Ember on either side of an open duel. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
   },
   {
     target: '#pane-market', tab: 'market',

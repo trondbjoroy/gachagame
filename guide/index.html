@@ -217,6 +217,8 @@
   <a class="h2" href="#pit">10 · Duels</a>
   <a class="h3" href="#pit-rounds">Best of three</a>
   <a class="h3" href="#pit-hardened">Battle-hardened</a>
+  <a class="h3" href="#pit-stances">Sealed stances</a>
+  <a class="h3" href="#pit-bets">Side bets</a>
   <a class="h2" href="#gauntlet">11 · Bosses</a>
   <a class="h2" href="#bazaar">12 · Market</a>
   <a class="h2" href="#renown">13 · Renown &amp; streaks</a>
@@ -460,7 +462,9 @@ little scarcer) and half goes to the Crown. Each tempering also earns <b>5 renow
 <h2 id="union"><span class="num">9</span>Fusion</h2>
 <hr class="rule" />
 <p>Give two champions of the same rarity to the forge, pay the Ember fee, and they are
-<b>burned forever</b>, reborn as one champion of the next rarity. The child rolls a
+<b>sealed in the forge's vault forever</b>, reborn as one champion of the next
+rarity. The parents are not destroyed — the contract holds them in permanent
+custody, out of play for good. The child rolls a
 fresh identity, fresh power, and fresh aspects for its new rarity, plus a bonus of
 <b>10% of the parents' combined power</b>. Tempering and hardening do <em>not</em> carry
 through the forge: fuse for the power, not to smuggle bonuses upward.</p>
@@ -510,8 +514,37 @@ fight was worth something and the foe was worthy. Both must hold:</p>
 farmed. It caps at about half of tempering's ceiling per rarity (2 / 3 / 4 / 6).
 Separately from hardening, <em>every</em> settled victory adds a ★ to the card,
 without limit. Fighting a settled duel earns <b>5 renown</b> for each side, and the
-winner earns <b>10 more</b>. Cancelling an unanswered challenge costs nothing and earns
-nothing, by design.</p>
+winner earns <b>10 more</b> — but only <b>wagered</b> fights pay renown; a free spar
+counts the win and nothing else. Cancelling an unanswered challenge costs nothing
+and earns nothing, by design.</p>
+
+<h3 id="pit-stances">Sealed stances</h3>
+<p>When you issue a challenge you may also seal a <b>stance</b>: Attack, Defense,
+or Cunning. Stances are rock-paper-scissors — <b>Attack beats Defense, Defense
+beats Cunning, Cunning beats Attack</b> — and the player holding the winning
+stance fights all three rounds with a <b>20% boost</b>. Your stance is sealed
+when you post the challenge (only its fingerprint goes on-chain); the answering
+player picks theirs openly, and then you <b>REVEAL</b> to settle the fight.</p>
+<ul>
+  <li><b>The mind game:</b> your opponent can see your champion's aspects but not
+  your stance; you can see their stance the moment they answer, but yours was
+  fixed before they did. Same stance means no edge — a plain fight.</li>
+  <li><b>The reveal window:</b> you have <b>6 hours</b> from the answer to reveal.
+  Sit on it past the window and anyone may call the forfeit: the defender takes
+  the pot, both champions go home.</li>
+  <li><b>The seal lives in this browser.</b> The salt that unseals your stance is
+  kept in your browser's storage; reveal from the same browser you challenged
+  from. A challenge with no stance is a classic duel and settles the instant
+  it is answered.</li>
+</ul>
+
+<h3 id="pit-bets">Side bets</h3>
+<p>Anyone not in the fight can back a side of an open challenge with Ember —
+the challenger, or whoever ends up answering. Bets stay open until the duel
+settles (through a sealed duel's reveal wait, too). When it does, the winning
+backers take their stake back plus a share of the losing pool, minus the
+Crown's 5%; if the duel is cancelled or dies without a verdict, every bet is
+refunded in full. Duelists cannot back their own fight.</p>
 
 <h2 id="gauntlet"><span class="num">11</span>The bosses</h2>
 <hr class="rule" />
@@ -607,18 +640,12 @@ the seal signs instantly; through a wallet it is one approval that appears in
 the wallet app itself, so switch to the wallet to approve it. If your wallet
 signs from a different address than the one playing, the claim is refused;
 a quick-play session always signs with the right key.</p>
-<p>Session keys are throwaway; names are not. When you end a session, the
-session key signs one last achievement before the sweep: it bequeaths your name to
-your main wallet, so the name shows whether you play through a session or
-straight through the wallet. When that wallet later funds a new session, the
-new session key re-claims the name automatically; the funding transaction is
-the proof the two belong to the same hand. Because some wallets fund from
-inner addresses the realm cannot trace, your browser also seals a private
-reclaim key into every claim: on the same device, your next session can
-always call the name home no matter how the wallet paid. A name can also be
-claimed off a completely empty address (a dead session that never said
-goodbye). An address in active use always holds something, so a living name
-cannot be taken from you.</p>
+<p>Session keys are throwaway; names are not. The name rests on your <b>main
+wallet's</b> address, and every quick-play session is bound to that identity in
+the contract itself (see <a href="#sessions">Quick play</a>), so the same name
+shows whether you play through a session or straight through the wallet —
+nothing is handed back and forth, and starting or ending a session never
+touches it.</p>
 
 <h2 id="standing"><span class="num">14</span>Achievements and levels</h2>
 <hr class="rule" />
@@ -668,27 +695,32 @@ tickets.</p>
 <h2 id="sessions"><span class="num">16</span>Quick play</h2>
 <hr class="rule" />
 <p>Signing every move in your wallet is safe but slow. <b>⚡ Quick Play</b> forges a
-<b>session key</b> that lives only in your browser, funds it once from your wallet
-(<b>10 HTR</b>), and then plays every action through it instantly: no approval popups,
-no app-switching, just play. If the transfer is manual, the funding step shows the
-session address as text and, on desktop, as a QR your phone wallet's send screen can
-scan.</p>
+<b>session key</b> that lives only in your browser and asks your wallet for
+<b>one approval</b> that does two things at once: it funds the session purse
+(<b>10 HTR</b>, escrowed through the contract) and it <b>binds the session to your
+identity on-chain</b>. From then on every action signs instantly — no approval
+popups, no app-switching, just play — and everything the session does counts
+for your main wallet.</p>
 <ul>
+  <li><b>One identity, in and out.</b> Because the binding lives in the contract,
+  your name, level, achievements, renown, wins, streak, and Ember are identical
+  whether you play through a session or straight through your wallet. Starting
+  or ending a session changes nothing about who you are.</li>
   <li><b>Your wallet stays in charge.</b> The session purse holds only what you gave it.
   Your main wallet's keys are never shared, and nothing else in it can be touched.</li>
   <li><b>Everything comes home.</b> Press <b>End session</b> and the game sweeps every
-  champion, gem, and leftover coin back to your main wallet in one motion. It will warn
-  you first if anything is still out (champions in the mines, open challenges, unsold
-  listings) so nothing is left behind. One thing cannot be hurried: a champion
-  <b>mid-delve</b> is sealed in the deep until the delve ends and its haul is claimed,
-  so the sweep waits for the delve. Your session keeps safely in the meantime;
-  nothing is lost by leaving and coming back later.</li>
+  champion and leftover coin in the session purse back to your main wallet in one
+  motion. Champions in the mines, pending claims, and open challenges all belong to
+  your main identity in the contract, so they are never stranded by ending a
+  session — your wallet reaches them any time. Only Market business opened by the
+  session itself (listings, trades, sale proceeds) must be settled first, and the
+  game warns you about those.</li>
   <li><b>Top up any time.</b> If the purse runs low mid-session, one tap refills it.</li>
-  <li><b>Reloads are harmless.</b> The session key is saved in your browser before any
-  coin moves. If the page reloads while your transfer is on its way (switching apps on
-  a phone often does this), the game simply picks the wait back up, or finishes the
-  setup the moment you return. In-session, champions returning from anywhere are claimed
-  for you automatically.</li>
+  <li><b>Reloads are harmless.</b> The session key is saved in your browser before
+  anything moves, and the offer itself lives on-chain. If the page reloads while
+  your approval is on its way (switching apps on a phone often does this), the game
+  simply picks the wait back up and finishes the setup the moment it lands.
+  In-session, champions returning from anywhere are claimed for you automatically.</li>
 </ul>
 <div class="note"><span class="tag">GOOD TO KNOW</span>
 <p>The session key never leaves your browser, so a quick-play session belongs to that
@@ -713,8 +745,8 @@ Several drains: fusion fees, tempering fees (half of which are burned outright),
 tithes, and wagers lost to better fighters. The faucet is rate-limited by real
 champions staked over real time, and Ember never converts back to coin, so it can
 never become a printing press.</p>
-<p><b>Where champions go.</b> Summons mint them; the forge burns them, two for one,
-forever. The climb to Sovereign permanently shrinks the supply below it.</p>
+<p><b>Where champions go.</b> Summons mint them; the forge seals them away, two for
+one, forever. The climb to Sovereign permanently shrinks the supply below it.</p>
 <div class="note"><span class="tag">TEST REALM</span>
 <p>Prices on the test realm are tuned for testing, not balance: coin is free and
 summons are cheap so you can try every mechanic without grinding. Before any real-money
@@ -764,7 +796,7 @@ hands (minus the 5% tithe).</p>
 <p>1 in 100 per summon. Or forge one: two Highlords and 50 Ember.</p>
 <h3>Do tempering and hardening survive fusion?</h3>
 <p>No. The child rolls fresh aspects for its new rarity (plus 10% of the parents'
-combined power). ★ victory counts belong to the burned parents and do not transfer.</p>
+combined power). ★ victory counts belong to the sealed-away parents and do not transfer.</p>
 <h3>Why can I only temper champions in the mines?</h3>
 <p>The forge needs the mine's heat. Mechanically, it keeps tempering tied to
 champions that are committed and earning, not idling in a binder. The champion keeps
@@ -795,9 +827,19 @@ and the highest banners bear season titles when it closes. See
 <p><b>SET NAME</b> behind the wallet chip saves a name of your choosing on-chain with a
 transaction only your key can sign (0.01 HTR, burned). It replaces your address
 in the standings, the Arena, and the Market. Unique, first claimed, first kept;
-claim again to change it. Ending a session sends the name home to your wallet,
-and your next session re-claims it automatically. See
+claim again to change it. The name rests on your main wallet, and quick-play
+sessions are bound to that identity on-chain, so it follows you in and out of
+sessions with nothing to hand back. See
 <a href="#renown-names">Player names</a>.</p>
+<h3>What is a sealed stance?</h3>
+<p>An optional hidden pick — Attack, Defense, or Cunning — sealed when you post a
+challenge. Attack beats Defense beats Cunning beats Attack; the winning stance
+boosts all three rounds by 20%. Reveal within 6 hours of the answer or the fight
+forfeits. See <a href="#pit-stances">Sealed stances</a>.</p>
+<h3>Can I bet on other players' duels?</h3>
+<p>Yes: back either side of any open duel you are not fighting in with Ember.
+Winning backers split the losing pool minus the Crown's 5%; cancelled or
+verdictless duels refund every bet. See <a href="#pit-bets">Side bets</a>.</p>
 <h3>Something looks exploitable. Should I report it?</h3>
 <p>Please. If you find a way to climb any ladder without paying its intended cost, that
 is a bug, and hearing about it is exactly what the test realm is for.</p>

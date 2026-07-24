@@ -738,6 +738,7 @@ body.land-flash::before {
 .dress-row { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .dress-row b { width: 68px; font-size: 12px; letter-spacing: .1em; color: var(--ink-muted); flex: none; }
 .dress-btn.active { border-color: var(--acid); color: var(--acid-hot); background: rgba(212, 168, 67, .08); }
+.stance-btn.active { border-color: var(--acid); color: var(--acid-hot); background: rgba(212, 168, 67, .08); }
 .tint-btn { padding: 4px; line-height: 0; }
 .tint-thumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; display: block; position: static; }
 @media (max-width: 640px) {
