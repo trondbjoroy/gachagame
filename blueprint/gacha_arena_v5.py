@@ -19,6 +19,15 @@ class EmberfallArena(Blueprint):
       winning Plunderer carries off the Crown's rake too), 9 Scholar
       (double veterancy XP). 1-7 apply against bosses as well.
 
+    v5 phase 2 (squad duels, 3v3):
+    - create_squad_duel deposits three cards; the SET is public but the
+      lane order is sealed (sha3("perm:salt"), perm a permutation of 012).
+    - accept_squad_duel deposits three cards; deposit order IS the lane
+      assignment (open). Bettors on the duel cannot accept it.
+    - reveal_squad unseals the lanes; each lane fights a full aspect
+      round-set with abilities (no stances in squads); two lanes take the
+      pot. Same wager/rake/bets/forfeit machinery as 1v1 on shared ids.
+
 v4.1 additions (2026-07-24, pending publish):
     - accept_duel refuses a caller with a bet riding on that duel
       (closes bet-then-accept: place_bet already refused participants,
@@ -106,6 +115,9 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     stake_since: dict[TokenUid, int]
     ember_ledger: dict[Address, Amount]      # closed in-game points, never a token
     duel_card: dict[int, TokenUid]
+    duel_kind: dict[int, int]                # 0 single (default), 1 squad
+    squad_card: dict[int, TokenUid]          # duel_id*4+slot, challenger
+    squad_acceptor_card: dict[int, TokenUid] # duel_id*4+lane, acceptor
     duel_wager: dict[int, Amount]
     duel_challenger: dict[int, Address]
     duel_open: dict[int, bool]
@@ -194,6 +206,9 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.stake_since = {}
         self.ember_ledger = {}
         self.duel_card = {}
+        self.duel_kind = {}
+        self.squad_card = {}
+        self.squad_acceptor_card = {}
         self.duel_wager = {}
         self.duel_challenger = {}
         self.duel_open = {}
@@ -1119,6 +1134,155 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             self.duel_commit[duel_id] = commitment
         return duel_id
 
+    def _three_card_deposits(self, ctx: Context) -> list[TokenUid]:
+        if len(ctx.actions_list) != 3:
+            raise NCFail("deposit exactly three cards")
+        cards: list[TokenUid] = []
+        for act in ctx.actions_list:
+            if not isinstance(act, NCDepositAction) or act.amount != self.card_unit:
+                raise NCFail("each action must deposit one full card")
+            if act.token_uid not in self.card_tier:
+                raise NCFail("unknown card")
+            if self.parked.get(act.token_uid, False):
+                raise NCFail("that champion rests in the vault")
+            if act.token_uid in cards:
+                raise NCFail("three distinct cards required")
+            cards.append(act.token_uid)
+        return cards
+
+    @public(allow_deposit=True)
+    def create_squad_duel(self, ctx: Context, wager: Amount, commitment: bytes) -> int:
+        """Post a 3v3 challenge. The squad is public; the lane order is
+        sealed: commitment = sha3("perm:salt") with perm a permutation
+        of the digits 012 (lane i is fought by your card perm[i], in
+        deposit order)."""
+        who = self._player(ctx)
+        if wager < 0:
+            raise NCFail("wager cannot be negative")
+        if len(commitment) != 32:
+            raise NCFail("squads always seal the lane order (32 bytes)")
+        cards = self._three_card_deposits(ctx)
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        duel_id = self.next_duel_id
+        self.next_duel_id = duel_id + 1
+        self.duel_kind[duel_id] = 1
+        self.duel_card[duel_id] = cards[0]
+        i = 0
+        while i < 3:
+            self.squad_card[duel_id * 4 + i] = cards[i]
+            i += 1
+        self.duel_wager[duel_id] = wager
+        self.duel_challenger[duel_id] = who
+        self.duel_open[duel_id] = True
+        self.duel_commit[duel_id] = commitment
+        return duel_id
+
+    @public(allow_deposit=True)
+    def accept_squad_duel(self, ctx: Context, duel_id: int) -> int:
+        """Answer a 3v3: deposit three cards; the deposit order IS your
+        lane assignment. Settles at the challenger's reveal."""
+        who = self._player(ctx)
+        if not self.duel_open.get(duel_id, False):
+            raise NCFail("duel is not open")
+        if self.duel_kind.get(duel_id, 0) != 1:
+            raise NCFail("this is not a squad duel")
+        challenger = self.duel_challenger[duel_id]
+        if challenger == who:
+            raise NCFail("cannot duel yourself")
+        bet_n = self.bet_count.get(duel_id, 0)
+        i = 0
+        while i < bet_n:
+            if self.bet_addr[duel_id * 64 + i] == who:
+                raise NCFail("you have a bet riding on this duel")
+            i += 1
+        cards = self._three_card_deposits(ctx)
+        wager = self.duel_wager[duel_id]
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        self.duel_open[duel_id] = False
+        self.duel_acceptor[duel_id] = who
+        self.duel_acceptor_card[duel_id] = cards[0]
+        i = 0
+        while i < 3:
+            self.squad_acceptor_card[duel_id * 4 + i] = cards[i]
+            i += 1
+        self.duel_accept_ts[duel_id] = ctx.block.timestamp
+        self.duel_reveal_pending[duel_id] = True
+        self.log.info('squad_accepted', duel_id=duel_id)
+        self.syscall.emit_event(
+            f'{{"event":"squad_accepted","id":{duel_id}}}'.encode()
+        )
+        return 2
+
+    @public
+    def reveal_squad(self, ctx: Context, duel_id: int, perm: str, salt: str) -> int:
+        """The challenger unseals the lane order and the three lane fights
+        settle. Two lanes take the pot. Returns 0 (challenger) or 1."""
+        who = self._player(ctx)
+        if not self.duel_reveal_pending.get(duel_id, False):
+            raise NCFail("this duel awaits no reveal")
+        if self.duel_kind.get(duel_id, 0) != 1:
+            raise NCFail("this is not a squad duel")
+        if self.duel_challenger[duel_id] != who:
+            raise NCFail("only the challenger may reveal")
+        if len(perm) != 3 or "0" not in perm or "1" not in perm or "2" not in perm:
+            raise NCFail("perm must arrange the digits 012")
+        if sha3(f"{perm}:{salt}".encode()) != self.duel_commit[duel_id]:
+            raise NCFail("that is not the sealed lane order")
+        self.duel_reveal_pending[duel_id] = False
+        challenger = self.duel_challenger[duel_id]
+        acceptor = self.duel_acceptor[duel_id]
+        wager = self.duel_wager[duel_id]
+        lanes_c = 0
+        lane = 0
+        digits = "012"
+        results = [0, 0, 0]
+        while lane < 3:
+            c_card = self.squad_card[duel_id * 4 + digits.find(perm[lane])]
+            a_card = self.squad_acceptor_card[duel_id * 4 + lane]
+            packed = self._fight_rounds(c_card, a_card, -1, -1)
+            c_won = 1 if packed // 1000 >= 2 else 0
+            lanes_c += c_won
+            results[lane] = c_won
+            if c_won == 1:
+                self._after_fight(c_card, a_card, wager)
+            else:
+                self._after_fight(a_card, c_card, wager)
+            lane += 1
+        winner = challenger if lanes_c >= 2 else acceptor
+        pot = 2 * wager
+        rake = pot * self._rake_bps() // 10_000
+        self._credit_ember(winner, pot - rake)
+        self._credit_ember(self.owner, rake)
+        self.wins[winner] = self.wins.get(winner, 0) + 1
+        if wager > 0:
+            self._earn_renown(challenger, 5, ctx.block.timestamp)
+            self._earn_renown(acceptor, 5, ctx.block.timestamp)
+            self.renown[winner] = self.renown.get(winner, 0) + 10
+            self._trial_hit(winner, 2, ctx.block.timestamp)
+        self._grant_deed(winner, 4)
+        if self.wins[winner] >= 10:
+            self._grant_deed(winner, 5)
+        i = 0
+        while i < 3:
+            self.pending[self.squad_card[duel_id * 4 + i]] = challenger
+            self.pending[self.squad_acceptor_card[duel_id * 4 + i]] = acceptor
+            i += 1
+        winning_side = 0 if winner == challenger else 1
+        self._settle_bets(duel_id, winning_side)
+        self.log.info('squad_settled', duel_id=duel_id,
+                      winner_side=winning_side,
+                      l0=results[0], l1=results[1], l2=results[2])
+        self.syscall.emit_event(
+            f'{{"event":"squad","id":{duel_id},"lanes":"{results[0]}{results[1]}{results[2]}"}}'.encode()
+        )
+        return winning_side
+
     @public(allow_deposit=True)
     def accept_duel(self, ctx: Context, duel_id: int, stance: int) -> int:
         """Answer a challenge. Classic duels (no commitment) demand
@@ -1128,6 +1292,8 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         who = self._player(ctx)
         if not self.duel_open.get(duel_id, False):
             raise NCFail("duel is not open")
+        if self.duel_kind.get(duel_id, 0) != 0:
+            raise NCFail("this is a squad duel: answer with three cards")
         challenger = self.duel_challenger[duel_id]
         if challenger == who:
             raise NCFail("cannot duel yourself")
@@ -1169,6 +1335,8 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         who = self._player(ctx)
         if not self.duel_reveal_pending.get(duel_id, False):
             raise NCFail("this duel awaits no reveal")
+        if self.duel_kind.get(duel_id, 0) != 0:
+            raise NCFail("this is a squad duel: reveal the lane order")
         if self.duel_challenger[duel_id] != who:
             raise NCFail("only the challenger may reveal")
         if stance < 0 or stance > 2:
@@ -1200,8 +1368,15 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.wins[acceptor] = self.wins.get(acceptor, 0) + 1
         if wager > 0:
             self.renown[acceptor] = self.renown.get(acceptor, 0) + 10
-        self.pending[self.duel_card[duel_id]] = challenger
-        self.pending[self.duel_acceptor_card[duel_id]] = acceptor
+        if self.duel_kind.get(duel_id, 0) == 1:
+            i = 0
+            while i < 3:
+                self.pending[self.squad_card[duel_id * 4 + i]] = challenger
+                self.pending[self.squad_acceptor_card[duel_id * 4 + i]] = acceptor
+                i += 1
+        else:
+            self.pending[self.duel_card[duel_id]] = challenger
+            self.pending[self.duel_acceptor_card[duel_id]] = acceptor
         self._settle_bets(duel_id, 1)
         self.log.info('duel_forfeited', duel_id=duel_id, winner_side=1)
         self.syscall.emit_event(
@@ -1218,25 +1393,22 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             return 0
         return 1
 
-    def _resolve_duel(self, ctx: Context, duel_id: int,
+    def _fight_rounds(self, card_a: TokenUid, card_b: TokenUid,
                       c_stance: int, a_stance: int) -> int:
-        challenger = self.duel_challenger[duel_id]
-        acceptor = self.duel_acceptor[duel_id]
-        wager = self.duel_wager[duel_id]
-        their_card = self.duel_card[duel_id]
-        my_card = self.duel_acceptor_card[duel_id]
-        attrs_a = self.card_attrs[their_card]
-        attrs_b = self.card_attrs[my_card]
-        ab_a = self.card_ability.get(their_card, 0)
-        ab_b = self.card_ability.get(my_card, 0)
+        """One full aspect fight between two cards with abilities and an
+        optional stance edge. Returns rounds_a*1000 + r0*100 + r1*10 + r2."""
+        attrs_a = self.card_attrs[card_a]
+        attrs_b = self.card_attrs[card_b]
+        ab_a = self.card_ability.get(card_a, 0)
+        ab_b = self.card_ability.get(card_b, 0)
         edge = self._stance_edge(c_stance, a_stance)
         # a Stancebreaker voids the FOE'S edge, never its own
         if edge == 0 and ab_b == 7:
             edge = -1
         if edge == 1 and ab_a == 7:
             edge = -1
-        weaker_a = 1 if self.card_power[their_card] < self.card_power[my_card] else 0
-        weaker_b = 1 if self.card_power[my_card] < self.card_power[their_card] else 0
+        weaker_a = 1 if self.card_power[card_a] < self.card_power[card_b] else 0
+        weaker_b = 1 if self.card_power[card_b] < self.card_power[card_a] else 0
         rounds_a = 0
         r0 = 0
         r1 = 0
@@ -1261,17 +1433,18 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
                 r1 = won
             else:
                 r2 = won
-        winner = challenger if rounds_a >= 2 else acceptor
-        winner_card = their_card if winner == challenger else my_card
-        loser_card = my_card if winner == challenger else their_card
+        return rounds_a * 1000 + r0 * 100 + r1 * 10 + r2
+
+    def _after_fight(self, winner_card: TokenUid, loser_card: TokenUid,
+                     wager: Amount) -> None:
+        """Per-fight card rewards: the win mark, battle-hardening under the
+        usual conditions, veterancy XP (Scholars double)."""
         self.card_wins[winner_card] = self.card_wins.get(winner_card, 0) + 1
-        hardened_gain = 0
         w_attrs = self.card_attrs[winner_card]
         w_tier = self.card_tier[winner_card]
         if (wager >= self._fusion_fee(w_tier)
                 and self.card_power[loser_card] >= self.card_power[winner_card]
                 and self._attr_hardened(w_attrs) < self._harden_cap(w_tier)):
-            hardened_gain = 1
             which = self.syscall.rng.randbelow(3)
             valor = self._attr_at(w_attrs, 0)
             bulwark = self._attr_at(w_attrs, 1)
@@ -1287,13 +1460,29 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
                 self._attr_hardened(w_attrs) + 1,
                 self._attr_xp(w_attrs), self._attr_vet(w_attrs))
             self.card_power[winner_card] = self.card_power[winner_card] + 1
-
-        # veterancy: mileage for both fighters (after hardening so the
-        # level-up reads the freshest aspects)
         xp_w = 8 if self.card_ability.get(winner_card, 0) == 9 else 4
         xp_l = 4 if self.card_ability.get(loser_card, 0) == 9 else 2
         self._grant_xp(winner_card, xp_w)
         self._grant_xp(loser_card, xp_l)
+
+    def _resolve_duel(self, ctx: Context, duel_id: int,
+                      c_stance: int, a_stance: int) -> int:
+        challenger = self.duel_challenger[duel_id]
+        acceptor = self.duel_acceptor[duel_id]
+        wager = self.duel_wager[duel_id]
+        their_card = self.duel_card[duel_id]
+        my_card = self.duel_acceptor_card[duel_id]
+        packed = self._fight_rounds(their_card, my_card, c_stance, a_stance)
+        rounds_a = packed // 1000
+        r0 = (packed // 100) % 10
+        r1 = (packed // 10) % 10
+        r2 = packed % 10
+        winner = challenger if rounds_a >= 2 else acceptor
+        winner_card = their_card if winner == challenger else my_card
+        loser_card = my_card if winner == challenger else their_card
+        power_before = self.card_power[winner_card]
+        self._after_fight(winner_card, loser_card, wager)
+        hardened_gain = self.card_power[winner_card] - power_before
 
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
@@ -1333,7 +1522,13 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         if self.duel_challenger[duel_id] != who:
             raise NCFail("not your duel")
         self._credit_ember(who, self.duel_wager[duel_id])
-        self.pending[self.duel_card[duel_id]] = who
+        if self.duel_kind.get(duel_id, 0) == 1:
+            i = 0
+            while i < 3:
+                self.pending[self.squad_card[duel_id * 4 + i]] = who
+                i += 1
+        else:
+            self.pending[self.duel_card[duel_id]] = who
         self.duel_open[duel_id] = False
         self._settle_bets(duel_id, -1)
 
@@ -1516,6 +1711,27 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             status = "closed"
         card = self.duel_card[duel_id]
         return f"{status}|{card.hex()}|{self.duel_wager[duel_id]}"
+
+    @view
+    def get_duel_kind(self, duel_id: int) -> int:
+        return self.duel_kind.get(duel_id, 0)
+
+    @view
+    def get_squad_cards(self, duel_id: int, side: int) -> str:
+        """The three card uids of a squad side (0 challenger, 1 acceptor),
+        pipe-joined in deposit order; empty when absent."""
+        store = self.squad_card if side == 0 else self.squad_acceptor_card
+        out = ""
+        i = 0
+        while i < 3:
+            if duel_id * 4 + i not in store:
+                return out
+            card = store[duel_id * 4 + i]
+            if i > 0:
+                out += "|"
+            out += card.hex()
+            i += 1
+        return out
 
     @view
     def get_duel_challenger(self, duel_id: int) -> Optional[Address]:

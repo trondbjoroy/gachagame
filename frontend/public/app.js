@@ -190,10 +190,16 @@ async function loadContract(touch) {
       const xq = await batchCalls(['get_reveal_window()', ...live.flatMap(d => [
         `get_duel_has_stances(${d.id})`, `get_duel_acceptor(${d.id})`,
         `get_duel_acceptor_card(${d.id})`, `get_duel_accept_ts(${d.id})`,
+        `get_duel_kind(${d.id})`, `get_squad_cards(${d.id}, 0)`,
         `get_bet_pool(${d.id}, 0)`, `get_bet_pool(${d.id}, 1)`])]);
       S.revealWindow = xq['get_reveal_window()'] || 21600;
       for (const d of live) {
-        d.stances = xq[`get_duel_has_stances(${d.id})`] === true;
+        d.squad = xq[`get_duel_kind(${d.id})`] === 1;
+        d.squadCards = d.squad
+          ? (xq[`get_squad_cards(${d.id}, 0)`] || '').split('|').filter(Boolean)
+          : null;
+        // a squad's sealed lane order also lives in duel_commit; it is not a stance
+        d.stances = !d.squad && xq[`get_duel_has_stances(${d.id})`] === true;
         d.acceptor = xq[`get_duel_acceptor(${d.id})`] || null;
         d.acceptorCard = xq[`get_duel_acceptor_card(${d.id})`] || null;
         d.acceptTs = xq[`get_duel_accept_ts(${d.id})`] || 0;
@@ -307,17 +313,26 @@ function feedLine(ev) {
       ? `${name} fused two champions into <b>${ev.card}</b>`
       : `${name} fused two champions`;
     case 'writ': return `${name} fought boss <b>${ev.writ}</b> (${WRIT_TIER_NAMES[ev.tier] || 'Grim'})`;
-    case 'challenge': return ev.wager > 0
-      ? `${name} posted a duel · ${fmtEmber(ev.wager)} wager`
-      : `${name} posted a free duel`;
-    case 'answer': return ev.verdict
-      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)}`
-      : ev.sealed
-        ? `${name} answered sealed duel #${ev.id} · awaiting the reveal`
-        : `${name} answered duel #${ev.id}`;
-    case 'reveal': return ev.verdict
-      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)} at the reveal`
-      : `${name} revealed their stance in duel #${ev.id}`;
+    case 'challenge': {
+      const what = ev.squad ? '3v3 squad challenge' : 'duel';
+      return ev.wager > 0
+        ? `${name} posted a ${what} · ${fmtEmber(ev.wager)} wager`
+        : `${name} posted a free ${ev.squad ? '3v3 squad challenge' : 'duel'}`;
+    }
+    case 'answer': {
+      const what = ev.squad ? 'squad duel' : 'duel';
+      return ev.verdict
+        ? `<b>${who(ev.verdict.winner)}</b> won ${what} #${ev.id} against ${who(ev.verdict.loser)}`
+        : ev.sealed
+          ? `${name} answered sealed ${what} #${ev.id} · awaiting the reveal`
+          : `${name} answered ${what} #${ev.id}`;
+    }
+    case 'reveal': {
+      const what = ev.squad ? 'squad duel' : 'duel';
+      return ev.verdict
+        ? `<b>${who(ev.verdict.winner)}</b> won ${what} #${ev.id} against ${who(ev.verdict.loser)} at the reveal`
+        : `${name} revealed ${ev.squad ? 'their lane order' : 'their stance'} in ${what} #${ev.id}`;
+    }
     case 'forfeit': return ev.winner
       ? `duel #${ev.id} forfeited · <b>${who(ev.winner)}</b> takes the pot`
       : `duel #${ev.id} went unrevealed and was forfeited`;
@@ -803,6 +818,7 @@ function render() {
   $('newDuelBtn').disabled = !S.addr;
   $('newDuelBtn').title = S.addr ? '' : 'Connect a wallet to issue a challenge';
   assignSeals();
+  assignSquadSeals();
   // live fights always show; settled ones age out (newest 5, plus your own
   // challenges from the fetched window) so the Arena is not a graveyard
   let settledSeen = 0;
@@ -815,23 +831,29 @@ function render() {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
-    const sealed = d.stances ? ' · 🔒 sealed stance' : '';
+    const sealed = d.stances ? ' · 🔒 sealed stance' : d.squad ? ' · ⚔ 3v3 squad' : '';
     let act;
     if (d.status === 'open') {
       act = mineD
         ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
         : (S.addr
-          ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
+          ? `<button class="mini-btn" data-${d.squad ? 'acceptsquad' : 'acceptduel'}="${d.id}">FIGHT</button>`
           : '<span class="duel-done">awaiting a challenger</span>');
     } else if (d.status === 'reveal') {
       const dueAt = ((d.acceptTs || 0) + (S.revealWindow || 21600)) * 1000;
       const minsLeft = Math.max(0, Math.ceil((dueAt - Date.now()) / 60000));
       act = mineD
-        ? `<button class="mini-btn" data-revealduel="${d.id}">REVEAL</button>`
+        ? `<button class="mini-btn" data-${d.squad ? 'revealsquad' : 'revealduel'}="${d.id}">REVEAL</button>`
         : Date.now() >= dueAt && S.addr
           ? `<button class="mini-btn alt" data-forfeitduel="${d.id}">CLAIM FORFEIT</button>`
           : `<span class="duel-done">awaiting reveal · ${Math.floor(minsLeft / 60)}h ${minsLeft % 60}m left</span>`;
     } else act = '<span class="duel-done">settled</span>';
+    // the squad SET is public; which of the three fights which lane stays
+    // sealed until the challenger's reveal
+    const trio = d.squad && d.squadCards?.length
+      ? `<div class="duel-meta">squad: ${d.squadCards.map(u =>
+          `<b>${S.cards.get(u)?.name ?? u.slice(0, 8)}</b>`).join(' · ')} — lane order sealed</div>`
+      : '';
     // spectators can back either side while the duel is undecided
     const canBet = S.addr && !mineD && !isMine(d.acceptor)
       && (d.status === 'open' || d.status === 'reveal');
@@ -846,6 +868,7 @@ function render() {
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
         <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}${sealed}</div>
+        ${trio}
         ${pools}
       </div>
       ${act}
@@ -989,6 +1012,8 @@ function bindListActions() {
   });
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
+  bind('[data-acceptsquad]', id => openPick('squadAccept', Number(id)));
+  bind('[data-revealsquad]', id => revealSquad(Number(id)));
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
   bind('[data-revealduel]', id => revealDuel(Number(id)));
   bind('[data-forfeitduel]', id => doTx('Calling the forfeit', 'claim_forfeit', [Number(id)], []));
@@ -1475,6 +1500,55 @@ async function revealDuel(id) {
   showStage('stageDuel');
 }
 
+/* squads seal a lane ORDER, not a stance: {pending:[{perm,salt,ts}],
+   byId:{duelId:{perm,salt}}} — same recovery rules as duel seals */
+const SQUAD_SEALS_LS = 'emberfall_squad_seals';
+function loadSquadSeals() {
+  try { return JSON.parse(localStorage.getItem(SQUAD_SEALS_LS)) || {}; } catch { return {}; }
+}
+function assignSquadSeals() {
+  const s = loadSquadSeals();
+  const pend = s.pending || [];
+  if (!pend.length) return;
+  s.byId = s.byId || {};
+  const mine = S.duels.filter(d => d.squad && isMine(d.challenger)
+    && (d.status === 'open' || d.status === 'reveal') && !s.byId[d.id])
+    .sort((a, b) => a.id - b.id);
+  for (const d of mine) {
+    const seal = pend.shift();
+    if (!seal) break;
+    s.byId[d.id] = { perm: seal.perm, salt: seal.salt };
+  }
+  s.pending = pend;
+  localStorage.setItem(SQUAD_SEALS_LS, JSON.stringify(s));
+}
+
+async function revealSquad(id) {
+  const seal = (loadSquadSeals().byId || {})[id];
+  if (!seal) {
+    $('errTitle').textContent = 'The sealed lane order is missing';
+    $('errMsg').textContent = 'This browser does not hold the salt for that squad duel '
+      + '(storage was cleared, or it was sealed on another device). When the '
+      + 'reveal window ends, the fight forfeits to the defender.';
+    showStage('stageError');
+    return;
+  }
+  const winsBefore = S.wins;
+  const hash = await doTx('Unsealing the lanes', 'reveal_squad',
+    [id, seal.perm, seal.salt], []);
+  if (!hash) return;
+  const won = S.wins > winsBefore;
+  const home = S.wallet?.mode === 'session'
+    ? 'Your champions are already on the way home.'
+    : 'Your champions return; claim them under Collection.';
+  $('duelResult').innerHTML = won
+    ? `<div class="duel-banner win">⚔️ THE SQUAD PREVAILS</div><div class="wait-sub">The lanes are unsealed and your side took two or more. The pot is yours. ${home}</div>`
+    : `<div class="duel-banner lose">💀 THE SQUAD FALLS</div><div class="wait-sub">The lanes are unsealed and the defenders took the day. The pot is lost, but your champions live. ${home}</div>`;
+  window.sfx?.('clash');
+  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+  showStage('stageDuel');
+}
+
 async function placeBet(id, side) {
   const raw = prompt(`Back the ${side === 0 ? 'challenger' : 'defender'} with how much Ember? (you have ${S.ember})`, '10');
   if (raw === null) return;
@@ -1882,6 +1956,62 @@ async function shareCard(uid) {
 
 let pickCtx = null;
 let pickStance = null; // -1 open (classic), 0..2 sealed/answering stance
+let pickSquad = [];    // uids picked for a 3v3, in lane order
+
+function toggleSquadPick(el) {
+  const uid = el.dataset.pick;
+  const at = pickSquad.indexOf(uid);
+  if (at >= 0) pickSquad.splice(at, 1);
+  else pickSquad.push(uid);
+  // relabel every button with its lane slot so the order reads at a glance
+  document.querySelectorAll('[data-pick]').forEach(b => {
+    const i = pickSquad.indexOf(b.dataset.pick);
+    b.textContent = i >= 0 ? `LANE ${i + 1} ✓` : 'SELECT';
+    b.classList.toggle('alt', i >= 0);
+  });
+  if (pickSquad.length === 3) submitSquad();
+}
+
+async function submitSquad() {
+  const { kind, ref } = pickCtx;
+  const cards = pickSquad.slice();
+  pickSquad = [];
+  $('overlay').hidden = true;
+  if (kind === 'squadCreate') {
+    const raw = $('pickWager').value.trim();
+    if (raw === '') {
+      $('errTitle').textContent = 'Name your wager';
+      $('errMsg').textContent = 'Enter a wager in Ember, or 0 for a free squad duel '
+        + 'where no Ember changes hands.';
+      showStage('stageError');
+      return;
+    }
+    const wager = Math.max(0, Number(raw) || 0);
+    if (wager > S.ember) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtEmber(S.ember)}.`; showStage('stageError'); return; }
+    // a random sealed lane order is strategically as good as a chosen one
+    // (the defender assigns lanes blind either way) and needs no extra UI
+    const perm = ['012', '021', '102', '120', '201', '210'][crypto.getRandomValues(new Uint8Array(1))[0] % 6];
+    const salt = randSalt();
+    const commit = sha3_256(`${perm}:${salt}`);
+    const s = loadSquadSeals();
+    (s.pending = s.pending || []).push({ perm, salt, ts: Date.now() });
+    localStorage.setItem(SQUAD_SEALS_LS, JSON.stringify(s));
+    await doTx('Mustering the squad', 'create_squad_duel', [wager, commit],
+      cards.map(u => depAct(u, CARD_AMT)));
+    return;
+  }
+  const hash = await doTx('Answering the 3v3', 'accept_squad_duel', [ref],
+    cards.map(u => depAct(u, CARD_AMT)));
+  if (!hash) return;
+  const hours = Math.round((S.revealWindow || 21600) / 3600);
+  $('duelResult').innerHTML = `<div class="duel-banner">🔒 THE LANES ARE SET</div>
+    <div class="wait-sub">Your three champions hold their lanes. The challenger
+    now has ${hours}h to unseal their lane order and settle the three fights;
+    if they never do, you claim the pot by forfeit. Watch this duel in the Arena list.</div>`;
+  window.sfx?.('clash');
+  showStage('stageDuel');
+  $('overlay').hidden = false;
+}
 function syncStanceBtns() {
   document.querySelectorAll('.stance-btn').forEach(el =>
     el.classList.toggle('active', Number(el.dataset.stance) === pickStance));
@@ -1922,6 +2052,48 @@ function openPick(kind, ref) {
     $('pickCards').innerHTML = others.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
+    return;
+  }
+  if (kind === 'squadCreate' || kind === 'squadAccept') {
+    const roster = [...S.cards.values()].filter(c => c.mine);
+    if (roster.length < 3) {
+      $('errTitle').textContent = 'A squad needs three champions';
+      $('errMsg').textContent = 'You hold ' + (roster.length === 1 ? 'one champion' : `${roster.length} champions`)
+        + '. Summon or claim until you hold three, then muster the squad.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    if (kind === 'squadAccept') {
+      const d = S.duels.find(x => x.id === ref);
+      if (d && d.wager > 0 && S.ember < d.wager) {
+        $('errTitle').textContent = 'Not enough Ember for the wager';
+        $('errMsg').textContent = `This squad duel wagers ${fmtEmber(d.wager)}.`;
+        showStage('stageError');
+        $('overlay').hidden = false;
+        return;
+      }
+    }
+    pickSquad = [];
+    const wagerNote = kind === 'squadAccept'
+      ? ` (wager ${fmtEmber(S.duels.find(x => x.id === ref)?.wager || 0)})`
+      : '';
+    $('pickTitle').textContent = kind === 'squadCreate'
+      ? 'Muster a 3v3 squad: pick three champions & a wager'
+      : `Answer squad challenge #${ref}${wagerNote}: pick three champions in lane order`;
+    $('pickWagerRow').hidden = kind !== 'squadCreate';
+    if (kind === 'squadCreate') $('pickWager').value = '';
+    const stanceRowS = $('pickStanceRow');
+    if (stanceRowS) stanceRowS.hidden = true;
+    $('stanceHint') && ($('stanceHint').textContent = '');
+    const hint = kind === 'squadCreate'
+      ? 'Your three champions are shown to any challenger, but which lane each fights in stays sealed in this browser until you reveal it after the duel is answered.'
+      : 'Pick in the order you want the lanes: first pick fights lane 1, second lane 2, third lane 3. The challenger’s lane order is sealed, so place your champions blind.';
+    $('pickCards').innerHTML = `<div class="wait-sub">${hint}</div>`
+      + roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => toggleSquadPick(el));
+    showStage('stagePick');
+    $('overlay').hidden = false;
     return;
   }
   const mine = [...S.cards.values()].filter(c => c.mine);
@@ -2082,6 +2254,7 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
+$('newSquadBtn').onclick = () => openPick('squadCreate', null);
 document.querySelectorAll('.stance-btn').forEach(el => el.onclick = () => {
   pickStance = Number(el.dataset.stance);
   syncStanceBtns();

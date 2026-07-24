@@ -109,6 +109,9 @@ const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_EMBER;
 const isStance = v => Number.isInteger(v) && v >= -1 && v <= 2;
 const isCommit = v => v === '' || (typeof v === 'string' && HEX64.test(v));
 const isSalt = v => typeof v === 'string' && v.length <= 64;
+// v5 squads: a lane order is a permutation of the digits 012
+const isPerm = v => typeof v === 'string' && v.length === 3
+  && v.includes('0') && v.includes('1') && v.includes('2');
 const isSide = v => v === 0 || v === 1;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
@@ -134,6 +137,9 @@ const METHODS = {
   create_duel:   { actions: [cardDep],         args: [isSmallInt, isCommit] },
   accept_duel:   { actions: [cardDep],         args: [isSmallInt, isStance] },
   reveal_duel:   { actions: [],                args: [isSmallInt, isStance, isSalt] },
+  create_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt, isHex64] },
+  accept_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt] },
+  reveal_squad:  { actions: [],                args: [isSmallInt, isPerm, isSalt] },
   claim_forfeit: { actions: [],                args: [isSmallInt] },
   place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
@@ -343,6 +349,12 @@ function feedEventFor(tx) {
       return { ts, kind: 'answer', who, id: Number(args[0]) || 0 };
     case 'reveal_duel':
       return { ts, kind: 'reveal', who, id: Number(args[0]) || 0 };
+    case 'create_squad_duel':
+      return { ts, kind: 'challenge', who, squad: true, wager: Number(args[0]) || 0 };
+    case 'accept_squad_duel':
+      return { ts, kind: 'answer', who, squad: true, id: Number(args[0]) || 0 };
+    case 'reveal_squad':
+      return { ts, kind: 'reveal', who, squad: true, id: Number(args[0]) || 0 };
     case 'claim_forfeit':
       return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
     case 'cancel_duel':

@@ -43,14 +43,23 @@ A second duel type alongside 1v1; same wager/pot/rake/bets machinery.
   1/2/3) is sealed in the commitment: sha3("perm:salt") where perm is a
   permutation like "201". Reuses the stance commit-reveal machinery and the
   browser salt store.
-- `accept_squad_duel(duel_id, l1, l2, l3)` deposits three cards and assigns
-  them to lanes openly (the acceptor sees which champions wait, not where).
+- `accept_squad_duel(duel_id)` deposits three cards; the DEPOSIT ORDER is
+  the lane assignment (first deposited card fights lane 1, and so on) — no
+  lane args needed. The acceptor sees which champions wait, not where.
 - `reveal_squad(duel_id, perm, salt)` unseals lanes and resolves: each lane
   is a full aspect fight (with abilities); the squad taking 2+ lanes wins
   the pot. Same 6h reveal window and claim_forfeit.
 - Per-lane veterancy XP; battle-hardened applies per lane under the existing
   wager/power conditions; the win counts once per duelist.
 - Stances: none in 3v3 (the sealed lane assignment IS the mind game).
+- Abilities apply per lane. Economic squad-level effects stay 1v1-only:
+  the Plunderer waives the pot rake only in single duels (in a squad,
+  "the winning card" is ambiguous); Scholar XP still doubles per lane.
+- Implemented (phase 2): shares the 1v1 duel-id space and bet/cancel/
+  forfeit machinery; `duel_kind` view marks squads; `get_squad_cards`
+  lists a side's trio. The bettor-cannot-accept guard covers squads.
+  The challenger's UI seals a RANDOM permutation (blind lane assignment
+  makes any fixed order strategically equal, so no picker is needed).
 
 ## 3. Rated ladder (Arena rating + matchmaking)
 
