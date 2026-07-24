@@ -6,23 +6,23 @@
   if (!window.CATALOG) return;
 
   /* ---------------- daily trials ---------------- */
-  // order and rotation MUST match the v3 contract: kinds 0..7 are
-  // pull, stake, duel win, fuse, temper, claim gems, recall 8h+, writ won,
+  // order and rotation MUST match the contract: kinds 0..7 are
+  // pull, stake, duel win, fuse, temper, claim Ember, recall 8h+, writ won,
   // and the day's trial is ((day * 5 + 2) % 8). The contract pays the
-  // bonus (renown + gems) on the first matching act each UTC day.
+  // bonus (renown + Ember) on the first matching act each UTC day.
   const TRIALS = [
     { id: 'pull', text: 'Summon a champion' },
     { id: 'stake', text: 'Send a champion mining' },
     { id: 'duel_win', text: 'Win a duel' },
     { id: 'fuse', text: 'Fuse two champions' },
     { id: 'temper', text: 'Temper a mining champion' },
-    { id: 'claim_gems', text: 'Claim mined gems' },
+    { id: 'claim_ember', text: 'Claim mined Ember' },
     { id: 'recall8', text: 'Recall a miner after 8+ hours' },
     { id: 'writ_win', text: 'Beat a boss' },
   ];
   const METHOD_KIND = {
     pull: 'pull', stake: 'stake', fuse: 'fuse', temper: 'temper',
-    claim_gems: 'claim_gems',
+    claim_ember: 'claim_ember',
   };
   const dayNum = () => Math.floor(Date.now() / 86400000);
   const todaysTrial = () => TRIALS[(dayNum() * 5 + 2) % TRIALS.length];

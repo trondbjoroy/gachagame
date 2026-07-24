@@ -3,7 +3,6 @@ window.GAME = {
   network: 'testnet', // hathor network name used by snap/walletconnect
   blueprint: '0037896213a4cb7b1b28ae2116fa95a6bff066a6e19bc395eb9a18541f54717f',
   nc: '0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587',
-  gems: 'e05b7b0c7651fabf0424f229abede02fc7d63761a3c48ed2034c557678fd1ef3',
   market: {
     blueprint: '007498c9c4c667c973c2800948aabb34b2cd8eed60c1d801bce2bda2e96fd33b',
     nc: '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b',

@@ -23,9 +23,8 @@ const HOST = process.env.HOST || '127.0.0.1';
 const WALLET_ID = 'player';
 const NC = '0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587';
 const MKT_NC = process.env.MARKET_NC || '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b';
-const GEMS = 'e05b7b0c7651fabf0424f229abede02fc7d63761a3c48ed2034c557678fd1ef3';
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
-const MAX_GEMS = 100_000;   // gems-cents per single ledger move
+const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
 const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -96,17 +95,14 @@ function deny(res, code, msg) {
 
 // ---- execute-body validation ----
 // per-method spec: expected actions and arg validators
-const cardDep = a => a.type === 'deposit' && HEX64.test(a.token || '') && a.token !== GEMS && a.amount === 100;
-const cardWd = a => a.type === 'withdrawal' && HEX64.test(a.token || '') && a.token !== GEMS && a.amount === 100 && a.address === playerAddress;
+const cardDep = a => a.type === 'deposit' && HEX64.test(a.token || '') && a.amount === 100;
+const cardWd = a => a.type === 'withdrawal' && HEX64.test(a.token || '') && a.amount === 100 && a.address === playerAddress;
 const htrDep = a => a.type === 'deposit' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_DEPOSIT;
-const gemsAmt = a => Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_GEMS;
-const gemsDep = a => a.type === 'deposit' && a.token === GEMS && gemsAmt(a);
-const gemsWd = a => a.type === 'withdrawal' && a.token === GEMS && gemsAmt(a) && a.address === playerAddress;
 const htrWd = a => a.type === 'withdrawal' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR && a.address === playerAddress;
 const isHex64 = v => typeof v === 'string' && HEX64.test(v);
-const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_GEMS;
+const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_EMBER;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR;
@@ -126,9 +122,7 @@ const METHODS = {
   claim_card:    { actions: [cardWd],          args: [] },
   stake:         { actions: [cardDep],         args: [] },
   unstake:       { actions: [cardWd],          args: [] },
-  claim_gems:    { actions: [],                args: [isHex64] },
-  withdraw_gems: { actions: [gemsWd],          args: [] },
-  deposit_gems:  { actions: [gemsDep],         args: [] },
+  claim_ember:   { actions: [],                args: [isHex64] },
   fuse:          { actions: [cardDep, cardDep], args: [] },
   create_duel:   { actions: [cardDep],         args: [isSmallInt] },
   accept_duel:   { actions: [cardDep],         args: [isSmallInt] },
@@ -227,7 +221,7 @@ async function pollFeed() {
       const now = await contractUids();
       const newUids = [...now].filter(u => !knownUids.has(u));
       knownUids = now;
-      if (newUids.length) refreshCards(newUids.filter(u => u !== GEMS)).catch(() => {});
+      if (newUids.length) refreshCards(newUids).catch(() => {});
       const qs = newUids.slice(0, 20)
         .map(u => 'calls[]=' + encodeURIComponent(`get_card_name("${u}")`)).join('&');
       let named = {};
@@ -301,7 +295,7 @@ async function sweepCards() {
     fetch(`${NODE}/nano_contract/state?id=${MKT_NC}&balances[]=__all__`).then(r => r.json()).catch(() => ({})),
   ]);
   const uids = [...new Set([...Object.keys(g.balances || {}), ...Object.keys(m.balances || {})])]
-    .filter(u => HEX64.test(u) && u !== GEMS);
+    .filter(u => HEX64.test(u));
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
 }
@@ -315,7 +309,7 @@ function touchFromTx(tx) {
     if (typeof a === 'string' && HEX64.test(a)) uids.add(a);
   }
   for (const a of (tx.nc_context || {}).actions || []) {
-    if (a.token_uid && HEX64.test(a.token_uid) && a.token_uid !== GEMS) uids.add(a.token_uid);
+    if (a.token_uid && HEX64.test(a.token_uid)) uids.add(a.token_uid);
   }
   return [...uids];
 }
@@ -526,14 +520,14 @@ async function handleApi(req, res, ip) {
       try {
         const cur = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
         const fresh = Object.keys(cur.balances || {})
-          .filter(u => HEX64.test(u) && u !== GEMS && !cardCache.cards[u]);
+          .filter(u => HEX64.test(u) && !cardCache.cards[u]);
         if (fresh.length) await refreshCards(fresh);
       } catch { /* discovery is best-effort; the poller remains the backstop */ }
     }
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     // ?touch=<uid,uid>: the caller just changed these cards; re-read them now
     const touch = (q.get('touch') || '').split(',')
-      .filter(u => HEX64.test(u) && u !== GEMS).slice(0, 8);
+      .filter(u => HEX64.test(u)).slice(0, 8);
     if (touch.length) await refreshCards(touch).catch(() => {});
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify(cardCache));

@@ -161,8 +161,8 @@
       champion answers a summoning. She cannot be bribed, for she has no hands; she
       cannot be read, for she has no eyes. Her threads are spun from the Ledger itself.</p>
       <p>Now the banners are yours to raise. Summon champions at the brazier. Send them
-      into the <b>deep mines</b>, where soulstone sweats <b>gems</b>. Give two of equal
-      station to the <b>Rite of Union</b> and forge a greater bloodline. Wager gems on
+      into the <b>deep mines</b>, where soulstone sweats <b>Ember</b>. Give two of equal
+      station to the <b>Rite of Union</b> and forge a greater bloodline. Wager Ember on
       <b>trial by combat</b> in the Pit, where the Crown still takes its tithe. Or sell
       your sworn swords for coin in the Bazaar; the realm has always run on gold.</p>
       <p>The throne of Emberfall stays empty. But a host must still be raised, and
@@ -225,23 +225,22 @@
         session it comes home by itself).</p>
       </li>
       <li>
-        <h3>Mine GEMS</h3>
-        <p>Stake cards from your collection to earn <b>GEMS</b> per minute:
-        <span class="mono">0.01 common &middot; 0.03 rare &middot; 0.10 epic &middot; 0.40 legendary</span>.
-        Earnings accrue to your in-game ledger; claim them any time, and withdraw
-        ledger GEMS to your wallet as real tokens whenever you want. GEMS pay for
-        fusion and duel wagers.</p>
+        <h3>Mine Ember</h3>
+        <p>Stake cards from your collection to earn <b>Ember</b> per minute:
+        <span class="mono">1 common &middot; 3 rare &middot; 10 epic &middot; 40 legendary</span>.
+        Earnings accrue to your in-game balance; claim them any time. Ember pays
+        for fusion, boss entries, and duel wagers.</p>
       </li>
       <li>
         <h3>Fuse cards</h3>
         <p>Select two cards of the same tier in your collection and hit <b>FUSE</b>
-        (a GEMS fee from your ledger that rises with the rarity being forged). Both cards are
+        (an Ember fee that rises with the rarity being forged). Both cards are
         burned and you receive a card of the next tier that inherits 10% of the
         parents&rsquo; combined power. Legendary cards cannot be fused further.</p>
       </li>
       <li>
         <h3>Fight duels</h3>
-        <p>Open a duel with any card and an optional GEMS wager, or accept someone
+        <p>Open a duel with any card and an optional Ember wager, or accept someone
         else&rsquo;s. The contract rolls a number below
         <span class="mono">powerA&nbsp;+&nbsp;powerB</span>; your chance to win is
         your card&rsquo;s share of the total power. Winner takes the pot minus a 5%
@@ -249,7 +248,7 @@
       </li>
       <li>
         <h3>Buy, sell, and trade</h3>
-        <p><b>SELL</b> lists a card at your asking price in HTR (2% fee on sale,
+        <p><b>SELL</b> lists a card at your asking price in HTR (5% fee on sale,
         proceeds withdrawable from the Market tab). <b>TRADE</b> offers your card
         for one specific card you want. Buying or swapping escrows through the
         market contract; claim your side from the escrow shelf after it settles.</p>
@@ -286,17 +285,14 @@
         &ldquo;1.00&rdquo;), minted by the game contract with its name, tier, and power
         recorded onchain. It sits in your wallet like any other token and always moves
         as one indivisible piece.</p></div>
-      <div class="qa"><h4>What backs GEMS?</h4>
-        <p>GEMS is a token created and minted by the game contract. Minting requires
-        HTR collateral, which comes from pull proceeds, so the reward pool is
-        funded by play, not by a promise.</p></div>
-      <div class="qa"><h4>Ledger GEMS vs wallet GEMS?</h4>
-        <p>The ledger is your balance inside the contract: where farming rewards
-        land and what fusion fees and wagers draw from. Wallet GEMS are real tokens you
-        hold. Move between them any time with WITHDRAW and DEPOSIT on the Mining tab.</p></div>
+      <div class="qa"><h4>What is Ember?</h4>
+        <p>Ember is the in-game points balance: earned by mining, delving, and
+        winning, spent on fusion, tempering, boss entries, wagers, and cosmetics.
+        It is not a token, it never leaves the game, and it cannot be bought or
+        cashed out.</p></div>
       <div class="qa"><h4>Can I lose my cards?</h4>
         <p>Only one action destroys cards: fusion burns both parents. Duels never take
-        cards: win or lose, your fighter returns and only the GEMS wager changes
+        cards: win or lose, your fighter returns and only the Ember wager changes
         hands. Staked, listed, and escrowed cards are always recoverable by you.</p></div>
       <div class="qa"><h4>My own wallet says &ldquo;Invalid blueprint ID&rdquo;.</h4>
         <p>Your wallet is on a different Hathor network than the game. Emberfall runs
@@ -315,18 +311,18 @@
       <div class="qa"><h4>What are bosses?</h4>
         <p>Ten bosses posted by the Crown, each with a public aspect spread,
         fought best-of-three by your <b>staked</b> champions: three fights per
-        champion per day, a small gems entry, bounty and renown for victories.
+        champion per day, a small Ember entry fee, bounty and renown for victories.
         Beat a boss at Grim to face its Dire and Black; beat each boss to reach
         the next. Every settled fight also earns the champion experience, and
         levels grant capped aspect gains.</p></div>
       <div class="qa"><h4>What are relic shards and adornments?</h4>
         <p>Shards come only from <b>delves</b>: send a staked champion on an
-        eight-hour gamble instead of steady mining. Shards buy epithets; gems buy
+        eight-hour gamble instead of steady mining. Shards buy epithets; Ember buys
         frames and tints. Adornments are written on the card, travel with it to
         new owners, and never grant power.</p></div>
       <div class="qa"><h4>What are seasons and daily trials?</h4>
         <p>Each day (midnight UTC) there is one trial; the first matching
-        act is paid on the Ledger itself with bonus renown and a small gems
+        act is paid on the Ledger itself with bonus renown and a small Ember
         bounty, and your streak grows under Info. The game also runs in
         eight-week <b>seasons</b>: renown earned inside the season ranks everyone
         in the standings, and the highest banners bear season titles when it
@@ -460,8 +456,8 @@
       <div class="wait-title" id="pickTitle">Choose a card</div>
       <div class="cards pick-cards" id="pickCards"></div>
       <div class="pick-wager" id="pickWagerRow">
-        <label>Wager (GEMS-cents): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
-        <div class="wait-sub">name your wager; 0 is a free duel, no gems change hands</div>
+        <label>Wager (Ember): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
+        <div class="wait-sub">name your wager; 0 is a free duel, no Ember changes hands</div>
       </div>
       <button class="ghost-btn" id="pickCloseBtn">cancel</button>
     </div>

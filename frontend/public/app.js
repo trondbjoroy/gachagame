@@ -3,7 +3,6 @@
 
 const NC = window.GAME.nc;
 const MKT = window.GAME.market; // {nc, blueprint} or null
-const GEMS = window.GAME.gems;
 const HTR = '00';
 const CARD_AMT = 100; // one card = 100 base units ('1.00')
 const ECON = window.GAME.economy || { sessionFund: 100, fusionFees: [5, 5, 5, 5] };
@@ -16,7 +15,7 @@ const TIERS = [
   { name: 'Sovereign', color: 'var(--legendary)', pct: '1%', fallback: '👑' },
 ];
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
-const fmtGems = c => (c / 100).toFixed(2) + ' GEMS';
+const fmtEmber = n => n + ' Ember';
 const short = u => u.slice(0, 10) + '…';
 // banner name if the address claimed one, else the shortened address
 const who = a => (a && S.names[a]) || short(a || '?');
@@ -26,10 +25,10 @@ const isMine = a => !!a && myAddrs().has(a);
 const $ = id => document.getElementById(id);
 
 const S = {
-  wallet: null, addr: null, htr: 0, gemsWallet: 0,
+  wallet: null, addr: null, htr: 0,
   pullPrice: null, totalPulls: 0,
-  cards: new Map(),      // uid -> {name,tier,power,aspects,wins,pending,staker,mine,pendingGems}
-  gemsLedger: 0, wins: 0,
+  cards: new Map(),      // uid -> {name,tier,power,aspects,wins,pending,staker,mine,pendingEmber}
+  ember: 0, wins: 0,
   renown: 0, vigil: 0, favorOwed: 0, favorPool: 0,
   duels: [], selected: new Set(), busy: false, mainWallet: null,
   listings: [], swaps: [], marketFunds: 0, raffle: null,
@@ -56,7 +55,7 @@ async function batchCalls(cs) {
 
 function mergeCards(payload) {
   for (const [u, d] of Object.entries(payload.cards || {})) {
-    const c = S.cards.get(u) || { uid: u, mine: false, pendingGems: 0 };
+    const c = S.cards.get(u) || { uid: u, mine: false, pendingEmber: 0 };
     c.name = d.name; c.tier = d.tier; c.power = d.power;
     // [attack, defense, cunning, tempers, hardened, xp, level, vet]
     c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
@@ -130,10 +129,10 @@ async function loadContract(touch) {
     .filter(c => c.tier >= 0 && c.staker === S.addr).map(c => c.uid);
   if (stakedMine.length) {
     const pg = await batchCalls(stakedMine.flatMap(u =>
-      [`get_pending_gems("${u}", ${now})`, `get_writ_attempts("${u}", ${now})`]));
+      [`get_pending_ember("${u}", ${now})`, `get_writ_attempts("${u}", ${now})`]));
     for (const u of stakedMine) {
       const c = S.cards.get(u);
-      c.pendingGems = pg[`get_pending_gems("${u}", ${now})`] || 0;
+      c.pendingEmber = pg[`get_pending_ember("${u}", ${now})`] || 0;
       c.writFights = pg[`get_writ_attempts("${u}", ${now})`] || 0;
     }
   }
@@ -158,15 +157,15 @@ async function loadContract(touch) {
     } catch { /* lineage is a bonus, not a dependency */ }
     const others = [...lineage].filter(a => a !== S.addr).slice(0, 12);
     S.lineage = lineage;  // deeds and standing read the whole family too
-    const me = await batchCalls([`get_gems_balance("${S.addr}")`, `get_wins("${S.addr}")`,
+    const me = await batchCalls([`get_ember_balance("${S.addr}")`, `get_wins("${S.addr}")`,
       `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
       'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,
       `get_trial_done("${S.addr}", ${now})`,
-      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`, `get_gems_balance("${a}")`])]);
+      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`, `get_ember_balance("${a}")`])]);
     S.shards = me[`get_shards("${S.addr}")`] || 0;
     S.cleared = me[`get_gauntlet_cleared("${S.addr}")`] || 0;
     S.trialDoneChain = me[`get_trial_done("${S.addr}", ${now})`] === true;
-    S.gemsLedger = me[`get_gems_balance("${S.addr}")`] || 0;
+    S.ember = me[`get_ember_balance("${S.addr}")`] || 0;
     const winsNow = (me[`get_wins("${S.addr}")`] || 0)
       + others.reduce((s, a) => s + (me[`get_wins("${a}")`] || 0), 0);
     // covers wins as challenger too (someone answered while we were away)
@@ -175,9 +174,9 @@ async function loadContract(touch) {
     S.wins = winsNow;
     S.renown = (me[`get_renown("${S.addr}")`] || 0)
       + others.reduce((s, a) => s + (me[`get_renown("${a}")`] || 0), 0);
-    // gems held on other addresses of the lineage: counted for deeds,
+    // Ember earned on other addresses of the lineage: counted for deeds,
     // never spendable from here (the contract keys ledgers per address)
-    S.gemsLineageExtra = others.reduce((s, a) => s + (me[`get_gems_balance("${a}")`] || 0), 0);
+    S.emberLineageExtra = others.reduce((s, a) => s + (me[`get_ember_balance("${a}")`] || 0), 0);
     S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
     S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
     S.favorPool = me['get_favor_pool()'] || 0;
@@ -246,13 +245,11 @@ async function loadMine() {
   const loose = [...S.cards.values()].filter(c =>
     c.tier >= 0 && !c.pending && !c.staker && !c.marketPending);
   for (const c of S.cards.values()) if (!loose.includes(c)) c.mine = false;
-  const [htr, gems, ...held] = await Promise.all([
+  const [htr, ...held] = await Promise.all([
     S.wallet.htrBalance().catch(() => 0),
-    S.wallet.tokenBalance(GEMS).catch(() => 0),
     ...loose.map(c => S.wallet.tokenBalance(c.uid).catch(() => 0)),
   ]);
   S.htr = htr;
-  S.gemsWallet = gems;
   loose.forEach((c, i) => { c.mine = held[i] > 0; });
 }
 
@@ -286,7 +283,7 @@ function feedLine(ev) {
       : `${name} fused two champions`;
     case 'writ': return `${name} fought boss <b>${ev.writ}</b> (${WRIT_TIER_NAMES[ev.tier] || 'Grim'})`;
     case 'challenge': return ev.wager > 0
-      ? `${name} posted a duel · ${fmtGems(ev.wager)} wager`
+      ? `${name} posted a duel · ${fmtEmber(ev.wager)} wager`
       : `${name} posted a free duel`;
     case 'answer': return `${name} answered duel #${ev.id}`;
     case 'delve': return `${name} started a delve`;
@@ -383,14 +380,14 @@ const DEEDS = [
   { id: 'knighted', name: 'Knight of the Realm', desc: 'Have a champion of Knight rarity or higher', test: s => s.owned.some(c => c.tier >= 1) },
   { id: 'first-blood', name: 'First Blood', desc: 'Win a duel', test: s => s.wins >= 1 },
   { id: 'warband', name: 'Raise a Warband', desc: 'Have five champions at once', test: s => s.owned.length >= 5 },
-  { id: 'gem-hoard', name: 'Gem-Hoarder', desc: 'Hold 2.00 gems or more', test: s => s.gems >= 200 },
+  { id: 'gem-hoard', name: 'Ember-Hoarder', desc: 'Hold 200 Ember or more', test: s => s.ember >= 200 },
   { id: 'high-court', name: 'Court of Highlords', desc: 'Have a Highlord in your collection', test: s => s.owned.some(c => c.tier >= 2) },
   { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four stations at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
   { id: 'host', name: 'Raise a Host', desc: 'Have twelve champions at once', test: s => s.owned.length >= 12 },
   { id: 'pit-fighter', name: 'Pit Fighter', desc: 'Win five duels', test: s => s.wins >= 5 },
   { id: 'gathering-storm', name: 'The Gathering Storm', desc: 'Command 300 combined power', test: s => s.power >= 300 },
   { id: 'mine-master', name: 'Master of the Mines', desc: 'Have five champions mining at once', test: s => s.staked >= 5 },
-  { id: 'gem-baron', name: 'Gem-Baron', desc: 'Hold 10.00 gems or more', test: s => s.gems >= 1000 },
+  { id: 'gem-baron', name: 'Ember-Baron', desc: 'Hold 1000 Ember or more', test: s => s.ember >= 1000 },
   { id: 'sovereign', name: "Sovereign's Own", desc: 'Have a Sovereign in your collection', test: s => s.owned.some(c => c.tier >= 3) },
   { id: 'army', name: 'Raise an Army', desc: 'Have twenty-five champions at once', test: s => s.owned.length >= 25 },
   { id: 'pit-champion', name: 'Pit Champion', desc: 'Win fifteen duels', test: s => s.wins >= 15 },
@@ -399,7 +396,7 @@ const DEEDS = [
 ];
 
 function deedState() {
-  // the standing follows the player, not the key: cards and gems held by
+  // the standing follows the player, not the key: cards and Ember held by
   // any address in the lineage (main wallet, past sessions) count too
   const fam = S.lineage && S.lineage.size ? S.lineage : new Set(S.addr ? [S.addr] : []);
   const owned = [...S.cards.values()].filter(c => c.tier >= 0 &&
@@ -407,7 +404,7 @@ function deedState() {
   return {
     owned,
     staked: owned.filter(c => fam.has(c.staker)).length,
-    gems: S.gemsLedger + S.gemsWallet + (S.gemsLineageExtra || 0),
+    ember: S.ember + (S.emberLineageExtra || 0),
     wins: S.wins,
     power: owned.reduce((a, c) => a + (c.power || 0), 0),
   };
@@ -476,7 +473,7 @@ function pumpRibbons() {
 
 /* ---------------- stat count-ups ---------------- */
 
-const COUNTED_STATS = ['Gems', 'Duels won', 'Renown'];
+const COUNTED_STATS = ['Ember', 'Duels won', 'Renown'];
 const statPrev = {};
 function animateStatEl(el, key) {
   const text = el.textContent;
@@ -627,9 +624,7 @@ function render() {
   const deedsDone = deeds.filter(d => d.done).length;
   announceNewDeeds(deeds);
   $('statsRow').innerHTML = [
-    // one number for the player; the ledger/wallet split (real, but bridged
-    // automatically on every deed) is managed in The Mines
-    ['Gems', me(fmtGems(S.gemsLedger + S.gemsWallet))],
+    ['Ember', me(fmtEmber(S.ember))],
     ['Duels won', me(S.wins)],
     ['Renown', me(S.renown + (S.vigil > 1 ? ` · ${S.vigil}d streak` : ''))],
     ['Level', me(`${levelFor(deedsDone)} · ${titleFor(deedsDone)}`)],
@@ -703,23 +698,17 @@ function render() {
   const fuseReady = selCount === 2 && sameTierSelected();
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
-  const canPayFuse = S.gemsLedger + S.gemsWallet >= fuseFee;
+  const canPayFuse = S.ember >= fuseFee;
   $('fuseHint').textContent = !fuseReady ? 'Press and hold two champions of the same rarity to select them.'
-    : (S.gemsLedger >= fuseFee ? `Fuse into the next rarity for ${fmtGems(fuseFee)}:`
-       : canPayFuse ? `Forge for ${fmtGems(fuseFee)} (gems move to your ledger first):`
-       : `Fusion costs ${fmtGems(fuseFee)}; you have ${fmtGems(S.gemsLedger + S.gemsWallet)}. Earn more by mining.`);
+    : (canPayFuse ? `Fuse into the next rarity for ${fmtEmber(fuseFee)}:`
+       : `Fusion costs ${fmtEmber(fuseFee)}; you have ${fmtEmber(S.ember)}. Earn more by mining.`);
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
   $('farmSummary').innerHTML = `
-    <div class="stat"><div class="k">Ledger balance</div><div class="v">${fmtGems(S.gemsLedger)}${
-      S.gemsWallet >= 1 ? ` <small>· ${fmtGems(S.gemsWallet)} in hand</small>` : ''}</div>
-      <div class="row-btns">
-        <button class="mini-btn" id="wdGemsBtn" ${S.gemsLedger < 1 ? 'disabled' : ''}>WITHDRAW ALL</button>
-        <button class="mini-btn alt" id="depGemsBtn" ${S.gemsWallet < 1 ? 'disabled' : ''}>DEPOSIT WALLET GEMS</button>
-      </div></div>
-    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 0.01 · R 0.03 · E 0.10 · L 0.40</small></div></div>
+    <div class="stat"><div class="k">Ember</div><div class="v">${fmtEmber(S.ember)}</div></div>
+    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 1 · R 3 · E 10 · L 40</small></div></div>
     <div class="stat"><div class="k">Relic shards</div><div class="v">${S.shards || 0} <small>· from delves · dress your champions</small></div></div>`;
   $('stakedCards').innerHTML = staked.map(c => {
     const delving = (c.delveSince || 0) > 0;
@@ -729,11 +718,11 @@ function render() {
     return cardBox(c, `
     <div class="pending-gems">${delving
       ? (ready ? '🕯️ the delve is done' : `🕯️ delving · ${Math.floor(mins / 60)}h ${mins % 60}m left`)
-      : `⛏️ ${fmtGems(c.pendingGems)} pending`}</div>
+      : `⛏️ ${fmtEmber(c.pendingEmber)} pending`}</div>
     <div class="row-btns">
       ${delving
         ? (ready ? `<button class="mini-btn" data-claimdelve="${c.uid}">CLAIM DELVE</button>` : '')
-        : `<button class="mini-btn" data-claimgems="${c.uid}" ${c.pendingGems < 1 ? 'disabled' : ''}>CLAIM</button>
+        : `<button class="mini-btn" data-claimember="${c.uid}" ${c.pendingEmber < 1 ? 'disabled' : ''}>CLAIM</button>
       <button class="mini-btn alt" data-unstake="${c.uid}">UNSTAKE</button>
       ${c.temperCost > 0 ? `<button class="mini-btn alt" data-temper="${c.uid}">TEMPER</button>` : ''}
       <button class="mini-btn alt" data-delve="${c.uid}">DELVE</button>
@@ -755,7 +744,7 @@ function render() {
       <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
-        <div class="duel-meta">#${d.id} · wager ${fmtGems(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}</div>
+        <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}</div>
       </div>
       ${d.status === 'open'
         ? (mineD
@@ -774,7 +763,7 @@ function render() {
   const cleared = S.cleared || 0;
   $('gauntletIntro').textContent = S.addr
     ? 'Ten bosses, each with a public stat spread. Champions fight while they mine: '
-      + 'three fights per champion per day, a gems entry, '
+      + 'three fights per champion per day, an Ember entry fee, '
       + 'bounty and renown for the victor. Beat a boss at Grim to face its Dire; '
       + 'beat the boss before it to reach the next.'
     : 'Connect a wallet to fight bosses.';
@@ -890,12 +879,12 @@ function bindListActions() {
   bind('[data-stake]', u => doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)]));
   bind('[data-unstake]', async u => {
     const c = S.cards.get(u);
-    // hours of toil approximated from accrued gems and the station's rate
-    const hours = c ? c.pendingGems / ([1, 3, 10, 40][c.tier] * 60) : 0;
+    // hours of toil approximated from accrued Ember and the station's rate
+    const hours = c ? c.pendingEmber / ([1, 3, 10, 40][c.tier] * 60) : 0;
     const h = await doTx('Recalling champion', 'unstake', [], [wdAct(u, CARD_AMT)]);
     if (h) window.trialEvent?.('recall8', { hours });
   });
-  bind('[data-claimgems]', u => doTx('Claiming gems', 'claim_gems', [u], []));
+  bind('[data-claimember]', u => doTx('Claiming Ember', 'claim_ember', [u], []));
   bind('[data-temper]', u => openTemper(u));
   bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u]));
   bind('[data-claimdelve]', claimDelve);
@@ -932,14 +921,6 @@ const depAct = (token, amount) => ({ type: 'deposit', token, amount });
 const wdAct = (token, amount) => ({ type: 'withdrawal', token, amount, address: S.addr });
 
 /* ---------------- tx pipeline ---------------- */
-
-async function ensureLedgerGems(amount) {
-  if (S.gemsLedger >= amount) return true;
-  const shortfall = amount - S.gemsLedger;
-  if (S.gemsWallet < shortfall) return false;
-  const hash = await doTx('Moving gems to your ledger', 'deposit_gems', [], [depAct(GEMS, shortfall)]);
-  return !!hash && S.gemsLedger >= amount;
-}
 
 // confirmation wait for plain (non-nano) transactions: no execution logs exist
 async function waitForConfirm(hash) {
@@ -1011,7 +992,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
     const touched = [
       ...(args || []).filter(a => typeof a === 'string' && /^[0-9a-f]{64}$/.test(a)),
       ...(actions || []).map(a => a.token).filter(t =>
-        t && t !== HTR && t !== GEMS && /^[0-9a-f]{64}$/.test(t)),
+        t && t !== HTR && /^[0-9a-f]{64}$/.test(t)),
     ];
     await refresh(touched);
     return hash;
@@ -1066,7 +1047,7 @@ function openTemper(uid) {
   temperUid = uid;
   const [v, b, g, t] = c.aspects || [0, 0, 0, 0];
   $('temperInfo').innerHTML = `<b>${c.name}</b> · ⚔ ${v} · 🛡 ${b} · 🗡 ${g}<br>
-    Raise one aspect by 1–3 for <b>${fmtGems(c.temperCost)}</b> from your ledger.`;
+    Raise one aspect by 1–3 for <b>${fmtEmber(c.temperCost)}</b>.`;
   showStage('stageTemper');
 }
 
@@ -1077,9 +1058,9 @@ async function doTemper(aspect) {
   const c = S.cards.get(uid);
   if (!c) return;
   const beforeAsp = c.aspects ? [...c.aspects] : null;
-  if (!(await ensureLedgerGems(c.temperCost))) {
-    $('errTitle').textContent = 'Not enough gems';
-    $('errMsg').textContent = `Tempering costs ${fmtGems(c.temperCost)}. Earn more by mining.`;
+  if (S.ember < c.temperCost) {
+    $('errTitle').textContent = 'Not enough Ember';
+    $('errMsg').textContent = `Tempering costs ${fmtEmber(c.temperCost)}. Earn more by mining.`;
     showStage('stageError');
     return;
   }
@@ -1279,9 +1260,9 @@ async function fuse() {
   if (!a || !b) return;  // selection cleared (double-tap): nothing to fuse
   S.selected.clear();
   const fee = fuseFeeFor(S.cards.get(a)?.tier ?? 0);
-  if (!(await ensureLedgerGems(fee))) {
-    $('errTitle').textContent = 'Not enough gems';
-    $('errMsg').textContent = `Fusion costs ${fmtGems(fee)}. Earn more by mining.`;
+  if (S.ember < fee) {
+    $('errTitle').textContent = 'Not enough Ember';
+    $('errMsg').textContent = `Fusion costs ${fmtEmber(fee)}. Earn more by mining.`;
     showStage('stageError');
     return;
   }
@@ -1302,17 +1283,17 @@ async function fuse() {
 async function fightWrit(uid, writ, tier) {
   const c = S.cards.get(uid);
   const entry = Math.max(1, Math.floor(fuseFeeFor(c?.tier ?? 0) / 5));
-  if (!(await ensureLedgerGems(entry))) {
+  if (S.ember < entry) {
     $('errTitle').textContent = 'Boss entry fee';
-    $('errMsg').textContent = `Boss entry costs ${fmtGems(entry)}. Earn more by mining.`;
+    $('errMsg').textContent = `Boss entry costs ${fmtEmber(entry)}. Earn more by mining.`;
     showStage('stageError');
     $('overlay').hidden = false;
     return;
   }
-  const before = S.gemsLedger;
+  const before = S.ember;
   const h = await doTx('Fighting the boss', 'fight_writ', [uid, writ, tier]);
   if (!h) return;
-  const won = S.gemsLedger > before;  // victory pays 4x the entry
+  const won = S.ember > before;  // victory pays 4x the entry
   const w = S.writs[writ] || { name: 'the writ' };
   const mult = [1, 2, 4][tier] || 1;
   const mu = matchupHtml(S.cards.get(uid)?.aspects,
@@ -1346,15 +1327,15 @@ function matchupHtml(mine, theirs) {
 }
 
 async function claimDelve(uid) {
-  const g0 = S.gemsLedger;
+  const g0 = S.ember;
   const s0 = S.shards || 0;
   const h = await doTx('Claiming the delve', 'claim_delve', [uid]);
   if (!h) return;
-  const dg = S.gemsLedger - g0;
+  const dg = S.ember - g0;
   const ds = (S.shards || 0) - s0;
-  if (ds > 0 && dg > 0) ribbon(`An ancient relic! +${ds} shards and ${fmtGems(dg)}`, 'level', 'favor');
+  if (ds > 0 && dg > 0) ribbon(`An ancient relic! +${ds} shards and ${fmtEmber(dg)}`, 'level', 'favor');
   else if (ds > 0) ribbon(`The delve found relic shards: +${ds}`, 'level', 'favor');
-  else if (dg > 0) ribbon(`The delve struck a seam: +${fmtGems(dg)}`, 'level', 'coin');
+  else if (dg > 0) ribbon(`The delve struck a seam: +${fmtEmber(dg)}`, 'level', 'coin');
   else ribbon('The delve found only dust', '', 'lose');
 }
 
@@ -1381,8 +1362,8 @@ function openDress(uid) {
       </div>
     </div>
     <div class="dress-controls">
-      <div class="wait-sub">Frames and tints cost <b>${fmtGems(price)}</b> each
-      (you hold ${fmtGems(S.gemsLedger)}). Epithets cost <b>3 relic shards</b>
+      <div class="wait-sub">Frames and tints cost <b>${fmtEmber(price)}</b> each
+      (you hold ${fmtEmber(S.ember)}). Epithets cost <b>3 relic shards</b>
       (you hold ${S.shards || 0}; delve for more). Adornments are written on the
       card and travel with it, forever.</div>
       <div class="dress-row"><b>Frame</b>
@@ -1426,9 +1407,9 @@ function openDress(uid) {
   document.querySelectorAll('[data-cos]').forEach(el => el.onclick = async () => {
     const [slot, value] = el.dataset.cos.split(':').map(Number);
     $('overlay').hidden = true;
-    if (slot < 2 && value > 0 && !(await ensureLedgerGems(price))) {
-      $('errTitle').textContent = 'Not enough gems';
-      $('errMsg').textContent = `This adornment costs ${fmtGems(price)}.`;
+    if (slot < 2 && value > 0 && S.ember < price) {
+      $('errTitle').textContent = 'Not enough Ember';
+      $('errMsg').textContent = `This adornment costs ${fmtEmber(price)}.`;
       showStage('stageError');
       $('overlay').hidden = false;
       return;
@@ -1683,7 +1664,7 @@ async function shareCard(uid) {
   const t = TIERS[c.tier] || TIERS[0];
   const text = `${c.name} · ${t.name} ⚡${c.power}, bound to my banner in Emberfall, `
     + `the fully onchain TCG on @hathornetwork.\n\n`
-    + `Free on testnet. Play with $HTR, earn $GEMS at emberfall.fun`;
+    + `Free on testnet. Play with $HTR, earn Ember at emberfall.fun`;
   try {
     // the native sheet is only useful where X lives as an app (touch devices)
     const touch = matchMedia('(pointer: coarse)').matches;
@@ -1758,7 +1739,7 @@ function openPick(kind, ref) {
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
   if (kind === 'accept') {
     const d = S.duels.find(x => x.id === ref);
-    $('pickTitle').textContent += ` (wager ${fmtGems(d.wager)})`;
+    $('pickTitle').textContent += ` (wager ${fmtEmber(d.wager)})`;
   }
   $('pickCards').innerHTML = mine.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
   document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
@@ -1784,20 +1765,19 @@ async function submitPick(uid) {
     const raw = $('pickWager').value.trim();
     if (raw === '') {
       $('errTitle').textContent = 'Name your wager';
-      $('errMsg').textContent = 'Enter a wager in GEMS-cents, or 0 for a free duel '
-        + 'where no gems change hands.';
+      $('errMsg').textContent = 'Enter a wager in Ember, or 0 for a free duel '
+        + 'where no Ember changes hands.';
       showStage('stageError');
       return;
     }
     const wager = Math.max(0, Number(raw) || 0);
-    if (wager > S.gemsLedger + S.gemsWallet) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtGems(S.gemsLedger + S.gemsWallet)} in total.`; showStage('stageError'); return; }
-    if (!(await ensureLedgerGems(wager))) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = 'Could not move enough gems to the ledger.'; showStage('stageError'); return; }
+    if (wager > S.ember) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtEmber(S.ember)}.`; showStage('stageError'); return; }
     await doTx('Issuing challenge', 'create_duel', [wager], [depAct(uid, CARD_AMT)]);
   } else {
     const duel = S.duels.find(x => x.id === ref);
-    if (duel && duel.wager > 0 && !(await ensureLedgerGems(duel.wager))) {
-      $('errTitle').textContent = 'Not enough gems for the wager';
-      $('errMsg').textContent = `This trial wagers ${fmtGems(duel.wager)}.`;
+    if (duel && duel.wager > 0 && S.ember < duel.wager) {
+      $('errTitle').textContent = 'Not enough Ember for the wager';
+      $('errMsg').textContent = `This duel wagers ${fmtEmber(duel.wager)}.`;
       showStage('stageError');
       return;
     }
@@ -2038,7 +2018,6 @@ async function endSession() {
     }
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
     if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
-    if (S.gemsLedger > 0) blockers.push(`${fmtGems(S.gemsLedger)} in your ledger (withdraw in The Mines)`);
     if (S.favorOwed > 0) blockers.push(`a ${fmtHtr(S.favorOwed)} refund from the Weaver (claim it under SUMMON)`);
     if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in The Bazaar (withdraw them)`);
     const n4 = S.duels.filter(d => d.status === 'open' && d.challenger === S.addr).length;
@@ -2253,9 +2232,9 @@ async function restoreWcPairing() {
 
 async function disconnectWallet() {
   await S.wallet?.disconnect?.().catch(() => {});
-  S.wallet = null; S.addr = null; S.htr = 0; S.gemsWallet = 0;
-  S.gemsLedger = 0; S.wins = 0; S.prevWins = undefined; S.selected.clear();
-  S.lineage = null; S.gemsLineageExtra = 0;
+  S.wallet = null; S.addr = null; S.htr = 0;
+  S.ember = 0; S.wins = 0; S.prevWins = undefined; S.selected.clear();
+  S.lineage = null; S.emberLineageExtra = 0;
   for (const c of S.cards.values()) c.mine = false;
   localStorage.removeItem('gacha_wallet');
   $('overlay').hidden = true;
@@ -2399,12 +2378,7 @@ document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
   for (const p of ['collection', 'farm', 'arena', 'market', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
-$('wdGemsBtn')?.addEventListener('click', () => {});
 document.addEventListener('click', async e => {
-  if (e.target.id === 'wdGemsBtn') {
-    if (await doTx('Withdrawing gems', 'withdraw_gems', [], [wdAct(GEMS, S.gemsLedger)])) window.sfx?.('coin');
-  }
-  if (e.target.id === 'depGemsBtn') doTx('Moving gems to your ledger', 'deposit_gems', [], [depAct(GEMS, S.gemsWallet)]);
   if (e.target.id === 'wdFundsBtn') {
     if (await doTx('Withdrawing HTR', 'withdraw_funds', [], [wdAct(HTR, S.marketFunds)], { target: MKT })) window.sfx?.('coin');
   }

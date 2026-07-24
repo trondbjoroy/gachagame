@@ -20,7 +20,7 @@ const TOUR = [
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The game keeps count: your gems, duels won, renown with your daily streak, and your level. Below the numbers, WORLD FEED shows what other players are doing right now; it starts folded, so click its title to open it. Everything here is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
+    body: 'The game keeps count: your Ember, duels won, renown with your daily streak, and your level. Below the numbers, WORLD FEED shows what other players are doing right now; it starts folded, so click its title to open it. Everything here is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',
@@ -30,12 +30,12 @@ const TOUR = [
   {
     target: '#pane-farm', tab: 'farm',
     title: 'Mining',
-    body: 'Send champions mining and they earn gems by the minute, faster for higher rarities. Gems pay for fusion and wagers. While a champion mines you can TEMPER it (pay gems to raise one aspect), send it on a DELVE (an eight-hour gamble for gems or relic shards), or STYLE it with frames, tints, and epithets that travel with the card forever.',
+    body: 'Send champions mining and they earn Ember by the minute, faster for higher rarities. Ember pays for fusion, boss entries, and wagers. While a champion mines you can TEMPER it (pay Ember to raise one aspect), send it on a DELVE (an eight-hour gamble for Ember or relic shards), or STYLE it with frames, tints, and epithets that travel with the card forever.',
   },
   {
     target: '#pane-arena', tab: 'arena',
     title: 'Arena',
-    body: 'Duels, best of three rounds: attack against attack, defense against defense, cunning against cunning. Wager gems; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
+    body: 'Duels, best of three rounds: attack against attack, defense against defense, cunning against cunning. Wager Ember; the winner takes the pot minus a 5% house cut. Champions are never lost, and every settled fight earns them experience. Below the duels wait the BOSSES: ten of them, fought solo by your mining champions, three fights per champion per day.',
   },
   {
     target: '#pane-market', tab: 'market',
