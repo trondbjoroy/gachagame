@@ -463,7 +463,7 @@ setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 // pass ?touch=<uids> after their own tx for instant freshness on those cards.
 const cardCache = { cards: {}, updatedAt: 0 };
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
-  'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
+  'get_card_aspects', 'get_card_wins', 'get_card_cosmetics', 'get_card_ability',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
 
 async function ncCalls(ncId, calls, concurrency = 8) {
@@ -492,7 +492,7 @@ async function refreshCards(uids) {
     cardCache.cards[u] = {
       name: g('get_card_name'), tier: g('get_card_tier'), power: g('get_card_power'),
       aspects: g('get_card_aspects') || null, wins: g('get_card_wins') || 0,
-      cosmetics: g('get_card_cosmetics') || 0,
+      cosmetics: g('get_card_cosmetics') || 0, ability: g('get_card_ability') || 0,
       pending: g('get_pending_owner') ?? null, staker: g('get_staker') ?? null,
       delveSince: g('get_delve_since') || 0, temperCost: g('get_temper_cost') || 0,
     };

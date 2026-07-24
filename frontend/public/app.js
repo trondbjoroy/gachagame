@@ -67,7 +67,7 @@ function mergeCards(payload) {
     // [attack, defense, cunning, tempers, hardened, xp, level, vet]
     c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
     c.level = c.aspects?.[6] || 0;
-    c.wins = d.wins; c.cosmetics = d.cosmetics;
+    c.wins = d.wins; c.cosmetics = d.cosmetics; c.ability = d.ability || 0;
     c.pending = d.pending; c.staker = d.staker;
     c.delveSince = d.delveSince; c.temperCost = d.temperCost;
     S.cards.set(u, c);
@@ -572,6 +572,23 @@ function stationLine(c, t, meta) {
     + `${c.level > 0 ? ` · Lv ${c.level}` : ''}${c.wins > 0 ? ` · ★ ${c.wins}` : ''}`;
 }
 
+/* v5 keyword abilities, one per champion type (ids match the contract) */
+const ABILITIES = [null,
+  { n: 'Vanguard', d: '+20% in the Attack round' },
+  { n: 'Warden', d: '+20% in the Defense round' },
+  { n: 'Trickster', d: '+20% in the Cunning round' },
+  { n: 'Momentum', d: 'winning round 1 grants +10% after' },
+  { n: 'Closer', d: '+25% in a 1-1 decider' },
+  { n: 'Underdog', d: '+15% in all rounds when weaker' },
+  { n: 'Stancebreaker', d: "the foe's stance edge is void" },
+  { n: 'Plunderer', d: 'a win carries off the house cut too' },
+  { n: 'Scholar', d: 'earns double experience' },
+];
+function abilityLine(c) {
+  const a = ABILITIES[c.ability || 0];
+  return a ? `<div class="ac-ability" title="${a.d}">✦ ${a.n}</div>` : '';
+}
+
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
@@ -588,6 +605,7 @@ function cardBox(c, buttonsHtml, selectable) {
       <div class="ac-bottom">
         ${epLine}
         <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
+        ${abilityLine(c)}
         ${aspectsRow(c)}
         <div class="ac-flavor">${meta.flavor}</div>
         ${buttonsHtml || ''}
@@ -599,6 +617,7 @@ function cardBox(c, buttonsHtml, selectable) {
     <div class="name">${c.name}</div>
     ${epLine}
     <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
+    ${abilityLine(c)}
     ${aspectsRow(c)}
     ${buttonsHtml || ''}
   </div>`;
