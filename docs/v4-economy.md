@@ -80,6 +80,12 @@ mainnet economy uses (so we don't ship an untested checkout):
   seller's proceeds; instantiate the v4 market with **fee_bps=500** (5%).
 - Update `scripts/v4_playground_test.py` for the new flows.
 
+STATUS 2026-07-24: all of the above validated on testnet-playground — arena
+blueprint `000f4ae9…` (47 checks green incl. no-withdraw Ember and unreserved
+proceeds), market `008eb85b…` at fee_bps=500 (seller nets −5%, fee accrues).
+`scripts/price_peg.py` written (dry-run default) on main; the frontend/proxy
+sweep below is done on branch `v4-frontend` (see docs/v4-frontend-adaptation.md).
+
 ## Frontend / proxy / docs (v4 adaptation)
 
 - Rename GEMS→Ember across UI, guide, both FAQs, tutorial, promo.
