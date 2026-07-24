@@ -12,9 +12,10 @@ the same way manually minted NFT media is.
 ## Motivation
 
 Emberfall (https://emberfall.fun, testnet-india) mints every game card as a unique
-1-of-1 token from inside the `EmberfallArena` contract
-(`00599b4b1e879ee1437b828926b7d5a11ac5c5ca094e25e77094420c8b3c9258`, blueprint
-`0078b201b50e228833ad6e526c6e0d5c89456502623b4f18807b3991ac3ce0bf`). These tokens are
+1-of-1 token — one base unit each, per the NFT standard's supply convention — from
+inside the `EmberfallArena` v4 contract
+(`00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd`, blueprint
+`00a9206990837c936369bb12711be4a5c3e96d736175e367579992d8f9d84e95`). These tokens are
 real player-owned assets — summoned, traded, and swept between wallets — but in the
 Hathor wallet they appear only as a bare symbol ("G3"), because `create_deposit_token`
 accepts no media and the NFT standard's data output only exists on wallet-built token
@@ -37,8 +38,9 @@ all. Per-token manual curation cannot work here: every summon creates a new toke
 5. Emberfall test: a card summoned on testnet-india shows its illustration in the
    Hathor mobile wallet.
 6. Wallets display a token carrying this data as **one item** (like manually created
-   NFTs), not as a decimal balance. Context: contract-minted game assets may use a
-   supply above 1 base unit out of necessity — melting charges a minimum fee of 1
-   base unit, so a 1-unit token can never be melted (Emberfall cards are 100 units
-   for this reason, moved only as a whole). Rendering "1.00" instead of "1 item"
-   breaks the NFT presentation for exactly the tokens this PRD enables.
+   NFTs), not as a decimal balance. Emberfall v4 cards are exactly 1 base unit
+   (fusion parks parents in contract custody instead of melting, so the melt-fee
+   floor no longer forces a larger supply), making them the clean case. But other
+   contracts may still mint assets with supply above 1 base unit where melting is
+   required, so the "one item" presentation should follow the presence of this
+   data, not the token's supply.
