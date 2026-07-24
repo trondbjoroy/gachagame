@@ -4,7 +4,7 @@
 const NC = window.GAME.nc;
 const MKT = window.GAME.market; // {nc, blueprint} or null
 const HTR = '00';
-const CARD_AMT = 100; // one card = 100 base units ('1.00')
+const CARD_AMT = window.GAME.cardUnit ?? 1; // base units per card (1 on v4 realms; 100 legacy)
 const ECON = window.GAME.economy || { sessionFund: 100, fusionFees: [5, 5, 5, 5] };
 const fuseFeeFor = tier => ECON.fusionFees[tier] ?? 5;
 
@@ -22,6 +22,9 @@ const who = a => (a && S.names[a]) || short(a || '?');
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/;
 const myAddrs = () => new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
 const isMine = a => !!a && myAddrs().has(a);
+// v4 delegation: contract state (renown, Ember, wins, cards' staker/pending)
+// is keyed by the MAIN identity; a session acts as the wallet that offered it
+const identity = () => S.wallet?.mainAddr || S.addr;
 const $ = id => document.getElementById(id);
 
 const S = {
@@ -126,7 +129,7 @@ async function loadContract(touch) {
 
   // per-player, time-sensitive card views: only the caller's staked cards
   const stakedMine = [...S.cards.values()]
-    .filter(c => c.tier >= 0 && c.staker === S.addr).map(c => c.uid);
+    .filter(c => c.tier >= 0 && isMine(c.staker)).map(c => c.uid);
   if (stakedMine.length) {
     const pg = await batchCalls(stakedMine.flatMap(u =>
       [`get_pending_ember("${u}", ${now})`, `get_writ_attempts("${u}", ${now})`]));
@@ -138,48 +141,26 @@ async function loadContract(touch) {
   }
 
   if (S.addr) {
-    // reputation is keyed per address on-chain, but the PLAYER spans their
-    // current key, their main wallet, this device's retired sessions, and
-    // every address their banner name has lived on (server-tracked, so it
-    // works across devices): sum renown and wins across the whole lineage
-    const lineage = new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
-    try {
-      for (const e of JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]')) {
-        const a = e.addr || e.address;
-        if (a) lineage.add(a);
-      }
-    } catch { /* archive is optional */ }
-    try {
-      const keys = [...new Set([S.addr, S.wallet?.mainAddr].filter(Boolean))];
-      const chains = await Promise.all(keys.map(a =>
-        fetch(`/api/lineage?addr=${a}`).then(r => r.json()).catch(() => ({}))));
-      for (const li of chains) for (const a of li.addrs || []) lineage.add(a);
-    } catch { /* lineage is a bonus, not a dependency */ }
-    const others = [...lineage].filter(a => a !== S.addr).slice(0, 12);
-    S.lineage = lineage;  // deeds and standing read the whole family too
-    const me = await batchCalls([`get_ember_balance("${S.addr}")`, `get_wins("${S.addr}")`,
-      `get_renown("${S.addr}")`, `get_vigil_streak("${S.addr}")`, `get_favor_owed("${S.addr}")`,
-      'get_favor_pool()', `get_shards("${S.addr}")`, `get_gauntlet_cleared("${S.addr}")`,
-      `get_trial_done("${S.addr}", ${now})`,
-      ...others.flatMap(a => [`get_renown("${a}")`, `get_wins("${a}")`, `get_ember_balance("${a}")`])]);
-    S.shards = me[`get_shards("${S.addr}")`] || 0;
-    S.cleared = me[`get_gauntlet_cleared("${S.addr}")`] || 0;
-    S.trialDoneChain = me[`get_trial_done("${S.addr}", ${now})`] === true;
-    S.ember = me[`get_ember_balance("${S.addr}")`] || 0;
-    const winsNow = (me[`get_wins("${S.addr}")`] || 0)
-      + others.reduce((s, a) => s + (me[`get_wins("${a}")`] || 0), 0);
+    // v4 delegation: one identity, one read — a session's renown, Ember,
+    // wins and streak all live on the main address the contract resolves to
+    const me = identity();
+    const my = await batchCalls([`get_ember_balance("${me}")`, `get_wins("${me}")`,
+      `get_renown("${me}")`, `get_vigil_streak("${me}")`, `get_favor_owed("${me}")`,
+      'get_favor_pool()', `get_shards("${me}")`, `get_gauntlet_cleared("${me}")`,
+      `get_trial_done("${me}", ${now})`]);
+    S.shards = my[`get_shards("${me}")`] || 0;
+    S.cleared = my[`get_gauntlet_cleared("${me}")`] || 0;
+    S.trialDoneChain = my[`get_trial_done("${me}", ${now})`] === true;
+    S.ember = my[`get_ember_balance("${me}")`] || 0;
+    const winsNow = my[`get_wins("${me}")`] || 0;
     // covers wins as challenger too (someone answered while we were away)
     if (S.prevWins !== undefined && winsNow > S.prevWins) window.trialEvent?.('duel_win');
     S.prevWins = winsNow;
     S.wins = winsNow;
-    S.renown = (me[`get_renown("${S.addr}")`] || 0)
-      + others.reduce((s, a) => s + (me[`get_renown("${a}")`] || 0), 0);
-    // Ember earned on other addresses of the lineage: counted for deeds,
-    // never spendable from here (the contract keys ledgers per address)
-    S.emberLineageExtra = others.reduce((s, a) => s + (me[`get_ember_balance("${a}")`] || 0), 0);
-    S.vigil = me[`get_vigil_streak("${S.addr}")`] || 0;
-    S.favorOwed = me[`get_favor_owed("${S.addr}")`] || 0;
-    S.favorPool = me['get_favor_pool()'] || 0;
+    S.renown = my[`get_renown("${me}")`] || 0;
+    S.vigil = my[`get_vigil_streak("${me}")`] || 0;
+    S.favorOwed = my[`get_favor_owed("${me}")`] || 0;
+    S.favorPool = my['get_favor_pool()'] || 0;
   }
 
   if (duelCount > 0) {
@@ -188,7 +169,23 @@ async function loadContract(touch) {
     S.duels = ids.map(i => {
       const [status, card, wager] = (dd[`get_duel(${i})`] || '||').split('|');
       return { id: i, status, card, wager: Number(wager || 0), challenger: dd[`get_duel_challenger(${i})`] };
-    }).reverse();
+    });
+    // stance/bet detail only for duels still in motion (bounded set)
+    const live = S.duels.filter(d => d.status === 'open' || d.status === 'reveal');
+    if (live.length) {
+      const xq = await batchCalls(['get_reveal_window()', ...live.flatMap(d => [
+        `get_duel_has_stances(${d.id})`, `get_duel_acceptor(${d.id})`,
+        `get_duel_accept_ts(${d.id})`,
+        `get_bet_pool(${d.id}, 0)`, `get_bet_pool(${d.id}, 1)`])]);
+      S.revealWindow = xq['get_reveal_window()'] || 21600;
+      for (const d of live) {
+        d.stances = xq[`get_duel_has_stances(${d.id})`] === true;
+        d.acceptor = xq[`get_duel_acceptor(${d.id})`] || null;
+        d.acceptTs = xq[`get_duel_accept_ts(${d.id})`] || 0;
+        d.pools = [xq[`get_bet_pool(${d.id}, 0)`] || 0, xq[`get_bet_pool(${d.id}, 1)`] || 0];
+      }
+    }
+    S.duels.reverse();
   } else S.duels = [];
 }
 
@@ -251,6 +248,19 @@ async function loadMine() {
   ]);
   S.htr = htr;
   loose.forEach((c, i) => { c.mine = held[i] > 0; });
+  // v4 parity: champions still sitting in the MAIN wallet keep counting for
+  // achievements while a session runs (the session key cannot spend them,
+  // so they are not "mine" for actions — only for standing)
+  const mainA = S.wallet?.mainAddr;
+  if (mainA) {
+    try {
+      const d = await node(`/thin_wallet/address_balance?address=${mainA}`);
+      const heldMain = new Set(Object.entries(d.tokens_data || {})
+        .filter(([, t]) => ((t.received || 0) - (t.spent || 0)) >= CARD_AMT)
+        .map(([u]) => u));
+      for (const c of loose) c.heldByMain = heldMain.has(c.uid);
+    } catch { /* standing enrichment only; actions never depend on it */ }
+  } else for (const c of loose) c.heldByMain = false;
 }
 
 async function loadRaffle() {
@@ -348,14 +358,14 @@ async function maybeAutoClaim() {
   // clear the attempted-mark once a card is no longer pending for us
   for (const uid of [...autoClaimed]) {
     const c = S.cards.get(uid);
-    if (!c || (c.pending !== S.addr && c.marketPending !== S.addr)) autoClaimed.delete(uid);
+    if (!c || (!isMine(c.pending) && c.marketPending !== S.addr)) autoClaimed.delete(uid);
   }
   const next = [...S.cards.values()].find(c => c.tier >= 0
-    && (c.pending === S.addr || c.marketPending === S.addr) && !autoClaimed.has(c.uid));
+    && (isMine(c.pending) || c.marketPending === S.addr) && !autoClaimed.has(c.uid));
   if (!next) return;
   autoClaimBusy = true;
   autoClaimed.add(next.uid);
-  const fromMarket = next.marketPending === S.addr && next.pending !== S.addr;
+  const fromMarket = next.marketPending === S.addr && !isMine(next.pending);
   const h = await doTx('Champion coming home', 'claim_card', [], [wdAct(next.uid, CARD_AMT)],
     fromMarket ? { target: MKT } : {});
   autoClaimBusy = false;
@@ -396,15 +406,16 @@ const DEEDS = [
 ];
 
 function deedState() {
-  // the standing follows the player, not the key: cards and Ember held by
-  // any address in the lineage (main wallet, past sessions) count too
-  const fam = S.lineage && S.lineage.size ? S.lineage : new Set(S.addr ? [S.addr] : []);
+  // the standing follows the player, not the key: under v4 delegation the
+  // contract keys everything by the main identity, so session and main
+  // wallets always see the same standing
+  const fam = myAddrs();
   const owned = [...S.cards.values()].filter(c => c.tier >= 0 &&
-    (c.mine || fam.has(c.staker) || fam.has(c.pending) || fam.has(c.marketPending)));
+    (c.mine || c.heldByMain || fam.has(c.staker) || fam.has(c.pending) || fam.has(c.marketPending)));
   return {
     owned,
     staked: owned.filter(c => fam.has(c.staker)).length,
-    ember: S.ember + (S.emberLineageExtra || 0),
+    ember: S.ember,
     wins: S.wins,
     power: owned.reduce((a, c) => a + (c.power || 0), 0),
   };
@@ -566,7 +577,7 @@ function rowArt(c) {
    a badge on The Mines tab and a counter in the browser tab title */
 function updateCues() {
   const ready = [...S.cards.values()].filter(c =>
-    S.addr && c.staker === S.addr && (c.delveSince || 0) > 0
+    S.addr && isMine(c.staker) && (c.delveSince || 0) > 0
     && Date.now() >= (c.delveSince + (S.delveSeconds || 28800)) * 1000).length;
   const tab = document.querySelector('.tab[data-tab="farm"]');
   let badge = tab.querySelector('.tab-badge');
@@ -591,7 +602,7 @@ function render() {
   // a banner name stands alone in the chip (the hint span names the wallet
   // kind already); otherwise wallet kind + shortened address
   $('walletAddr').textContent = S.addr
-    ? (S.names[S.addr] || `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}`)
+    ? (S.names[identity()] || `${S.wallet.label.split(' ')[0]} · ${short(S.addr)}`)
     : (S.restoring ? 'Connecting…' : 'Connect wallet');
   $('walletHtr').textContent = S.addr ? fmtHtr(S.htr) : '';
   $('walletHtr').title = S.addr ? 'Balance on your main address only; your wallet shows the full total' : '';
@@ -686,7 +697,7 @@ function render() {
   $('collectionEmpty').hidden = mine.length > 0;
 
   const inSession = S.wallet?.mode === 'session';
-  const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.pending === S.addr);
+  const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
   $('pendingCards').innerHTML = pend.map(c =>
     cardBox(c, inSession
       ? '<div class="pending-gems">coming home…</div>'
@@ -705,7 +716,7 @@ function render() {
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
-  const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.staker === S.addr);
+  const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.staker));
   $('farmSummary').innerHTML = `
     <div class="stat"><div class="k">Ember</div><div class="v">${fmtEmber(S.ember)}</div></div>
     <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 1 · R 3 · E 10 · L 40</small></div></div>
@@ -739,7 +750,7 @@ function render() {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
-    const cancellable = d.challenger === S.addr;
+    const cancellable = isMine(d.challenger); // sessions act for their main
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
@@ -1019,7 +1030,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
 /* ---------------- flows ---------------- */
 
 async function pull() {
-  const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
+  const before = new Set([...S.cards.values()].filter(c => isMine(c.pending)).map(c => c.uid));
   const favorBefore = S.favorOwed;
   $('machine').classList.add('shaking');
   window.sfx?.('summon');
@@ -1033,7 +1044,7 @@ async function pull() {
     ribbon(`Lucky pull: <b>${fmtHtr(S.favorOwed - favorBefore)}</b> refunded`, 'level', 'favor');
   // with overlapping summons, exclude cards already claimed by another reveal
   const won = await awaitNewCard(() => [...S.cards.values()].find(c =>
-    c.pending === S.addr && !before.has(c.uid) && !revealSeen.has(c.uid)));
+    isMine(c.pending) && !before.has(c.uid) && !revealSeen.has(c.uid)));
   if (!won) return;
   revealCard(won, TIERS[won.tier].name);
 }
@@ -1266,14 +1277,14 @@ async function fuse() {
     showStage('stageError');
     return;
   }
-  const before = new Set([...S.cards.values()].filter(c => c.pending === S.addr).map(c => c.uid));
+  const before = new Set([...S.cards.values()].filter(c => isMine(c.pending)).map(c => c.uid));
   fuseBusy = true;
   try {
     const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
     if (!hash) return;
     window.sfx?.('fuse');
     const won = await awaitNewCard(() =>
-      [...S.cards.values()].find(c => c.pending === S.addr && !before.has(c.uid)));
+      [...S.cards.values()].find(c => isMine(c.pending) && !before.has(c.uid)));
     if (won) revealCard(won, `FUSED \u00b7 ${TIERS[won.tier].name}`);
   } finally {
     fuseBusy = false;
@@ -1456,54 +1467,11 @@ async function nameSecretHash() {
 
 function openName() {
   if (!S.addr) return;
-  // prefill only what this address actually holds; a remembered name from an
-  // old address may be unavailable and only misleads here
-  $('nameInput').value = S.names[S.addr] || '';
+  // v4: the name belongs to the main identity, session or not
+  $('nameInput').value = S.names[identity()] || '';
   $('nameMsg').textContent = '';
   $('nameClaimBtn').disabled = false;
   showStage('stageName');
-}
-
-/* A swept session leaves its address empty, which frees its name (the server
-   lets anyone claim a name whose holding purse is bare). So when a new
-   session begins, quietly claim the player's remembered name again: the name
-   follows the player, not the throwaway key. */
-let reclaimTried = false;
-async function reclaimBanner() {
-  if (reclaimTried || S.wallet?.mode !== 'session' || !S.addr) return;
-  // the name resting on the main wallet is the source of truth: it follows
-  // across devices, unlike this browser's remembered name
-  const last = (S.wallet.mainAddr && S.names[S.wallet.mainAddr])
-    || localStorage.getItem(NAME_LS);
-  if (!last || S.names[S.addr]) return;
-  reclaimTried = true;
-  try {
-    const { hash } = await S.wallet.sendData(
-      `emberfall:name:${last}:${await nameSecretHash()}`);
-    await waitForConfirm(hash);
-    // the player may have sealed a name by hand while this tx confirmed:
-    // their explicit choice wins, the reclaim stands down
-    const still = (S.wallet?.mainAddr && S.names[S.wallet.mainAddr])
-      || localStorage.getItem(NAME_LS);
-    if (S.names[S.addr] || still !== last) return;
-    const r = await fetch('/api/name', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tx: hash, addr: S.addr, secret: nameSecret() }),
-    });
-    const d = await r.json();
-    if (!d.success) throw new Error(d.error || 'claim rejected');
-    await loadNames();
-    render();
-    ribbon(`You are playing as <b>${last}</b>`, 'level', 'deed');
-    track('set_name', { ok: true, auto: true, wallet: walletKind() });
-  } catch (e) {
-    // someone else truly holds it, or the tx failed: the player can SET NAME
-    track('set_name', {
-      ok: false, auto: true, wallet: walletKind(),
-      reason: String((e && e.message) || e).slice(0, 120),
-    });
-  }
 }
 
 async function claimName() {
@@ -1513,7 +1481,7 @@ async function claimName() {
     msg.textContent = 'Names are 3-16 characters: letters, numbers, spaces or _.';
     return;
   }
-  if (name === S.names[S.addr]) { $('overlay').hidden = true; return; }
+  if (name === S.names[identity()]) { $('overlay').hidden = true; return; }
   // no client-side taken check: only the server knows whether the current
   // holder is an abandoned (swept-empty) address whose name is up for grabs
   $('nameClaimBtn').disabled = true;
@@ -1528,10 +1496,12 @@ async function claimName() {
     track('set_name_submitted', { wallet: walletKind() });
     msg.textContent = 'Confirming…';
     await waitForConfirm(hash);
+    // the name is claimed FOR the main identity; in a session the tx is
+    // signed by the session key and the server verifies the delegation
     const r = await fetch('/api/name', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tx: hash, addr: S.addr, secret: nameSecret() }),
+      body: JSON.stringify({ tx: hash, addr: identity(), secret: nameSecret() }),
     });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'the name server rejected the claim');
@@ -1547,7 +1517,7 @@ async function claimName() {
       ? 'You need 0.01 HTR to claim a name. Get free testnet coin from the faucet linked under Info.'
       : /not signed by that address/i.test(m)
       ? 'Your wallet signed with a different address than the one playing. '
-        + 'Start a promptless session and claim the name there; it signs with the right key.'
+        + 'Start a quick play session and claim the name there; it signs with the right key.'
       : m;
     $('nameClaimBtn').disabled = false;
     track('set_name', { ok: false, reason: m.slice(0, 120), wallet: walletKind() });
@@ -1698,7 +1668,7 @@ function openPick(kind, ref) {
   pickCtx = { kind, ref };
   if (kind === 'writ') {
     const marchers = [...S.cards.values()].filter(c =>
-      c.staker === S.addr && !(c.delveSince > 0) && (c.writFights || 0) < 3);
+      isMine(c.staker) && !(c.delveSince > 0) && (c.writFights || 0) < 3);
     if (!marchers.length) {
       $('errTitle').textContent = 'No champion available';
       $('errMsg').textContent = 'Writs are fought by staked champions. Stake one in '
@@ -1880,7 +1850,7 @@ function syncSessionBox() {
   $('sessionTopupBtn').hidden = !(inSession && S.mainWallet);
   $('disconnectBtn').hidden = !S.addr || inSession;
   $('setNameBtn').hidden = !S.addr;
-  $('setNameBtn').textContent = S.addr && S.names[S.addr] ? 'CHANGE NAME' : 'SET NAME';
+  $('setNameBtn').textContent = S.addr && S.names[identity()] ? 'CHANGE NAME' : 'SET NAME';
   if (!S.sessionStarting) {
     $('sessionInfo').textContent = inSession
       ? 'Session active: every action signs instantly, no popups. Ending the session returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
@@ -1909,54 +1879,50 @@ async function startSession() {
     // stranded at an address whose key only lived in memory
     localStorage.setItem(SESSION_LS, JSON.stringify(
       { words, mainAddr: main.address, addr, funding: ECON.sessionFund }));
+    // v4 delegation: where does this session key stand on-chain already?
+    // (an offer or even the binding may have landed on an earlier visit)
+    const st = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`]);
+    const bound = !!st[`get_delegate("${addr}")`];
     let waitRounds = 100; // 5 minutes on the automatic path
-    // coin already waiting at a reused key: skip funding entirely
-    const alreadyFunded = reusing
-      && (await window.WALLETS.addrHtr(addr).catch(() => 0)) >= ECON.sessionFund;
-    if (alreadyFunded) {
-      sessionNote('Your earlier transfer is already here; finishing the setup\u2026');
-    } else {
+    if (!bound && (st[`get_session_fund("${addr}")`] || 0) < ECON.sessionFund) {
       try {
-        // sendTransaction over WalletConnect used to fail post-approval
-        // (upstream bug, no longer reproducing as of 2026-07-15): every
-        // wallet now gets the automatic attempt, manual flow as fallback
-        sessionNote('Funding request sent: now open your Hathor wallet and approve the '
-          + fmtHtr(ECON.sessionFund) + ' transfer\u2026');
+        sessionNote('One approval in your wallet funds the session AND binds it to '
+          + 'your identity: open your Hathor wallet and approve the '
+          + fmtHtr(ECON.sessionFund) + ' offer\u2026');
         await Promise.race([
-          main.sendHtr(addr, ECON.sessionFund),
+          main.executeNano('offer_session', [addr], [depAct(HTR, ECON.sessionFund)]),
           new Promise((_, rej) => setTimeout(
             () => rej(new Error('wallet approval timed out')), 120_000)),
         ]);
-        track('session_autofund', { ok: true, wallet: walletKindOf(main) });
-        sessionNote('Waiting for the funding to arrive\u2026');
+        track('session_offer', { ok: true, wallet: walletKindOf(main) });
+        sessionNote('Offer sent; waiting for it to confirm\u2026');
       } catch (e) {
-        // wallet could not build the transfer: fall back to a manual send
-        track('session_autofund', {
+        track('session_offer', {
           ok: false, wallet: walletKindOf(main),
           reason: String((e && e.message) || e).slice(0, 200),
         });
-        waitRounds = 600; // half an hour for a human-driven transfer
-        showFundingUI(addr, ECON.sessionFund,
-          'Automatic funding failed in your wallet. '
-          + (reusing ? 'Reusing your earlier session key. ' : ''));
-        sessionNote('Waiting for the transfer\u2026 safe to switch apps or even reload this page.');
+        waitRounds = 600; // half an hour for a human-driven approval
+        showOfferWaitUI(addr, reusing ? 'Reusing your earlier session key. ' : '');
+        sessionNote('Waiting for the approval\u2026 safe to switch apps or even reload this page.');
+      }
+      const offered = await awaitOffer(addr, waitRounds, ECON.sessionFund);
+      if (!offered) {
+        if (fundingCancelled) return;
+        throw new Error('No offer seen on-chain yet. Your session key is saved in this '
+          + 'browser: the moment the approval lands, reopening the game finishes the setup.');
       }
     }
-    const funded = alreadyFunded || await awaitFunding(addr, waitRounds, ECON.sessionFund);
-    if (!funded) {
-      if (fundingCancelled) return;
-      throw new Error('No coin seen yet. Your session key is saved in this browser: '
-        + 'the moment the transfer lands, reopening the game finishes the setup.');
-    }
-    // only now wake the full wallet: the coin is already safe at the address,
-    // so even a failed sync loses nothing (reopening the game retries)
-    sessionNote('Coin secured; waking the session key\u2026');
+    // only now wake the full wallet: the escrow is already safe in the
+    // contract, so even a failed sync loses nothing (reopening retries)
+    sessionNote('Offer secured; waking the session key\u2026');
     let sw;
     try { sw = await openSessionWallet(words, main.address); }
     catch {
-      throw new Error('Your coin is safe at the session address, but the key '
+      throw new Error('Your escrow is safe in the contract, but the session key '
         + 'could not sync yet. Reload the game to finish the setup.');
     }
+    sessionNote('Binding the session to your identity\u2026');
+    await bindSession(sw, addr);
     localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address, addr }));
     S.mainWallet = main;
     S.wallet = sw;
@@ -1964,7 +1930,6 @@ async function startSession() {
     track('session_start', { funder: walletKindOf(main) });
     $('overlay').hidden = true;
     await silentRefresh();
-    reclaimBanner();
   } catch (e) {
     sessionNote(e.message || String(e));
   } finally {
@@ -1998,30 +1963,19 @@ async function endSession() {
       sessionNote((e && e.message) || 'the Ledger could not be read just now; try again in a moment');
       return;
     }
+    // v4: game state (staked cards, pending claims, open duels, favor) is
+    // keyed to the MAIN identity, so nothing in the game contract can be
+    // stranded by ending a session — the main wallet reaches it all later.
+    // Only the MARKET keys by the actual caller: anything the session key
+    // opened there must be settled before that key is thrown away.
     const blockers = [];
     const cs = [...S.cards.values()];
-    const n1 = cs.filter(c => c.pending === S.addr).length;
-    if (n1) blockers.push(`${n1} champion${n1 > 1 ? 's' : ''} awaiting claim under Collection`);
-    const delvers = cs.filter(c => c.staker === S.addr && (c.delveSince || 0) > 0);
-    const n2 = cs.filter(c => c.staker === S.addr).length - delvers.length;
-    if (n2) blockers.push(`${n2} champion${n2 > 1 ? 's' : ''} still toiling in The Mines (recall them)`);
-    if (delvers.length) {
-      // a delve locks the champion until it ends and the haul is claimed
-      const doneAt = Math.max(...delvers.map(c =>
-        ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000));
-      const mins = Math.ceil((doneAt - Date.now()) / 60000);
-      blockers.push(delvers.length + ' champion' + (delvers.length > 1 ? 's' : '')
-        + ' mid-delve in The Mines: '
-        + (mins > 0
-          ? `the delve ends in ${Math.floor(mins / 60)}h ${mins % 60}m; claim it, then recall`
-          : 'the delve is done; CLAIM DELVE, then recall'));
-    }
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
     if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
-    if (S.favorOwed > 0) blockers.push(`a ${fmtHtr(S.favorOwed)} refund from the Weaver (claim it under SUMMON)`);
     if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in The Bazaar (withdraw them)`);
-    const n4 = S.duels.filter(d => d.status === 'open' && d.challenger === S.addr).length;
-    if (n4) blockers.push(`${n4} open challenge${n4 > 1 ? 's' : ''} in The Pit (cancel or see them fought)`);
+    const revealing = S.duels.filter(d => d.status === 'reveal' && isMine(d.challenger));
+    if (revealing.length) blockers.push(
+      `${revealing.length} duel${revealing.length > 1 ? 's' : ''} awaiting your reveal in Arena (reveal now or the fight forfeits)`);
     const n5 = S.listings.filter(l => l.status === 'open' && l.seller === S.addr).length;
     if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''} in The Bazaar (cancel or sell)`);
     const n6 = S.swaps.filter(w => w.status === 'open' && w.maker === S.addr).length;
@@ -2031,39 +1985,13 @@ async function endSession() {
         + blockers.join(' · ') + '.');
       return;
     }
-    // the name goes home first: a bequest signed by the session key (the
-    // holder) moves it to the main wallet before the sweep empties the purse
-    if (S.names[S.addr] && S.wallet.mainAddr) {
-      sessionNote('Sending your name home\u2026');
-      try {
-        const { hash } = await S.wallet.sendData(
-          `emberfall:bequeath:${S.wallet.mainAddr}:${await nameSecretHash()}`);
-        await waitForConfirm(hash);
-        const br = await fetch('/api/name', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ tx: hash, addr: S.addr }),
-        });
-        const bd = await br.json();
-        track('name_bequeath', { ok: !!bd.success, reason: (bd.error || '').slice(0, 80) });
-      } catch (e) {
-        // best effort: the sweep must never be hostage to the name
-        track('name_bequeath', {
-          ok: false, reason: String((e && e.message) || e).slice(0, 80),
-        });
-      }
-    }
+    // v4: the name never leaves the main address, so there is nothing to
+    // bequeath \u2014 the sweep is all that remains
     sessionNote('Returning all champions and coin to your wallet\u2026');
     const r = await S.wallet.sweep();
     track('session_end', { swept: r ? r.moved : 0 });
     sessionNote(r ? `Returned ${r.moved} holdings to your wallet.` : 'Nothing to return.');
     await S.wallet.disconnect();
-    try {
-      const arch = JSON.parse(localStorage.getItem(SESSION_LS + '_archive') || '[]');
-      const cur = JSON.parse(localStorage.getItem(SESSION_LS) || 'null');
-      if (cur) arch.push({ ...cur, endedAt: Date.now(), address: S.wallet.address });
-      localStorage.setItem(SESSION_LS + '_archive', JSON.stringify(arch.slice(-10)));
-    } catch { /* best effort */ }
     localStorage.removeItem(SESSION_LS);
     const main = S.mainWallet;
     S.mainWallet = null;
@@ -2093,45 +2021,49 @@ async function endSession() {
 /* funding helpers: the wait survives app switches, reloads, and patience */
 let fundingCancelled = false;
 
-function showFundingUI(addr, need, lead) {
+function showOfferWaitUI(addr, lead) {
   $('sessionInfo').innerHTML = (lead || '')
-    + `Send <b>${fmtHtr(need)}</b> (or more) to the session address below from your `
-    + 'wallet\u2019s normal send screen; the game will detect it, even if you switch '
-    + 'apps or reload this page.<br>'
-    + '<canvas id="fundQr" hidden></canvas>'
-    + `<span class="mono" style="word-break:break-all">${addr}</span> `
-    + `<button class="mini-btn alt" style="margin-top:8px" onclick="navigator.clipboard.writeText('${addr}')">COPY ADDRESS</button> `
+    + 'The session offer needs one approval in your Hathor wallet. Approve it '
+    + 'there; the game keeps watching the chain and finishes the setup the moment '
+    + 'it lands, even if you switch apps or reload this page.<br>'
     + `<button class="mini-btn alt" style="margin-top:8px" id="fundCancelBtn">CANCEL</button>`;
-  // on desktop the wallet is usually a phone: offer the address as a QR for
-  // its send screen scanner (on phones the wallet is on this same device)
-  if (!matchMedia('(pointer: coarse)').matches) {
-    import('https://esm.sh/qrcode@1.5.4?bundle').then(m => {
-      const cv = $('fundQr');
-      if (!cv) return;  // the funding UI may already be gone
-      cv.hidden = false;
-      return m.default.toCanvas(cv, addr, { width: 172, margin: 2 });
-    }).catch(() => { const cv = $('fundQr'); if (cv) cv.hidden = true; });
-  }
   $('fundCancelBtn').onclick = async () => {
-    const bal = await window.WALLETS.addrHtr(addr).catch(() => 0);
-    if (bal > 0) {
-      sessionNote('Coin already arrived at this key; finishing the setup\u2026');
+    const st = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`])
+      .catch(() => ({}));
+    if (st[`get_delegate("${addr}")`] || (st[`get_session_fund("${addr}")`] || 0) > 0) {
+      sessionNote('The offer already landed on-chain; finishing the setup\u2026');
       return;
     }
     localStorage.removeItem(SESSION_LS);
     fundingCancelled = true;
-    sessionNote('Session key discarded. Nothing was sent.');
+    sessionNote('Session key discarded. Nothing was approved.');
   };
 }
 
-async function awaitFunding(addr, rounds, need) {
+// the offer lives in contract state, so the wait survives app switches and
+// reloads: poll the escrow (or an already-completed binding) until it shows
+async function awaitOffer(addr, rounds, need) {
   fundingCancelled = false;
   for (let i = 0; i < rounds; i++) {
     if (fundingCancelled) return false;
-    if (await window.WALLETS.addrHtr(addr).catch(() => 0) >= need) return true;
+    try {
+      const st = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`]);
+      if (st[`get_delegate("${addr}")`] || (st[`get_session_fund("${addr}")`] || 0) >= need) return true;
+    } catch { /* transient read failure; keep waiting */ }
     await new Promise(r => setTimeout(r, 3000));
   }
-  return (await window.WALLETS.addrHtr(addr).catch(() => 0)) >= need;
+  return false;
+}
+
+// the session key's first promptless act: bind to the offering main wallet
+// and withdraw the escrowed float in the same tx
+async function bindSession(sw, addr) {
+  const q = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`]);
+  if (q[`get_delegate("${addr}")`]) return; // an earlier half-run already bound it
+  const escrow = q[`get_session_fund("${addr}")`] || 0;
+  const { hash } = await sw.executeNano('accept_session', [],
+    escrow > 0 ? [{ type: 'withdrawal', token: HTR, amount: escrow, address: addr }] : []);
+  await waitForExecution(hash, () => {});
 }
 
 async function resumeSession() {
@@ -2140,46 +2072,47 @@ async function resumeSession() {
   try {
     const saved = JSON.parse(raw);
     if (saved.funding) {
-      resumeFundingWait(saved);  // background: never blocks boot or wallet restore
+      resumeOfferWait(saved);  // background: never blocks boot or wallet restore
       return;
     }
     const sw = await openSessionWallet(saved.words, saved.mainAddr);
     S.wallet = sw;
     S.addr = sw.address;
     await silentRefresh();
-    reclaimBanner();
   } catch (e) {
     console.warn('session resume failed:', e);
   }
 }
 
-async function resumeFundingWait(saved) {
+async function resumeOfferWait(saved) {
   try {
     const need = saved.funding;
     const addr = saved.addr
       || await window.WALLETS.SessionWallet.addressFor(saved.words);
-    if ((await window.WALLETS.addrHtr(addr).catch(() => 0)) < need) {
-      ribbon('An unfinished session key awaits funding: open \u26a1 Promptless Play to finish or discard it');
-      const ok = await awaitFunding(addr, 600, need);
+    const st = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`])
+      .catch(() => ({}));
+    if (!st[`get_delegate("${addr}")`] && (st[`get_session_fund("${addr}")`] || 0) < need) {
+      ribbon('An unfinished session awaits its wallet approval: open \u26a1 QUICK PLAY to finish or discard it');
+      const ok = await awaitOffer(addr, 600, need);
       if (!ok) return;  // the key stays saved; the next visit tries again
     }
     if (S.sessionStarting || (S.wallet && S.wallet.mode === 'session')) return;
-    ribbon('Coin found; finishing your promptless session…');
+    ribbon('Offer found; finishing your session…');
     const sw = await openSessionWallet(saved.words, saved.mainAddr);
+    await bindSession(sw, addr);
     localStorage.setItem(SESSION_LS, JSON.stringify(
       { words: saved.words, mainAddr: saved.mainAddr, addr }));
     if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
     S.wallet = sw;
     S.addr = sw.address;
-    track('session_start', { funder: 'resumed-funding' });
-    ribbon('The funding arrived: your session is ready', 'level', 'coin');
+    track('session_start', { funder: 'resumed-offer' });
+    ribbon('The offer arrived: your session is ready', 'level', 'coin');
     $('overlay').hidden = true;
     await silentRefresh();
-    reclaimBanner();
   } catch (e) {
     // the record stays saved; syncing is retried on the next visit
-    ribbon('Your funded session key is safe; reload the game to finish the setup');
-    console.warn('resume funding failed:', e);
+    ribbon('Your session key is safe; reload the game to finish the setup');
+    console.warn('resume offer failed:', e);
   }
 }
 
@@ -2234,7 +2167,6 @@ async function disconnectWallet() {
   await S.wallet?.disconnect?.().catch(() => {});
   S.wallet = null; S.addr = null; S.htr = 0;
   S.ember = 0; S.wins = 0; S.prevWins = undefined; S.selected.clear();
-  S.lineage = null; S.emberLineageExtra = 0;
   for (const c of S.cards.values()) c.mine = false;
   localStorage.removeItem('gacha_wallet');
   $('overlay').hidden = true;

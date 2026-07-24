@@ -1,16 +1,20 @@
-// EmberfallArena v2.2 deployment + wallet-connect configuration (testnet-india)
+// EmberfallArena v4 deployment + wallet-connect configuration.
+// Currently pointed at the VALIDATED PLAYGROUND instance for development;
+// swap blueprint/nc ids (and network endpoints) when Hathor publishes v4
+// on testnet-india — see docs/v4-frontend-adaptation.md.
 window.GAME = {
   network: 'testnet', // hathor network name used by snap/walletconnect
-  blueprint: '0037896213a4cb7b1b28ae2116fa95a6bff066a6e19bc395eb9a18541f54717f',
-  nc: '0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587',
+  blueprint: '000f4ae9ea365e48bb925f847a12f5c279f29b869c5fe9a676a16e2fcbf9f383',
+  nc: '00b03c0a36422c638bb08cbcba5312e230ba187685adfb45f9b4b43778de67db',
   market: {
-    blueprint: '007498c9c4c667c973c2800948aabb34b2cd8eed60c1d801bce2bda2e96fd33b',
-    nc: '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b',
+    blueprint: '008eb85b7b08806a12702cff4efe4465e13bb11b13642bc1292a31bcda641d56',
+    nc: '009f30fef812c57f31db2aff102b859012dc8efca4af9dfb50aa08d7f85ae9c1',
   },
+  cardUnit: 1, // base units per card (v4 mints 1-unit NFTs; legacy realms used 100)
+  // live economy (cents). Fusion fees are tiered by station in the contract.
+  economy: { sessionFund: 1000, fusionFees: [5, 10, 50, 100] },
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.
-  // live economy (cents). Fusion fees are tiered by station in the v2.2 contract.
-  economy: { sessionFund: 1000, fusionFees: [5, 10, 50, 100] },
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
   // the session wallet talks to the fullnode through our own domain (Caddy
   // proxies /hnode, websocket included): phones that balk at connecting to

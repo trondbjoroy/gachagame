@@ -21,8 +21,11 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-const NC = '0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587';
-const MKT_NC = process.env.MARKET_NC || '0033955d297d8460c9a839d242537e71d8fed7c92880305d0c8312055bf5c48b';
+// v4 ids — the validated playground instance for now; swap to the
+// testnet-india ids (env or here) when Hathor publishes v4
+const NC = process.env.NC || '00b03c0a36422c638bb08cbcba5312e230ba187685adfb45f9b4b43778de67db';
+const MKT_NC = process.env.MARKET_NC || '009f30fef812c57f31db2aff102b859012dc8efca4af9dfb50aa08d7f85ae9c1';
+const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
 const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
@@ -95,14 +98,19 @@ function deny(res, code, msg) {
 
 // ---- execute-body validation ----
 // per-method spec: expected actions and arg validators
-const cardDep = a => a.type === 'deposit' && HEX64.test(a.token || '') && a.amount === 100;
-const cardWd = a => a.type === 'withdrawal' && HEX64.test(a.token || '') && a.amount === 100 && a.address === playerAddress;
+const cardDep = a => a.type === 'deposit' && HEX64.test(a.token || '') && a.amount === CARD_AMT;
+const cardWd = a => a.type === 'withdrawal' && HEX64.test(a.token || '') && a.amount === CARD_AMT && a.address === playerAddress;
 const htrDep = a => a.type === 'deposit' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_DEPOSIT;
 const htrWd = a => a.type === 'withdrawal' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR && a.address === playerAddress;
 const isHex64 = v => typeof v === 'string' && HEX64.test(v);
 const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_EMBER;
+// v4 duel stances: -1 classic accept, 0..2 sealed/open stances
+const isStance = v => Number.isInteger(v) && v >= -1 && v <= 2;
+const isCommit = v => v === '' || (typeof v === 'string' && HEX64.test(v));
+const isSalt = v => typeof v === 'string' && v.length <= 64;
+const isSide = v => v === 0 || v === 1;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR;
@@ -124,8 +132,11 @@ const METHODS = {
   unstake:       { actions: [cardWd],          args: [] },
   claim_ember:   { actions: [],                args: [isHex64] },
   fuse:          { actions: [cardDep, cardDep], args: [] },
-  create_duel:   { actions: [cardDep],         args: [isSmallInt] },
-  accept_duel:   { actions: [cardDep],         args: [isSmallInt] },
+  create_duel:   { actions: [cardDep],         args: [isSmallInt, isCommit] },
+  accept_duel:   { actions: [cardDep],         args: [isSmallInt, isStance] },
+  reveal_duel:   { actions: [],                args: [isSmallInt, isStance, isSalt] },
+  claim_forfeit: { actions: [],                args: [isSmallInt] },
+  place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
   temper:        { actions: [],                args: [isHex64, isSmallInt] },
   claim_favor:   { actions: [htrWd],           args: [] },
@@ -147,6 +158,24 @@ let writNames = null;     // writ id -> name, fetched once
 function feedPush(ev) {
   feed.unshift(ev);
   if (feed.length > FEED_MAX) feed.length = FEED_MAX;
+}
+
+// v4 delegation: txs are signed by session keys, but the player IS the main
+// address the contract resolves them to — attribute feed events (and name
+// claims) accordingly. Cached: delegation is permanent once bound.
+const delegateCache = new Map(); // address -> main address | null (not a session)
+async function delegateOf(addr) {
+  if (delegateCache.has(addr)) return delegateCache.get(addr);
+  let main = null;
+  try {
+    const call = `get_delegate("${addr}")`;
+    const d = await (await fetch(
+      `${NODE}/nano_contract/state?id=${NC}&calls[]=${encodeURIComponent(call)}`)).json();
+    main = (d.calls && d.calls[call] && d.calls[call].value) || null;
+  } catch { return null; } // transient: do not cache a failed lookup
+  if (delegateCache.size > 20_000) delegateCache.clear();
+  delegateCache.set(addr, main);
+  return main;
 }
 
 async function loadWritNames() {
@@ -234,7 +263,10 @@ async function pollFeed() {
         .filter(Boolean);
       for (const ev of minted) ev.card = queue.shift() || null;
     }
-    for (const ev of fresh) feedPush(ev);
+    for (const ev of fresh) {
+      if (ev.who) ev.who = (await delegateOf(ev.who)) || ev.who;
+      feedPush(ev);
+    }
     if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
   } catch { /* the feed is decorative; next poll retries */ }
 }
@@ -402,7 +434,15 @@ async function handleNameClaim(res, body) {
   }
   if (name === null && heir === null) return deny(res, 400, 'no name claim in that transaction');
   const signers = new Set((tx.inputs || []).map(i => i.decoded && i.decoded.address).filter(Boolean));
-  if (!signers.has(wanted)) return deny(res, 403, 'claim was not signed by that address');
+  if (!signers.has(wanted)) {
+    // v4 delegation: a session key may claim FOR its main identity — the
+    // on-chain delegate binding is the proof the two are the same hand
+    let delegated = false;
+    for (const s of signers) {
+      if ((await delegateOf(s)) === wanted) { delegated = true; break; }
+    }
+    if (!delegated) return deny(res, 403, 'claim was not signed by that address');
+  }
 
   if (heir !== null) {
     // the signer hands their own name to another address (session -> wallet)
