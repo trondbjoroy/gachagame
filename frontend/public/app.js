@@ -20,11 +20,15 @@ const short = u => u.slice(0, 10) + '…';
 // banner name if the address claimed one, else the shortened address
 const who = a => (a && S.names[a]) || short(a || '?');
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/;
-const myAddrs = () => new Set([S.addr, S.wallet?.mainAddr].filter(Boolean));
-const isMine = a => !!a && myAddrs().has(a);
 // v4 delegation: contract state (renown, Ember, wins, cards' staker/pending)
-// is keyed by the MAIN identity; a session acts as the wallet that offered it
-const identity = () => S.wallet?.mainAddr || S.addr;
+// is keyed by the MAIN identity; a session acts as the wallet that offered it.
+// A LEGACY session (pre-v4, no on-chain binding) acts as its own address only:
+// its saved mainAddr means nothing to the contract, and trusting it offers
+// buttons on state the current key cannot touch (voided txs).
+const myAddrs = () => new Set(
+  [S.addr, S.wallet?.unbound ? null : S.wallet?.mainAddr].filter(Boolean));
+const isMine = a => !!a && myAddrs().has(a);
+const identity = () => (S.wallet?.unbound ? S.addr : S.wallet?.mainAddr) || S.addr;
 const $ = id => document.getElementById(id);
 
 const S = {
@@ -2027,7 +2031,11 @@ function syncSessionBox() {
   $('setNameBtn').textContent = S.addr && S.names[identity()] ? 'CHANGE NAME' : 'SET NAME';
   if (!S.sessionStarting) {
     $('sessionInfo').textContent = inSession
-      ? 'Session active: every action signs instantly, no popups. Ending the session returns all champions and coin to ' + short(S.wallet.mainAddr) + '.'
+      ? (S.wallet.unbound
+        ? 'Legacy session from the old realm: it plays as its own identity. Ending it '
+          + 'sweeps everything to ' + short(S.wallet.mainAddr) + ' as saved back then; '
+          + 'only end it if that address is yours.'
+        : 'Session active: every action signs instantly, no popups. Ending the session returns all champions and coin to ' + short(S.wallet.mainAddr) + '.')
       : 'Fund a session key held in this browser and play without approval popups. End the session anytime to return everything to your wallet.';
   }
 }
@@ -2266,8 +2274,19 @@ async function resumeSession() {
       return;
     }
     const sw = await openSessionWallet(saved.words, saved.mainAddr);
+    // a session saved before the v4 cutover has no on-chain binding: it can
+    // only play as its own address, never as the saved main
+    try {
+      const c = `get_delegate("${sw.address}")`;
+      sw.unbound = !(await batchCalls([c]))[c];
+    } catch { sw.unbound = false; /* transient read: assume bound, reads self-correct */ }
     S.wallet = sw;
     S.addr = sw.address;
+    if (sw.unbound) {
+      ribbon('This quick play session is from the old realm and plays as its own '
+        + 'identity; see ⚡ QUICK PLAY before ending it.');
+      track('session_unbound_legacy', {});
+    }
     await silentRefresh();
   } catch (e) {
     console.warn('session resume failed:', e);
