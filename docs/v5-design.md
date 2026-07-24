@@ -80,6 +80,17 @@ skill ladder; the season stays the activity sprint).
 - Unrated 1v1/3v3 challenges stay exactly as today.
 - UI: rating on the wallet chip area and standings; ranked panel in Arena
   with queue status; ladder page ranks by rating (season page unchanged).
+- Implemented (phase 3): `_elo_transfer` rounds the standard K=32
+  expected-score formula in 25-point buckets: transfer = 16 -/+
+  min(|gap|//25, 8), which matches the exact formula to the point inside
+  the 200-rating band. Zero-sum with a 100 ladder floor (the loser stops
+  at 100 and the winner takes only what moved). Queue slots are
+  tombstoned and reused (`ranked_active`), one entry per identity per
+  tier, ratings read fresh at match time. Rated fights use
+  `_fight_rounds`/`_after_fight` (abilities apply; Plunderer waives the
+  rake as in 1v1; no stances, no side bets). `adopt_rating(who, r)`
+  (owner, 100..10000) migrates ladders. Views: `get_rating`,
+  `get_ranked_waiting(tier)`, `is_ranked_queued(tier, addr)`.
 
 ## 4. Guilds and the world boss
 

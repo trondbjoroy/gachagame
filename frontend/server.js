@@ -112,6 +112,8 @@ const isSalt = v => typeof v === 'string' && v.length <= 64;
 // v5 squads: a lane order is a permutation of the digits 012
 const isPerm = v => typeof v === 'string' && v.length === 3
   && v.includes('0') && v.includes('1') && v.includes('2');
+// v5 ranked: wager tiers 0 (free) / 1 (25 Ember) / 2 (100 Ember)
+const isTier = v => v === 0 || v === 1 || v === 2;
 const isSide = v => v === 0 || v === 1;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
@@ -140,6 +142,8 @@ const METHODS = {
   create_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt, isHex64] },
   accept_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt] },
   reveal_squad:  { actions: [],                args: [isSmallInt, isPerm, isSalt] },
+  join_ranked:   { actions: [cardDep],         args: [isTier] },
+  leave_ranked:  { actions: [],                args: [isTier] },
   claim_forfeit: { actions: [],                args: [isSmallInt] },
   place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
@@ -292,6 +296,24 @@ async function enrichEvent(ev, tries) {
     ev.result = await delveVerdict(ev.who, ev.lone === true);
     return true;
   }
+  if (ev.kind === 'ranked') {
+    // still in the queue -> the join just queued; gone -> it settled (or was
+    // left, which arrives as its own event) and the wins diff names the result
+    const cq = `is_ranked_queued(${ev.tier}, "${ev.who}")`;
+    const cw = `get_wins("${ev.who}")`;
+    const v = await feedViews([cq, cw]);
+    if (v[cq] === true) {
+      ev.result = 'queued';
+      winsCache.set(ev.who, v[cw] || 0);
+      return true;
+    }
+    const had = winsCache.has(ev.who);
+    const now = v[cw] || 0;
+    const dW = now - (winsCache.get(ev.who) ?? now);
+    winsCache.set(ev.who, now);
+    ev.result = !had ? null : dW > 0 ? 'won' : 'lost';
+    return true;
+  }
   return true;
 }
 
@@ -355,6 +377,10 @@ function feedEventFor(tx) {
       return { ts, kind: 'answer', who, squad: true, id: Number(args[0]) || 0 };
     case 'reveal_squad':
       return { ts, kind: 'reveal', who, squad: true, id: Number(args[0]) || 0 };
+    case 'join_ranked':
+      return { ts, kind: 'ranked', who, tier: Number(args[0]) || 0 };
+    case 'leave_ranked':
+      return { ts, kind: 'ranked_leave', who, tier: Number(args[0]) || 0 };
     case 'claim_forfeit':
       return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
     case 'cancel_duel':

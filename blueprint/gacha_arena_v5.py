@@ -28,6 +28,15 @@ class EmberfallArena(Blueprint):
       round-set with abilities (no stances in squads); two lanes take the
       pot. Same wager/rake/bets/forfeit machinery as 1v1 on shared ids.
 
+    v5 phase 3 (rated ladder):
+    - rating per identity, starting 1000; standard Elo K=32 expected-score
+      transfer in 25-point buckets (exact-rounded within the matchmaking
+      band), zero-sum with a 100-point ladder floor.
+    - join_ranked(tier) deposits one card + a fixed wager (0/25/100 Ember).
+      A compatible waiter (same tier, rating within 200) means the joining
+      tx settles the fight at once; otherwise the joiner waits and
+      leave_ranked refunds. No stances, no bets, no choosing opponents.
+
 v4.1 additions (2026-07-24, pending publish):
     - accept_duel refuses a caller with a bet riding on that duel
       (closes bet-then-accept: place_bet already refused participants,
@@ -116,6 +125,11 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     ember_ledger: dict[Address, Amount]      # closed in-game points, never a token
     duel_card: dict[int, TokenUid]
     duel_kind: dict[int, int]                # 0 single (default), 1 squad
+    rating: dict[Address, int]               # rated ladder, absent = 1000
+    ranked_n: dict[int, int]                 # tier -> queue slots ever used
+    ranked_addr: dict[int, Address]          # tier*4096+slot
+    ranked_card: dict[int, TokenUid]
+    ranked_active: dict[int, bool]
     squad_card: dict[int, TokenUid]          # duel_id*4+slot, challenger
     squad_acceptor_card: dict[int, TokenUid] # duel_id*4+lane, acceptor
     duel_wager: dict[int, Amount]
@@ -207,6 +221,11 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.ember_ledger = {}
         self.duel_card = {}
         self.duel_kind = {}
+        self.rating = {}
+        self.ranked_n = {}
+        self.ranked_addr = {}
+        self.ranked_card = {}
+        self.ranked_active = {}
         self.squad_card = {}
         self.squad_acceptor_card = {}
         self.duel_wager = {}
@@ -689,6 +708,13 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.card_attrs[uid] = attrs
         if card_wins > 0:
             self.card_wins[uid] = card_wins
+
+    @public
+    def adopt_rating(self, ctx: Context, who: Address, rating_pts: int) -> None:
+        self._check_owner(ctx)
+        if rating_pts < 100 or rating_pts > 10_000:
+            raise NCFail("rating out of range")
+        self.rating[who] = rating_pts
 
     @public
     def adopt_player(self, ctx: Context, who: Address, ember: Amount,
@@ -1283,6 +1309,143 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         )
         return winning_side
 
+    def _rating_of(self, who: Address) -> int:
+        return self.rating.get(who, 1000)
+
+    def _ranked_wager(self, tier: int) -> Amount:
+        if tier == 0:
+            return 0
+        if tier == 1:
+            return 25
+        if tier == 2:
+            return 100
+        raise NCFail("unknown ranked tier")
+
+    def _elo_transfer(self, winner_r: int, loser_r: int) -> int:
+        """Standard Elo K=32 expected-score transfer, rounded to integers
+        in 25-point buckets (matches the exact formula to the point within
+        the 200-rating matchmaking band)."""
+        adv = winner_r - loser_r
+        if adv >= 0:
+            bucket = adv // 25
+            if bucket > 8:
+                bucket = 8
+            return 16 - bucket
+        bucket = (-adv) // 25
+        if bucket > 8:
+            bucket = 8
+        return 16 + bucket
+
+    @public(allow_deposit=True)
+    def join_ranked(self, ctx: Context, tier: int) -> int:
+        """Enter the rated queue with one card and the tier's fixed wager
+        (0/25/100 Ember). If a compatible opponent waits (rating within
+        200), this tx settles the fight at once: returns 1. Otherwise you
+        wait in the queue: returns 0."""
+        who = self._player(ctx)
+        wager = self._ranked_wager(tier)
+        action = self._single_card_deposit(ctx)
+        my_card = action.token_uid
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        my_r = self._rating_of(who)
+        n = self.ranked_n.get(tier, 0)
+        free = -1
+        match_i = -1
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if not self.ranked_active.get(key, False):
+                if free < 0:
+                    free = i
+                i += 1
+                continue
+            other = self.ranked_addr[key]
+            if other == who:
+                raise NCFail("you are already in this queue")
+            d = self._rating_of(other) - my_r
+            if match_i < 0 and -200 <= d <= 200:
+                match_i = i
+            i += 1
+        if match_i < 0:
+            slot = free if free >= 0 else n
+            key = tier * 4096 + slot
+            self.ranked_addr[key] = who
+            self.ranked_card[key] = my_card
+            self.ranked_active[key] = True
+            if slot == n:
+                self.ranked_n[tier] = n + 1
+            self.log.info('ranked_queued', tier=tier)
+            self.syscall.emit_event(
+                f'{{"event":"ranked_queued","tier":{tier}}}'.encode()
+            )
+            return 0
+        key = tier * 4096 + match_i
+        self.ranked_active[key] = False
+        opponent = self.ranked_addr[key]
+        opp_card = self.ranked_card[key]
+        packed = self._fight_rounds(opp_card, my_card, -1, -1)
+        opp_won = packed // 1000 >= 2
+        winner = opponent if opp_won else who
+        loser = who if opp_won else opponent
+        winner_card = opp_card if opp_won else my_card
+        loser_card = my_card if opp_won else opp_card
+        self._after_fight(winner_card, loser_card, wager)
+        pot = 2 * wager
+        rake = pot * self._rake_bps() // 10_000
+        if self.card_ability.get(winner_card, 0) == 8:
+            rake = 0                           # the Plunderer carries it all off
+        self._credit_ember(winner, pot - rake)
+        self._credit_ember(self.owner, rake)
+        self.wins[winner] = self.wins.get(winner, 0) + 1
+        if wager > 0:
+            self._earn_renown(who, 5, ctx.block.timestamp)
+            self._earn_renown(opponent, 5, ctx.block.timestamp)
+            self.renown[winner] = self.renown.get(winner, 0) + 10
+            self._trial_hit(winner, 2, ctx.block.timestamp)
+        self._grant_deed(winner, 4)
+        if self.wins[winner] >= 10:
+            self._grant_deed(winner, 5)
+        w_r = self._rating_of(winner)
+        l_r = self._rating_of(loser)
+        move = self._elo_transfer(w_r, l_r)
+        if l_r - move < 100:
+            # ladder floor: the loser never drops below 100; the winner
+            # takes only what actually moved (stays zero-sum)
+            move = l_r - 100
+            if move < 0:
+                move = 0
+        self.rating[winner] = w_r + move
+        self.rating[loser] = l_r - move
+        self.pending[my_card] = who
+        self.pending[opp_card] = opponent
+        self.log.info('ranked_settled', tier=tier,
+                      joiner_won=0 if opp_won else 1, move=move)
+        self.syscall.emit_event(
+            f'{{"event":"ranked","tier":{tier},"move":{move}}}'.encode()
+        )
+        return 1
+
+    @public
+    def leave_ranked(self, ctx: Context, tier: int) -> None:
+        """Step out of the rated queue: the wager returns to your ledger
+        and your champion goes to pending for claiming."""
+        who = self._player(ctx)
+        n = self.ranked_n.get(tier, 0)
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if self.ranked_active.get(key, False) and self.ranked_addr[key] == who:
+                self.ranked_active[key] = False
+                self._credit_ember(who, self._ranked_wager(tier))
+                self.pending[self.ranked_card[key]] = who
+                self.log.info('ranked_left', tier=tier)
+                return
+            i += 1
+        raise NCFail("you are not in this queue")
+
     @public(allow_deposit=True)
     def accept_duel(self, ctx: Context, duel_id: int, stance: int) -> int:
         """Answer a challenge. Classic duels (no commitment) demand
@@ -1711,6 +1874,32 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             status = "closed"
         card = self.duel_card[duel_id]
         return f"{status}|{card.hex()}|{self.duel_wager[duel_id]}"
+
+    @view
+    def get_rating(self, who: Address) -> int:
+        return self.rating.get(who, 1000)
+
+    @view
+    def get_ranked_waiting(self, tier: int) -> int:
+        n = self.ranked_n.get(tier, 0)
+        count = 0
+        i = 0
+        while i < n:
+            if self.ranked_active.get(tier * 4096 + i, False):
+                count += 1
+            i += 1
+        return count
+
+    @view
+    def is_ranked_queued(self, tier: int, who: Address) -> bool:
+        n = self.ranked_n.get(tier, 0)
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if self.ranked_active.get(key, False) and self.ranked_addr[key] == who:
+                return True
+            i += 1
+        return False
 
     @view
     def get_duel_kind(self, duel_id: int) -> int:

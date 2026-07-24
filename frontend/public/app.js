@@ -151,7 +151,15 @@ async function loadContract(touch) {
     const my = await batchCalls([`get_ember_balance("${me}")`, `get_wins("${me}")`,
       `get_renown("${me}")`, `get_vigil_streak("${me}")`, `get_favor_owed("${me}")`,
       'get_favor_pool()', `get_shards("${me}")`, `get_gauntlet_cleared("${me}")`,
-      `get_trial_done("${me}", ${now})`]);
+      `get_trial_done("${me}", ${now})`, `get_rating("${me}")`,
+      'get_ranked_waiting(0)', 'get_ranked_waiting(1)', 'get_ranked_waiting(2)',
+      `is_ranked_queued(0, "${me}")`, `is_ranked_queued(1, "${me}")`,
+      `is_ranked_queued(2, "${me}")`]);
+    S.ranked = {
+      rating: my[`get_rating("${me}")`] || 1000,
+      waiting: [0, 1, 2].map(t => my[`get_ranked_waiting(${t})`] || 0),
+      queued: [0, 1, 2].map(t => my[`is_ranked_queued(${t}, "${me}")`] === true),
+    };
     S.shards = my[`get_shards("${me}")`] || 0;
     S.cleared = my[`get_gauntlet_cleared("${me}")`] || 0;
     S.trialDoneChain = my[`get_trial_done("${me}", ${now})`] === true;
@@ -339,6 +347,14 @@ function feedLine(ev) {
     case 'duel_cancel': return `${name} withdrew challenge #${ev.id}`;
     case 'bet': return `${name} backed the ${ev.side === 1 ? 'defender' : 'challenger'} in duel #${ev.id}`
       + (ev.amount ? ` · ${fmtEmber(ev.amount)}` : '');
+    case 'ranked': {
+      const tier = ev.tier === 2 ? '100-Ember' : ev.tier === 1 ? '25-Ember' : 'free';
+      if (ev.result === 'won') return `<b>${name}</b> won a ${tier} ranked match and climbed the ladder`;
+      if (ev.result === 'lost') return `${name} lost a ${tier} ranked match`;
+      if (ev.result === 'queued') return `${name} entered the ${tier} ranked queue`;
+      return `${name} fought on the ranked ladder`;
+    }
+    case 'ranked_leave': return `${name} stepped out of the ranked queue`;
     case 'delve': return `${name} started a delve`;
     case 'delve_done': {
       const r = ev.result;
@@ -876,6 +892,27 @@ function render() {
   }).join('');
   $('duelEmpty').hidden = duelsShown.length > 0;
 
+  // the rated ladder: queue-on-join matchmaking within 200 rating
+  const rk = S.ranked;
+  $('rankedIntro').innerHTML = S.addr && rk
+    ? `Rated 1v1: one champion, a fixed wager, no stances and no picking
+       opponents. The ladder matches you against a rival within 200 rating;
+       the second joiner's move settles the fight on the spot. Win to climb,
+       lose to fall. Your rating: <b>${rk.rating}</b>.`
+    : 'Connect a wallet to fight rated matches.';
+  const RANKED_TIERS = ['Free spar', '25 Ember', '100 Ember'];
+  $('rankedBox').innerHTML = (S.addr && rk) ? [0, 1, 2].map(t => `
+    <div class="duel open">
+      <span class="duel-emoji">🏆</span>
+      <div class="duel-info"><b>${RANKED_TIERS[t]}</b>
+        <div class="duel-meta">${rk.waiting[t]} waiting${rk.queued[t]
+          ? ' · your champion holds the line' : ''}</div>
+      </div>
+      ${rk.queued[t]
+        ? `<button class="mini-btn alt" data-rankedleave="${t}">LEAVE</button>`
+        : `<button class="mini-btn" data-rankedjoin="${t}">JOIN</button>`}
+    </div>`).join('') : '';
+
   // the Gauntlet: writs of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
   $('gauntletIntro').textContent = S.addr
@@ -1014,6 +1051,11 @@ function bindListActions() {
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
   bind('[data-acceptsquad]', id => openPick('squadAccept', Number(id)));
   bind('[data-revealsquad]', id => revealSquad(Number(id)));
+  bind('[data-rankedjoin]', t => openPick('ranked', Number(t)));
+  bind('[data-rankedleave]', async t => {
+    const h = await doTx('Leaving the ranked queue', 'leave_ranked', [Number(t)], []);
+    if (h) ribbon('You stepped out of the queue: wager returned, champion in Collection to claim', '', 'coin');
+  });
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
   bind('[data-revealduel]', id => revealDuel(Number(id)));
   bind('[data-forfeitduel]', id => doTx('Calling the forfeit', 'claim_forfeit', [Number(id)], []));
@@ -2096,6 +2138,33 @@ function openPick(kind, ref) {
     $('overlay').hidden = false;
     return;
   }
+  if (kind === 'ranked') {
+    const wager = [0, 25, 100][ref] || 0;
+    if (wager > S.ember) {
+      $('errTitle').textContent = 'Not enough Ember for this tier';
+      $('errMsg').textContent = `This ranked tier wagers ${fmtEmber(wager)}. You have ${fmtEmber(S.ember)}.`;
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    const roster = [...S.cards.values()].filter(c => c.mine);
+    if (!roster.length) {
+      $('errTitle').textContent = 'No cards';
+      $('errMsg').textContent = 'You hold no champion. Summon or claim one first.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    $('pickTitle').textContent = `Join the ranked queue (${wager ? fmtEmber(wager) + ' wager' : 'free spar'}): choose your champion`;
+    $('pickWagerRow').hidden = true;
+    const sr = $('pickStanceRow');
+    if (sr) sr.hidden = true;
+    $('pickCards').innerHTML = roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
   const mine = [...S.cards.values()].filter(c => c.mine);
   if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
   $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge: choose your champion & wager' : `Answer challenge #${ref}: choose your champion`;
@@ -2129,6 +2198,33 @@ function openPick(kind, ref) {
 async function submitPick(uid) {
   const { kind, ref } = pickCtx;
   $('overlay').hidden = true;
+  if (kind === 'ranked') {
+    const winsBefore = S.wins;
+    const hash = await doTx('Entering the ranked ladder', 'join_ranked', [ref], [depAct(uid, CARD_AMT)]);
+    if (!hash) return;
+    // doTx refreshed state: either we now wait in the queue, or a waiting
+    // rival was in band and the fight already settled
+    if (S.ranked?.queued?.[ref]) {
+      $('duelResult').innerHTML = `<div class="duel-banner">🏆 IN THE QUEUE</div>
+        <div class="wait-sub">Your champion holds the line. When a rival within
+        200 rating joins this tier, their move settles the fight on the spot:
+        watch your rating and the World Feed. LEAVE in the Arena returns your
+        wager and champion.</div>`;
+    } else {
+      const won = S.wins > winsBefore;
+      const home = S.wallet?.mode === 'session'
+        ? 'Your champion is already on the way home.'
+        : 'Your champion returns; claim them under Collection.';
+      $('duelResult').innerHTML = (won
+        ? `<div class="duel-banner win">🏆 RATED VICTORY</div><div class="wait-sub">A rival was waiting and fell. Your rating stands at <b>${S.ranked?.rating ?? '?'}</b>. ${home}</div>`
+        : `<div class="duel-banner lose">💀 RATED DEFEAT</div><div class="wait-sub">A rival was waiting and took the fight. Your rating stands at <b>${S.ranked?.rating ?? '?'}</b>. ${home}</div>`);
+      window.sfx?.('clash');
+      setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+    }
+    showStage('stageDuel');
+    $('overlay').hidden = false;
+    return;
+  }
   if (kind === 'writ') {
     await fightWrit(uid, ref.writ, ref.tier);
     return;
