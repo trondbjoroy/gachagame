@@ -9,16 +9,16 @@ from hathor import (
 
 @export
 class EmberfallArena(Blueprint):
-    """Onchain gacha game: pull cards, farm GEMS, fuse, duel, campaign
+    """Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     against the Gauntlet, delve, grow veterans, and dress cards.
 
     Core (v2.2/v3, unchanged):
     - pull(): pay HTR, a fresh 1-of-1 card token is minted from the
       template catalog of an RNG-rolled rarity tier (0..3) with an
       RNG-rolled power split into three aspects (valor/bulwark/guile).
-    - stake()/unstake()/claim_gems(): staked cards accrue GEMS
+    - stake()/unstake()/claim_ember(): staked cards accrue Ember
       (a contract-created reward token) per minute by tier.
-    - temper(): pay gems to raise one aspect of a staked card (half
+    - temper(): pay ember to raise one aspect of a staked card (half
       burned, half Crown), capped per station.
     - the Gauntlet (add_writ/fight_writ), delves, veterancy, cosmetics,
       the daily trial, renown w/ vigil multiplier, deed bounties, the
@@ -31,7 +31,7 @@ class EmberfallArena(Blueprint):
       float in the same tx (one prompt); the session key accepts in its
       first promptless tx and withdraws the escrow. From then on every
       game method resolves the session caller to the main address, so
-      gems, cards, renown, deeds, streaks and custody all accrue to one
+      ember, cards, renown, deeds, streaks and custody all accrue to one
       identity across session and non-session play. Registration
       requires both keys to sign (one tx each), so nobody can bind an
       address they do not control. revoke_session() reclaims an
@@ -61,7 +61,7 @@ class EmberfallArena(Blueprint):
 
     v4 — spectator side-bets:
     - place_bet(): while a duel is open (or awaiting reveal) any
-      non-participant may back a side with gems, up to 50 bets per
+      non-participant may back a side with ember, up to 50 bets per
       duel. Winners split the losing pool pro-rata (5% of it raked to
       the Crown); if a duel is cancelled or nobody backed the winning
       side, every bet is refunded. Bets never earn renown.
@@ -74,7 +74,6 @@ class EmberfallArena(Blueprint):
     owner: Address
     pull_price: Amount
     weights: list[int]
-    gems_uid: TokenUid
     card_unit: int
     templates_0: list[str]
     templates_1: list[str]
@@ -86,10 +85,7 @@ class EmberfallArena(Blueprint):
     pending: dict[TokenUid, Address]
     staked: dict[TokenUid, Address]
     stake_since: dict[TokenUid, int]
-    gems_ledger: dict[Address, Amount]
-    gem_liability: Amount                    # sum of all ledger balances; the HTR
-                                             # reserve needed to back every gem that
-                                             # could still be withdrawn (see helpers)
+    ember_ledger: dict[Address, Amount]      # closed in-game points, never a token
     duel_card: dict[int, TokenUid]
     duel_wager: dict[int, Amount]
     duel_challenger: dict[int, Address]
@@ -123,9 +119,9 @@ class EmberfallArena(Blueprint):
     shards_ledger: dict[Address, int]
     trial_done: dict[Address, int]           # last UTC day completed
     card_cosmetics: dict[TokenUid, int]      # frame | tint<<8 | epithet<<16
-    mine_rates: list[int]                    # gems-cents/min by tier
-    fusion_fees: list[int]                   # gems-cents by tier fused
-    temper_bases: list[int]                  # first-rite gems-cents by tier
+    mine_rates: list[int]                    # Embers/min by tier
+    fusion_fees: list[int]                   # Embers by tier fused
+    temper_bases: list[int]                  # first-rite Embers by tier
     # ---- v4 ----
     delegate: dict[Address, Address]         # session -> main
     session_offer: dict[Address, Address]    # session -> offering main
@@ -160,8 +156,8 @@ class EmberfallArena(Blueprint):
         if card_unit != 1 and card_unit != 100:
             raise NCFail("card_unit must be 1 (NFT spec) or 100 (legacy)")
         action = ctx.get_single_action(HATHOR_TOKEN_UID)
-        if not isinstance(action, NCDepositAction) or action.amount < 2:
-            raise NCFail("deposit at least 0.02 HTR to create the GEMS token")
+        if not isinstance(action, NCDepositAction) or action.amount < 1:
+            raise NCFail("deposit at least 0.01 HTR to seed the reserve")
         self.owner = owner
         self.pull_price = pull_price
         self.weights = [weight_common, weight_rare, weight_epic, weight_legendary]
@@ -176,8 +172,7 @@ class EmberfallArena(Blueprint):
         self.pending = {}
         self.staked = {}
         self.stake_since = {}
-        self.gems_ledger = {}
-        self.gem_liability = 0
+        self.ember_ledger = {}
         self.duel_card = {}
         self.duel_wager = {}
         self.duel_challenger = {}
@@ -226,15 +221,10 @@ class EmberfallArena(Blueprint):
         self.bet_side = {}
         self.bet_amt = {}
         self.bet_pool = {}
-        # deposited HTR beyond the GEMS-creation collateral seeds the reserve
-        self.proceeds = action.amount - 1
-        self.gems_uid = self.syscall.create_deposit_token(
-            token_name="Emberfall Gems",
-            token_symbol="GEMS",
-            amount=100,
-            mint_authority=True,
-            melt_authority=False,
-        )
+        # the deposited HTR seeds the reserve (favor pool + operator revenue).
+        # Ember is a closed in-game points balance, never a token — there is
+        # nothing to mint here.
+        self.proceeds = action.amount
 
     # ------------------------------------------------------------------
     # Tuning tables (settable within bounds)
@@ -267,7 +257,7 @@ class EmberfallArena(Blueprint):
     def _max_bets(self) -> int:
         return 50  # per duel; also bounds the settlement loop
 
-    # deed bits and their one-time GEMS-cent bounties
+    # deed bits and their one-time Ember bounties
     # 0 first summoning, 1 first rite of union, 2 forge a highlord,
     # 3 forge a sovereign, 4 first trial won, 5 ten trials won,
     # 6 first writ felled, 7 a Black writ felled
@@ -503,18 +493,13 @@ class EmberfallArena(Blueprint):
         capped = streak if streak < 7 else 7
         self.renown[who] = self.renown.get(who, 0) + base + base * (capped - 1) // 6
 
-    # every gems-ledger write goes through these two so gem_liability stays
-    # exactly the sum of all ledger balances. Ledger-to-ledger transfers (duel
-    # pots, rakes) net to zero; only creation (mining, rewards) and destruction
-    # (burns, withdrawals) move the total. That total is the HTR the reserve
-    # must protect from owner withdrawal (see withdraw_proceeds).
-    def _credit_gems(self, who: Address, amount: int) -> None:
-        self.gems_ledger[who] = self.gems_ledger.get(who, 0) + amount
-        self.gem_liability += amount
+    # Ember is closed in-game points: earned, spent and transferred entirely
+    # inside the contract, never minted as a token and never withdrawable.
+    def _credit_ember(self, who: Address, amount: int) -> None:
+        self.ember_ledger[who] = self.ember_ledger.get(who, 0) + amount
 
-    def _debit_gems(self, who: Address, amount: int) -> None:
-        self.gems_ledger[who] = self.gems_ledger.get(who, 0) - amount
-        self.gem_liability -= amount
+    def _debit_ember(self, who: Address, amount: int) -> None:
+        self.ember_ledger[who] = self.ember_ledger.get(who, 0) - amount
 
     def _grant_deed(self, who: Address, bit: int) -> None:
         mask = self.deed_flags.get(who, 0)
@@ -524,11 +509,11 @@ class EmberfallArena(Blueprint):
         self.deed_flags[who] = mask | flag
         bounty = self._deed_bounty(bit)
         if bounty > 0:
-            self._credit_gems(who, bounty)
+            self._credit_ember(who, bounty)
 
     # the daily trial: one act per UTC day is the Crown's ask; the first
-    # matching act per player pays bonus renown and a small gems bounty.
-    # kinds: 0 pull, 1 stake, 2 duel win, 3 fuse, 4 temper, 5 claim gems,
+    # matching act per player pays bonus renown and a small ember bounty.
+    # kinds: 0 pull, 1 stake, 2 duel win, 3 fuse, 4 temper, 5 claim ember,
     #        6 recall after 8h+, 7 writ won
     def _trial_today(self, now: int) -> int:
         return ((now // 86400) * 5 + 2) % 8
@@ -541,7 +526,7 @@ class EmberfallArena(Blueprint):
             return
         self.trial_done[who] = day
         self.renown[who] = self.renown.get(who, 0) + [5, 3, 5, 10, 3, 3, 3, 3][kind]
-        self._credit_gems(who, 5)
+        self._credit_ember(who, 5)
 
     # ------------------------------------------------------------------
     # Operator
@@ -618,15 +603,9 @@ class EmberfallArena(Blueprint):
         action = ctx.get_single_action(HATHOR_TOKEN_UID)
         if not isinstance(action, NCWithdrawalAction):
             raise NCFail("expected an HTR withdrawal")
-        # the owner draws only genuine revenue: HTR backing outstanding gems is
-        # ring-fenced (100 gems-cents : 1 HTR-cent), so a withdrawal can never
-        # strand players holding unredeemed gems
-        reserve = (self.gem_liability + 99) // 100
-        available = self.proceeds - reserve
-        if available < 0:
-            available = 0
-        if action.amount > available:
-            raise NCFail(f"only {available} withdrawable; {reserve} reserved to back gems")
+        # Ember is never withdrawable, so proceeds is pure operator revenue
+        if action.amount > self.proceeds:
+            raise NCFail(f"only {self.proceeds} available")
         self.proceeds -= action.amount
 
     # ------------------------------------------------------------------
@@ -658,13 +637,13 @@ class EmberfallArena(Blueprint):
             self.card_wins[uid] = card_wins
 
     @public
-    def adopt_player(self, ctx: Context, who: Address, gems: Amount,
+    def adopt_player(self, ctx: Context, who: Address, ember: Amount,
                      renown_pts: int, deeds: int, wins_n: int, pulls: int) -> None:
         self._check_owner(ctx)
-        if gems < 0 or renown_pts < 0 or deeds < 0 or wins_n < 0 or pulls < 0:
+        if ember < 0 or renown_pts < 0 or deeds < 0 or wins_n < 0 or pulls < 0:
             raise NCFail("bad player data")
-        if gems > 0:
-            self._credit_gems(who, gems)
+        if ember > 0:
+            self._credit_ember(who, ember)
         if renown_pts > 0:
             self.renown[who] = self.renown.get(who, 0) + renown_pts
         if deeds > 0:
@@ -725,7 +704,7 @@ class EmberfallArena(Blueprint):
         del self.pending[action.token_uid]
 
     # ------------------------------------------------------------------
-    # Staking / GEMS farming
+    # Staking / Ember mining
     # ------------------------------------------------------------------
 
     @public(allow_deposit=True)
@@ -738,14 +717,14 @@ class EmberfallArena(Blueprint):
         self._trial_hit(who, 1, ctx.block.timestamp)
 
     @public
-    def claim_gems(self, ctx: Context, card: TokenUid) -> Amount:
+    def claim_ember(self, ctx: Context, card: TokenUid) -> Amount:
         who = self._player(ctx)
         if self.staked.get(card) != who:
             raise NCFail("not your staked card")
         self._check_not_delving(card)
-        gems = self._accrue(card, ctx.block.timestamp)
+        ember = self._accrue(card, ctx.block.timestamp)
         self._trial_hit(who, 5, ctx.block.timestamp)
-        return gems
+        return ember
 
     @public(allow_withdrawal=True)
     def unstake(self, ctx: Context) -> None:
@@ -765,7 +744,7 @@ class EmberfallArena(Blueprint):
     @public
     def temper(self, ctx: Context, card: TokenUid, aspect: int) -> Amount:
         """Raise one aspect of a champion toiling in the Mines, for a
-        gems fee that grows each tempering. Half burned, half to the
+        ember fee that grows each tempering. Half burned, half to the
         Crown."""
         who = self._player(ctx)
         if self.staked.get(card) != who:
@@ -779,11 +758,11 @@ class EmberfallArena(Blueprint):
         if tempers >= self._temper_cap(tier):
             raise NCFail("this champion can be tempered no further")
         cost = self._temper_cost(tier, tempers)
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < cost:
-            raise NCFail(f"tempering costs {cost} GEMS-cents")
-        self._debit_gems(who, cost)
-        self._credit_gems(self.owner, cost // 2)
+            raise NCFail(f"tempering costs {cost} Ember")
+        self._debit_ember(who, cost)
+        self._credit_ember(self.owner, cost // 2)
         bonus = 1 + self.syscall.rng.randbelow(3)
         valor = self._attr_at(attrs, 0)
         bulwark = self._attr_at(attrs, 1)
@@ -805,33 +784,6 @@ class EmberfallArena(Blueprint):
         )
         return cost
 
-    @public(allow_withdrawal=True)
-    def withdraw_gems(self, ctx: Context) -> None:
-        who = self._player(ctx)
-        action = ctx.get_single_action(self.gems_uid)
-        if not isinstance(action, NCWithdrawalAction):
-            raise NCFail("expected a GEMS withdrawal")
-        balance = self.gems_ledger.get(who, 0)
-        if action.amount > balance:
-            raise NCFail(f"only {balance} GEMS-cents in your ledger")
-        held = self.syscall.get_balance_before_current_call(token_uid=self.gems_uid)
-        if action.amount > held:
-            shortfall = action.amount - held
-            collateral = (shortfall + 99) // 100
-            if collateral > self.proceeds:
-                raise NCFail("reward pool needs more pulls to back this withdrawal")
-            self.proceeds -= collateral
-            self.syscall.mint_tokens(token_uid=self.gems_uid, amount=shortfall)
-        self._debit_gems(who, action.amount)
-
-    @public(allow_deposit=True)
-    def deposit_gems(self, ctx: Context) -> None:
-        who = self._player(ctx)
-        action = ctx.get_single_action(self.gems_uid)
-        if not isinstance(action, NCDepositAction):
-            raise NCFail("expected a GEMS deposit")
-        self._credit_gems(who, action.amount)
-
     # ------------------------------------------------------------------
     # Delves: lock a staked champion for a spell, roll a fortune
     # ------------------------------------------------------------------
@@ -843,7 +795,7 @@ class EmberfallArena(Blueprint):
             raise NCFail("only a champion of yours toiling in the Mines may delve")
         if card in self.delve_since:
             raise NCFail("already delving")
-        # bank the mining so far; the delve itself earns no gems
+        # bank the mining so far; the delve itself earns no ember
         self._accrue(card, ctx.block.timestamp)
         self.delve_since[card] = ctx.block.timestamp
         self.syscall.emit_event(f'{{"event":"delve","token":"{card.hex()}"}}'.encode())
@@ -866,15 +818,15 @@ class EmberfallArena(Blueprint):
         base = self.delve_seconds * self._rate_per_min(tier) // 60
         roll = self.syscall.rng.randbelow(1000)
         outcome = 0
-        gems = 0
+        ember = 0
         shards = 0
         if roll < 1:
             outcome = 4
-            gems = base * 10
+            ember = base * 10
             shards = 25
         elif roll < 50:
             outcome = 3
-            gems = base * 5
+            ember = base * 5
         elif roll < 200:
             outcome = 2
             shards = tier + 1
@@ -882,13 +834,13 @@ class EmberfallArena(Blueprint):
             outcome = 0
         else:
             outcome = 1
-            gems = base * 3 // 2
-        if gems > 0:
-            self._credit_gems(who, gems)
+            ember = base * 3 // 2
+        if ember > 0:
+            self._credit_ember(who, ember)
         if shards > 0:
             self.shards_ledger[who] = self.shards_ledger.get(who, 0) + shards
         self.syscall.emit_event(
-            f'{{"event":"delve_done","outcome":{outcome},"gems":{gems},'
+            f'{{"event":"delve_done","outcome":{outcome},"ember":{ember},'
             f'"shards":{shards}}}'.encode()
         )
         return outcome
@@ -943,12 +895,12 @@ class EmberfallArena(Blueprint):
         entry = self._fusion_fee(card_tier) // 5
         if entry < 1:
             entry = 1
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < entry:
-            raise NCFail(f"the writ demands an entry of {entry} GEMS-cents")
-        self._debit_gems(who, entry)
+            raise NCFail(f"the writ demands an entry of {entry} Ember")
+        self._debit_ember(who, entry)
         # half to the Crown; the other half simply ceases to exist
-        self._credit_gems(self.owner, entry // 2)
+        self._credit_ember(self.owner, entry // 2)
 
         mult = [1, 2, 4][tier]
         boss = [self.writ_valor[writ] * mult,
@@ -987,7 +939,7 @@ class EmberfallArena(Blueprint):
             if not (card_bits & bit):
                 self.card_cleared[card] = card_bits | bit
                 reward += entry * 10
-            self._credit_gems(who, reward)
+            self._credit_ember(who, reward)
             self.renown[who] = self.renown.get(who, 0) + 6
             self._grant_xp(card, 2)
             self._trial_hit(who, 7, now)
@@ -1005,7 +957,7 @@ class EmberfallArena(Blueprint):
 
     @public
     def buy_cosmetic(self, ctx: Context, card: TokenUid, slot: int, value: int) -> None:
-        """Slots: 0 frame (gems), 1 tint (gems), 2 epithet (shards).
+        """Slots: 0 frame (ember), 1 tint (ember), 2 epithet (shards).
         Value 0 clears a slot for free."""
         who = self._player(ctx)
         if self.staked.get(card) != who and self.pending.get(card) != who:
@@ -1024,12 +976,12 @@ class EmberfallArena(Blueprint):
                 self.shards_ledger[who] = have - price
             else:
                 price = 25 * (tier + 1)
-                have = self.gems_ledger.get(who, 0)
+                have = self.ember_ledger.get(who, 0)
                 if have < price:
-                    raise NCFail(f"this adornment costs {price} GEMS-cents")
-                self._debit_gems(who, price)
-                # cosmetics gems are a pure sink: half Crown, half gone
-                self._credit_gems(self.owner, price // 2)
+                    raise NCFail(f"this adornment costs {price} Ember")
+                self._debit_ember(who, price)
+                # cosmetics ember are a pure sink: half Crown, half gone
+                self._credit_ember(self.owner, price // 2)
         packed = self.card_cosmetics.get(card, 0)
         if slot == 0:
             packed = (packed & ~0xFF) | value
@@ -1065,10 +1017,10 @@ class EmberfallArena(Blueprint):
         if tier >= 3:
             raise NCFail("legendary cards cannot be fused")
         fee = self._fusion_fee(tier)
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < fee:
-            raise NCFail(f"fusion costs {fee} GEMS-cents (earn them by staking)")
-        self._debit_gems(who, fee)
+            raise NCFail(f"fusion costs {fee} Ember (earn it by mining)")
+        self._debit_ember(who, fee)
         bonus = (self.card_power[a.token_uid] + self.card_power[b.token_uid]) // 10
         # the parents stay in contract custody forever: no melt authority
         # needed, adopted cards fuse too, and the lineage survives on chain
@@ -1109,10 +1061,10 @@ class EmberfallArena(Blueprint):
         if len(commitment) != 0 and len(commitment) != 32:
             raise NCFail("commitment must be empty or 32 bytes")
         action = self._single_card_deposit(ctx)
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < wager:
-            raise NCFail("not enough GEMS in your ledger for this wager")
-        self._debit_gems(who, wager)
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
         duel_id = self.next_duel_id
         self.next_duel_id = duel_id + 1
         self.duel_card[duel_id] = action.token_uid
@@ -1137,10 +1089,10 @@ class EmberfallArena(Blueprint):
             raise NCFail("cannot duel yourself")
         action = self._single_card_deposit(ctx)
         wager = self.duel_wager[duel_id]
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < wager:
-            raise NCFail("not enough GEMS in your ledger for this wager")
-        self._debit_gems(who, wager)
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
         self.duel_open[duel_id] = False
         self.duel_acceptor[duel_id] = who
         self.duel_acceptor_card[duel_id] = action.token_uid
@@ -1191,8 +1143,8 @@ class EmberfallArena(Blueprint):
         wager = self.duel_wager[duel_id]
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
-        self._credit_gems(acceptor, pot - rake)
-        self._credit_gems(self.owner, rake)
+        self._credit_ember(acceptor, pot - rake)
+        self._credit_ember(self.owner, rake)
         self.wins[acceptor] = self.wins.get(acceptor, 0) + 1
         if wager > 0:
             self.renown[acceptor] = self.renown.get(acceptor, 0) + 10
@@ -1276,8 +1228,8 @@ class EmberfallArena(Blueprint):
 
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
-        self._credit_gems(winner, pot - rake)
-        self._credit_gems(self.owner, rake)
+        self._credit_ember(winner, pot - rake)
+        self._credit_ember(self.owner, rake)
         self.wins[winner] = self.wins.get(winner, 0) + 1
         if wager > 0:
             # unwagered sparring earns no renown and no trial credit
@@ -1306,13 +1258,13 @@ class EmberfallArena(Blueprint):
             raise NCFail("duel is not open")
         if self.duel_challenger[duel_id] != who:
             raise NCFail("not your duel")
-        self._credit_gems(who, self.duel_wager[duel_id])
+        self._credit_ember(who, self.duel_wager[duel_id])
         self.pending[self.duel_card[duel_id]] = who
         self.duel_open[duel_id] = False
         self._settle_bets(duel_id, -1)
 
     # ------------------------------------------------------------------
-    # Side-bets: spectators back a duelist with gems
+    # Side-bets: spectators back a duelist with ember
     # ------------------------------------------------------------------
 
     @public
@@ -1327,7 +1279,7 @@ class EmberfallArena(Blueprint):
         if side != 0 and side != 1:
             raise NCFail("side must be 0 (challenger) or 1 (acceptor)")
         if amount < 1:
-            raise NCFail("bet at least 1 GEMS-cent")
+            raise NCFail("bet at least 1 Ember")
         if not self.duel_open.get(duel_id, False) \
                 and not self.duel_reveal_pending.get(duel_id, False):
             raise NCFail("the wagering is closed for this duel")
@@ -1336,10 +1288,10 @@ class EmberfallArena(Blueprint):
         count = self.bet_count.get(duel_id, 0)
         if count >= self._max_bets():
             raise NCFail("the ring around this duel is full")
-        balance = self.gems_ledger.get(who, 0)
+        balance = self.ember_ledger.get(who, 0)
         if balance < amount:
-            raise NCFail("not enough GEMS in your ledger for this bet")
-        self._debit_gems(who, amount)
+            raise NCFail("not enough Ember in your ledger for this bet")
+        self._debit_ember(who, amount)
         key = duel_id * 64 + count
         self.bet_addr[key] = who
         self.bet_side[key] = side
@@ -1368,7 +1320,7 @@ class EmberfallArena(Blueprint):
         prize_pool = 0
         if not refund and lose_pool > 0:
             rake = lose_pool * self._rake_bps() // 10_000
-            self._credit_gems(self.owner, rake)
+            self._credit_ember(self.owner, rake)
             prize_pool = lose_pool - rake
         i = 0
         while i < count:
@@ -1376,10 +1328,10 @@ class EmberfallArena(Blueprint):
             bettor = self.bet_addr[key]
             amount = self.bet_amt[key]
             if refund:
-                self._credit_gems(bettor, amount)
+                self._credit_ember(bettor, amount)
             elif self.bet_side[key] == winning_side:
                 payout = amount + amount * prize_pool // win_pool
-                self._credit_gems(bettor, payout)
+                self._credit_ember(bettor, payout)
             i += 1
         self.bet_count[duel_id] = 0
         self.bet_pool[duel_id * 2] = 0
@@ -1403,10 +1355,6 @@ class EmberfallArena(Blueprint):
     @view
     def get_pull_price(self) -> Amount:
         return self.pull_price
-
-    @view
-    def get_gems_uid(self) -> TokenUid:
-        return self.gems_uid
 
     @view
     def get_card_unit(self) -> int:
@@ -1453,7 +1401,7 @@ class EmberfallArena(Blueprint):
         return self.is_main.get(address, False)
 
     @view
-    def get_pending_gems(self, card: TokenUid, now: int) -> Amount:
+    def get_pending_ember(self, card: TokenUid, now: int) -> Amount:
         since = self.stake_since.get(card)
         if since is None:
             return 0
@@ -1463,8 +1411,8 @@ class EmberfallArena(Blueprint):
         return (now - since) * self._rate_per_min(tier) // 60
 
     @view
-    def get_gems_balance(self, address: Address) -> Amount:
-        return self.gems_ledger.get(address, 0)
+    def get_ember_balance(self, address: Address) -> Amount:
+        return self.ember_ledger.get(address, 0)
 
     @view
     def get_shards(self, address: Address) -> int:
@@ -1545,10 +1493,6 @@ class EmberfallArena(Blueprint):
     @view
     def get_proceeds(self) -> Amount:
         return self.proceeds
-
-    @view
-    def get_gem_liability(self) -> Amount:
-        return self.gem_liability
 
     @view
     def get_renown(self, address: Address) -> int:
@@ -1745,9 +1689,9 @@ class EmberfallArena(Blueprint):
     def _accrue(self, card: TokenUid, now: int) -> Amount:
         since = self.stake_since[card]
         tier = self.card_tier[card]
-        gems = (now - since) * self._rate_per_min(tier) // 60
-        if gems > 0:
+        ember = (now - since) * self._rate_per_min(tier) // 60
+        if ember > 0:
             staker = self.staked[card]
-            self._credit_gems(staker, gems)
+            self._credit_ember(staker, ember)
             self.stake_since[card] = now
-        return gems
+        return ember

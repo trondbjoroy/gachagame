@@ -175,9 +175,8 @@ r = post("/wallet/nano-contracts/create", {
 NC = r.get("hash")
 print("v4 contract:", NC, r.get("error", ""), flush=True)
 assert NC, r
-wait(lambda: ncstate("fields[]=gems_uid").get("success"), "contract confirmed")
-GEMS = ncstate("fields[]=gems_uid")["fields"]["gems_uid"]["value"]
-print("GEMS:", GEMS, flush=True)
+wait(lambda: call1("get_card_unit()") == 1, "contract confirmed")
+GEMS = "00"  # Ember is not a token; only HTR ('00') is excluded from the card diff
 check("card_unit stored", call1("get_card_unit()") == 1)
 
 # ------------------------------------------------------------- configure
@@ -325,7 +324,7 @@ SALT = "weaver-sees-all"
 commit = hashlib.sha3_256(f"{STANCE_C}:{SALT}".encode()).digest().hex()
 renown_pl1 = call1(f'get_renown("{PL}")')
 renown_op1 = call1(f'get_renown("{OP}")')
-gems = {a: call1(f'get_gems_balance("{a}")') for a in (PL, OP, BET, BET2)}
+gems = {a: call1(f'get_ember_balance("{a}")') for a in (PL, OP, BET, BET2)}
 print("gems before stance duel:", gems, flush=True)
 check("create stance duel (wager 20)",
       wait_exec(execute("create_duel", [20, commit], [dep_card(CHILD)],
@@ -359,7 +358,7 @@ check("wrong stance reveal refused",
 check("reveal settles the duel",
       wait_exec(execute("reveal_duel", [d1, STANCE_C, SALT], wallet="player", address=PL),
                 "reveal_duel #1"))
-gems_after = {a: call1(f'get_gems_balance("{a}")') for a in (PL, OP, BET, BET2)}
+gems_after = {a: call1(f'get_ember_balance("{a}")') for a in (PL, OP, BET, BET2)}
 print("gems after stance duel:", gems_after, flush=True)
 # who won? the winner's ledger moved +38 (pot 40 minus 5% rake) minus their 20 stake
 pl_delta = gems_after[PL] - gems[PL]
@@ -394,8 +393,8 @@ wait_exec(execute("claim_card", None, [wd_card(card_o, OP)], wallet="operator", 
           "reclaim card O after duel 1")
 
 # ------------------------------------------------- duel 2: cancel refunds all
-gems_bet = call1(f'get_gems_balance("{BET}")')
-gems_pl = call1(f'get_gems_balance("{PL}")')
+gems_bet = call1(f'get_ember_balance("{BET}")')
+gems_pl = call1(f'get_ember_balance("{PL}")')
 check("create duel to cancel",
       wait_exec(execute("create_duel", [10, commit], [dep_card(CHILD)],
                         wallet="player", address=PL), "create_duel #2"))
@@ -405,44 +404,36 @@ check("bet on the doomed duel",
                 "place_bet BET 15"))
 check("cancel_duel executed",
       wait_exec(execute("cancel_duel", [d2], wallet="player", address=PL), "cancel_duel #2"))
-check("wager returned on cancel", call1(f'get_gems_balance("{PL}")') == gems_pl)
-check("bet refunded on cancel", call1(f'get_gems_balance("{BET}")') == gems_bet)
+check("wager returned on cancel", call1(f'get_ember_balance("{PL}")') == gems_pl)
+check("bet refunded on cancel", call1(f'get_ember_balance("{BET}")') == gems_bet)
 wait_exec(execute("claim_card", None, [wd_card(CHILD, PL)], wallet="player", address=PL),
           "reclaim child after cancel")
 
-# --------------------------------------------- session withdraws main's gems
-gems_pl2 = call1(f'get_gems_balance("{PL}")')
-check("session withdraws from the main ledger",
-      wait_exec(execute("withdraw_gems", None,
-                        [{"type": "withdrawal", "token": GEMS, "amount": 5, "address": PL_S}],
-                        wallet="player", address=PL_S), "withdraw_gems via session"))
-check("main ledger debited", call1(f'get_gems_balance("{PL}")') == gems_pl2 - 5)
+# --------------------------------------------- Ember is closed points, not a token
+# a session spending Ember (temper) debits the MAIN identity's ledger, and Ember
+# can never be withdrawn from the contract
+ember_pl = call1(f'get_ember_balance("{PL}")')
+check("Ember has no withdraw_gems method",
+      not wait_exec(execute("withdraw_gems", None,
+                            [{"type": "withdrawal", "token": "00", "amount": 1, "address": PL_S}],
+                            wallet="player", address=PL_S), "withdraw_gems (gone)"))
+check("Ember still on the main ledger", call1(f'get_ember_balance("{PL}")') == ember_pl)
 
-# --------------------------------------------- M4: gem liability & reserve
-all_addrs = [OP, PL, PL_S, BET, BET2]
-ledger_sum = sum(call1(f'get_gems_balance("{a}")') for a in all_addrs)
-liability = call1('get_gem_liability()')
-check("gem_liability equals the sum of every ledger", liability == ledger_sum)
-
+# proceeds is now pure operator revenue (no reserve): owner withdraws it freely
 proceeds = call1('get_proceeds()')
-reserve = (liability + 99) // 100
-available = max(0, proceeds - reserve)
-check("owner may withdraw revenue above the reserve",
-      available == 0 or wait_exec(execute("withdraw_proceeds", None,
-          [{"type": "withdrawal", "token": "00", "amount": available, "address": OP}],
-          wallet="operator", address=OP), "withdraw available proceeds"))
-# with only the reserve left, any further withdrawal is refused
-check("owner cannot touch the gem reserve",
-      not wait_exec(execute("withdraw_proceeds", None,
-          [{"type": "withdrawal", "token": "00", "amount": 1, "address": OP}],
-          wallet="operator", address=OP), "over-withdraw into reserve"))
+if proceeds > 0:
+    check("owner withdraws all proceeds (no reserve)",
+          wait_exec(execute("withdraw_proceeds", None,
+              [{"type": "withdrawal", "token": "00", "amount": proceeds, "address": OP}],
+              wallet="operator", address=OP), "withdraw all proceeds"))
+    check("proceeds drained to zero", call1("get_proceeds()") == 0)
 
 # ------------------------------------------------------------------ done
 print("\n==== SUMMARY ====", flush=True)
 fails = [l for l, ok in checks if not ok]
 for l, ok in checks:
     print(("PASS" if ok else "FAIL"), l)
-print(f"\nblueprint: {BP}\ncontract:  {NC}\nGEMS:      {GEMS}\ncards:     {CARDS} child {CHILD}")
+print(f"\nblueprint: {BP}\ncontract:  {NC}\ncards:     {CARDS} child {CHILD}")
 if fails:
     raise SystemExit(f"{len(fails)} checks failed")
 print("ALL CHECKS PASSED")
