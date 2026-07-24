@@ -67,9 +67,13 @@ def execute(method, args=None, actions=None, wallet="operator", address=None):
     if actions is not None:
         body["data"]["actions"] = actions
     # the wallet occasionally refuses to build a tx right after new tokens
-    # confirm (transient; the same call succeeds moments later) — retry
+    # confirm, or stalls past the HTTP timeout (transient; the same call
+    # succeeds moments later) — retry both shapes
     for attempt in range(4):
-        r = post("/wallet/nano-contracts/execute", body, wallet)
+        try:
+            r = post("/wallet/nano-contracts/execute", body, wallet)
+        except OSError as e:
+            r = {"error": f"transport: {e}"}
         if r.get("hash"):
             return r
         print(f"submit retry {attempt + 1} for {method}: {json.dumps(r)[:300]}", flush=True)
@@ -366,11 +370,13 @@ op_delta = gems_after[OP] - gems[OP]
 challenger_won = pl_delta > op_delta
 winner = "challenger(PL)" if challenger_won else "acceptor(OP)"
 print("winner:", winner, "pl_delta:", pl_delta, "op_delta:", op_delta, flush=True)
-# OP is also the contract owner: when OP wins they additionally collect the
-# duel rake (+2), the side-bet rake (+2), the first-win deed bounty (+25 if
-# fresh) and the daily-trial bonus (+5 if today's trial is a duel win)
+# OP is also the contract owner, so rakes land on OP's ledger WHOEVER wins:
+# the duel rake (5% of pot 40 = 2) and the side-bet rake (5% of the losing
+# pool: 1 when PL wins over BET2's 30, 2 when OP wins over BET's 40). A
+# winner may also collect the first-win deed bounty (+25 if fresh) and the
+# daily-trial bonus (+5 if today's trial is a duel win).
 check("duel pot ledger math",
-      (pl_delta, op_delta) == (18, -20) if challenger_won
+      (pl_delta - 18 in (0, 5, 25, 30) and op_delta == -20 + 2 + 1) if challenger_won
       else (pl_delta == -20 and op_delta - 18 in (4, 9, 29, 34)))
 check("wagered duel paid renown", call1(f'get_renown("{PL}")') > renown_pl1
       and call1(f'get_renown("{OP}")') > renown_op1)
