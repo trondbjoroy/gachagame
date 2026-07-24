@@ -21,10 +21,9 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-// v4 ids — the validated playground instance for now; swap to the
-// testnet-india ids (env or here) when Hathor publishes v4
-const NC = process.env.NC || '00b03c0a36422c638bb08cbcba5312e230ba187685adfb45f9b4b43778de67db';
-const MKT_NC = process.env.MARKET_NC || '009f30fef812c57f31db2aff102b859012dc8efca4af9dfb50aa08d7f85ae9c1';
+// v4 ids on testnet-india (launched 2026-07-24; see scripts/v4_ids.json)
+const NC = process.env.NC || '00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd';
+const MKT_NC = process.env.MARKET_NC || '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb';
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
@@ -178,6 +177,120 @@ async function delegateOf(addr) {
   return main;
 }
 
+// ---- outcome inference: verdicts told from state diffs ----
+// Every nano method execution is its own tx (confirmed by the Hathor team),
+// but return values and emit_event payloads are not exposed by any node API,
+// so the feed infers verdicts by reading views around each settle-class tx:
+// a wins diff names the duel winner, Ember+shard deltas classify a delve
+// haul. Baselines are seeded on first sight (a first sighting stays silent);
+// only round-by-round rolls remain unknowable without the event queue.
+const winsCache = new Map();    // identity -> wins
+const emberCache = new Map();   // identity -> Ember ledger
+const shardsCache = new Map();  // identity -> shards
+
+async function feedViews(calls) {
+  const qs = calls.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
+  const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+  const out = {};
+  for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
+  return out;
+}
+
+// who took the settled duel: whichever party's win count moved since the
+// last poll. Sequential per-event so one poll with several settles still
+// attributes each; ambiguity (no baseline, both moved) stays silent.
+async function duelVerdict(id) {
+  const pc = `get_duel_challenger(${id})`, pa = `get_duel_acceptor(${id})`;
+  const p = await feedViews([pc, pa]);
+  const ch = p[pc], ac = p[pa];
+  if (!ch || !ac) return null;
+  const wc = `get_wins("${ch}")`, wa = `get_wins("${ac}")`;
+  const w = await feedViews([wc, wa]);
+  const nowC = w[wc] || 0, nowA = w[wa] || 0;
+  const hadC = winsCache.has(ch), hadA = winsCache.has(ac);
+  const dC = nowC - (winsCache.get(ch) ?? nowC);
+  const dA = nowA - (winsCache.get(ac) ?? nowA);
+  winsCache.set(ch, nowC);
+  winsCache.set(ac, nowA);
+  // exactly one of the two won, so a single baseline decides by elimination
+  if (!hadC && !hadA) return null;
+  if (dC > 0 && (!hadA || dA <= 0)) return { winner: ch, loser: ac };
+  if (dA > 0 && (!hadC || dC <= 0)) return { winner: ac, loser: ch };
+  if (hadC && dC === 0 && !hadA) return { winner: ac, loser: ch };
+  if (hadA && dA === 0 && !hadC) return { winner: ch, loser: ac };
+  return null;
+}
+
+// a pre-settlement sighting is a free baseline: challenges and sealed
+// answers both happen before any wins move
+async function seedWins(addr) {
+  if (!addr || winsCache.has(addr)) return;
+  const c = `get_wins("${addr}")`;
+  try { winsCache.set(addr, (await feedViews([c]))[c] || 0); } catch { /* next time */ }
+}
+
+// enrichment races the settle tx's own confirmation: a feed poll can see the
+// tx in history before its effect shows in state. Events that are not yet
+// decidable go on a small retry queue and are re-tried on later polls (the
+// feed serves the same object, so a late verdict still lights up the line).
+const BOOT_TS = Math.floor(Date.now() / 1000);
+const enrichQueue = []; // {ev, tries}
+
+async function enrichEvent(ev, tries) {
+  if (ev.kind === 'challenge') { await seedWins(ev.who); return true; }
+  if (ev.kind === 'answer') {
+    const c = `get_duel(${ev.id})`;
+    const status = ((await feedViews([c]))[c] || '').split('|')[0];
+    if (status === 'open') return tries >= 6;      // settle not visible yet
+    if (status === 'reveal') {
+      ev.sealed = true;
+      const cc = `get_duel_challenger(${ev.id})`;
+      await seedWins(ev.who);
+      await seedWins((await feedViews([cc]))[cc]);
+      return true;
+    }
+    ev.verdict = await duelVerdict(ev.id);
+    return true;
+  }
+  if (ev.kind === 'reveal') {
+    const c = `get_duel(${ev.id})`;
+    const status = ((await feedViews([c]))[c] || '').split('|')[0];
+    if (status === 'reveal') return tries >= 6;    // reveal tx not confirmed yet
+    ev.verdict = await duelVerdict(ev.id);
+    return true;
+  }
+  if (ev.kind === 'forfeit') {
+    const c = `get_duel_acceptor(${ev.id})`;
+    ev.winner = (await feedViews([c]))[c] || null;
+    return true;
+  }
+  if (ev.kind === 'delve_done') {
+    if (tries === 0) return false;                 // let the claim tx confirm first
+    ev.result = await delveVerdict(ev.who, ev.lone === true);
+    return true;
+  }
+  return true;
+}
+
+// delve haul from the claimer's Ember + shard deltas. `lone` marks whether
+// this was the identity's only tx in the poll window: amounts are only
+// trusted then (other txs also move the ledger).
+async function delveVerdict(identity, lone) {
+  const ce = `get_ember_balance("${identity}")`, cs = `get_shards("${identity}")`;
+  const v = await feedViews([ce, cs]);
+  const e = v[ce] || 0, s = v[cs] || 0;
+  const hadE = emberCache.has(identity), hadS = shardsCache.has(identity);
+  const dE = e - (emberCache.get(identity) ?? e);
+  const dS = s - (shardsCache.get(identity) ?? s);
+  emberCache.set(identity, e);
+  shardsCache.set(identity, s);
+  if (!hadE || !hadS) return null;
+  if (dS > 0 && dE > 0) return { haul: 'relic', shards: dS, ...(lone ? { ember: dE } : {}) };
+  if (dS > 0) return { haul: 'shards', shards: dS };
+  if (dE > 0) return { haul: 'ember', ...(lone ? { ember: dE } : {}) };
+  return { haul: 'dust' };
+}
+
 async function loadWritNames() {
   try {
     const qs = [...Array(10).keys()]
@@ -211,6 +324,15 @@ function feedEventFor(tx) {
       return { ts, kind: 'challenge', who, wager: Number(args[0]) || 0 };
     case 'accept_duel':
       return { ts, kind: 'answer', who, id: Number(args[0]) || 0 };
+    case 'reveal_duel':
+      return { ts, kind: 'reveal', who, id: Number(args[0]) || 0 };
+    case 'claim_forfeit':
+      return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
+    case 'cancel_duel':
+      return { ts, kind: 'duel_cancel', who, id: Number(args[0]) || 0 };
+    case 'place_bet':
+      return { ts, kind: 'bet', who, id: Number(args[0]) || 0,
+               side: Number(args[1]) || 0, amount: Number(args[2]) || 0 };
     case 'begin_delve':
       return { ts, kind: 'delve', who };
     case 'claim_delve':
@@ -232,6 +354,13 @@ async function pollFeed() {
   try {
     if (!writNames) await loadWritNames();
     if (!knownUids) knownUids = await contractUids();
+    // events waiting on their settle tx to confirm: retry, then give up
+    for (let i = enrichQueue.length - 1; i >= 0; i--) {
+      const q = enrichQueue[i];
+      try {
+        if (await enrichEvent(q.ev, q.tries) || ++q.tries > 8) enrichQueue.splice(i, 1);
+      } catch { if (++q.tries > 8) enrichQueue.splice(i, 1); }
+    }
     const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
     const fresh = [];
     const touched = new Set();
@@ -263,10 +392,36 @@ async function pollFeed() {
         .filter(Boolean);
       for (const ev of minted) ev.card = queue.shift() || null;
     }
+    // settle-class events get a verdict read from state (best-effort)
+    const perIdentity = new Map(); // identity -> tx count this window
     for (const ev of fresh) {
-      if (ev.who) ev.who = (await delegateOf(ev.who)) || ev.who;
+      if (ev.who) {
+        ev.who = (await delegateOf(ev.who)) || ev.who;
+        perIdentity.set(ev.who, (perIdentity.get(ev.who) || 0) + 1);
+      }
+    }
+    for (const ev of fresh) {
+      try {
+        if (ev.kind === 'delve_done') ev.lone = perIdentity.get(ev.who) === 1;
+        // pre-boot events are history replay: their baselines were seeded
+        // AFTER the settles they describe, so inference would misattribute —
+        // they keep plain lines (challenges still seed future baselines)
+        if (ev.ts >= BOOT_TS - 60) {
+          if (!(await enrichEvent(ev, 0))) enrichQueue.push({ ev, tries: 1 });
+        } else if (ev.kind === 'challenge') await seedWins(ev.who);
+      } catch { /* enrichment is decoration on decoration */ }
       feedPush(ev);
     }
+    // keep the Ember baseline honest for identities that acted this window
+    // (temper, wagers, bounties all move the ledger between delves)
+    try {
+      const idns = [...perIdentity.keys()].slice(0, 20);
+      if (idns.length) {
+        const calls = idns.map(a => `get_ember_balance("${a}")`);
+        const v = await feedViews(calls);
+        idns.forEach((a, i) => emberCache.set(a, v[calls[i]] || 0));
+      }
+    } catch { /* next poll reseeds */ }
     if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
   } catch { /* the feed is decorative; next poll retries */ }
 }

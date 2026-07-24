@@ -1,14 +1,13 @@
-// EmberfallArena v4 deployment + wallet-connect configuration.
-// Currently pointed at the VALIDATED PLAYGROUND instance for development;
-// swap blueprint/nc ids (and network endpoints) when Hathor publishes v4
-// on testnet-india — see docs/v4-frontend-adaptation.md.
+// EmberfallArena v4 deployment + wallet-connect configuration (testnet-india).
+// Blueprints published by Hathor 2026-07-24; instance seeded by launch_v4.py
+// (ids also in scripts/v4_ids.json).
 window.GAME = {
   network: 'testnet', // hathor network name used by snap/walletconnect
-  blueprint: '000f4ae9ea365e48bb925f847a12f5c279f29b869c5fe9a676a16e2fcbf9f383',
-  nc: '00b03c0a36422c638bb08cbcba5312e230ba187685adfb45f9b4b43778de67db',
+  blueprint: '00a9206990837c936369bb12711be4a5c3e96d736175e367579992d8f9d84e95',
+  nc: '00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd',
   market: {
-    blueprint: '008eb85b7b08806a12702cff4efe4465e13bb11b13642bc1292a31bcda641d56',
-    nc: '009f30fef812c57f31db2aff102b859012dc8efca4af9dfb50aa08d7f85ae9c1',
+    blueprint: '00356e32686ea741b1a9d027bdf00e3c1e3563553f0d7ae1c2921c91af816d81',
+    nc: '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb',
   },
   cardUnit: 1, // base units per card (v4 mints 1-unit NFTs; legacy realms used 100)
   // live economy (cents). Fusion fees are tiered by station in the contract.
@@ -18,13 +17,10 @@ window.GAME = {
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
   // the session wallet talks to the fullnode through our own domain (Caddy
   // proxies /hnode, websocket included): phones that balk at connecting to
-  // node1.testnet.hathor.network directly still sync fine this way.
-  // Off-domain (localhost dev) it talks straight to the dev realm's node and
-  // the local tx-mining service (the playground has no public one).
+  // the node directly still sync fine this way. Off-domain (localhost dev)
+  // it talks straight to the partner node.
   sessionNode: location.hostname.endsWith('emberfall.fun')
     ? location.origin + '/hnode/v1a/'
-    : 'https://node1.playground.testnet.hathor.network/v1a/',
-  txMiningUrl: location.hostname.endsWith('emberfall.fun')
-    ? null
-    : 'http://localhost:8035',
+    : 'https://node-partners.testnet.hathor.network/v1a/',
+  txMiningUrl: null, // testnet-india uses Hathor's public tx-mining service
 };

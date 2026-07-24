@@ -296,9 +296,31 @@ function feedLine(ev) {
     case 'challenge': return ev.wager > 0
       ? `${name} posted a duel · ${fmtEmber(ev.wager)} wager`
       : `${name} posted a free duel`;
-    case 'answer': return `${name} answered duel #${ev.id}`;
+    case 'answer': return ev.verdict
+      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)}`
+      : ev.sealed
+        ? `${name} answered sealed duel #${ev.id} · awaiting the reveal`
+        : `${name} answered duel #${ev.id}`;
+    case 'reveal': return ev.verdict
+      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)} at the reveal`
+      : `${name} revealed their stance in duel #${ev.id}`;
+    case 'forfeit': return ev.winner
+      ? `duel #${ev.id} forfeited · <b>${who(ev.winner)}</b> takes the pot`
+      : `duel #${ev.id} went unrevealed and was forfeited`;
+    case 'duel_cancel': return `${name} withdrew challenge #${ev.id}`;
+    case 'bet': return `${name} backed the ${ev.side === 1 ? 'defender' : 'challenger'} in duel #${ev.id}`
+      + (ev.amount ? ` · ${fmtEmber(ev.amount)}` : '');
     case 'delve': return `${name} started a delve`;
-    case 'delve_done': return `${name} returned from a delve`;
+    case 'delve_done': {
+      const r = ev.result;
+      if (!r) return `${name} returned from a delve`;
+      if (r.haul === 'relic') return `${name}'s delve found an ancient relic · +${r.shards} shards`
+        + (r.ember ? ` and ${fmtEmber(r.ember)}` : '');
+      if (r.haul === 'shards') return `${name}'s delve found relic shards · +${r.shards}`;
+      if (r.haul === 'ember') return `${name}'s delve struck a seam`
+        + (r.ember ? ` · +${fmtEmber(r.ember)}` : '');
+      return `${name}'s delve found only dust`;
+    }
     case 'temper': return `${name} tempered a champion`;
     case 'banner': return `<b>${ev.name}</b> joined the game`;
     default: return null;

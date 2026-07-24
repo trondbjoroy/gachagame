@@ -1,9 +1,19 @@
 # v4 frontend adaptation checklist
 
-The v4 blueprints are written and validated on **testnet-playground**; they are
-**not yet published on testnet-india**. Once the Hathor team publishes them,
-the frontend must be adapted to the new session-delegation model and the other
-v4 features before the game is repointed at v4.
+## LIVE ON TESTNET-INDIA (2026-07-24)
+
+Hathor published the v4 blueprints (byte-identical to our validated sources):
+
+| Contract | Blueprint (india) | Instance |
+| --- | --- | --- |
+| Arena | `00a9206990837c936369bb12711be4a5c3e96d736175e367579992d8f9d84e95` | `00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd` |
+| Market | `00356e32686ea741b1a9d027bdf00e3c1e3563553f0d7ae1c2921c91af816d81` | `000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb` |
+
+Seeded by `scripts/launch_v4.py`: pull 1 HTR, weights 60/30/9/1, delve 8h,
+card_unit=1, market fee_bps=500. Branch config/server point at this realm.
+PENDING USER DECISIONS: cutover of app.emberfall.fun (merge `v4-frontend`,
+deploy, restart) and migrate-vs-fresh (adopt_player/adopt_card from
+scripts/v3-snapshot.json).
 
 ## Validated v4 blueprints (playground)
 
