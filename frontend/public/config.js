@@ -18,8 +18,13 @@ window.GAME = {
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',
   // the session wallet talks to the fullnode through our own domain (Caddy
   // proxies /hnode, websocket included): phones that balk at connecting to
-  // node1.testnet.hathor.network directly still sync fine this way
+  // node1.testnet.hathor.network directly still sync fine this way.
+  // Off-domain (localhost dev) it talks straight to the dev realm's node and
+  // the local tx-mining service (the playground has no public one).
   sessionNode: location.hostname.endsWith('emberfall.fun')
     ? location.origin + '/hnode/v1a/'
-    : null,
+    : 'https://node1.playground.testnet.hathor.network/v1a/',
+  txMiningUrl: location.hostname.endsWith('emberfall.fun')
+    ? null
+    : 'http://localhost:8035',
 };

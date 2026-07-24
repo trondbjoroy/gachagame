@@ -1,7 +1,7 @@
 /* Emberfall session signer — a full Hathor light wallet on a throwaway seed,
    running entirely in the player's browser. Signs game transactions without
    wallet prompts; sweeps everything back to the main wallet on demand. */
-import { HathorWallet, Connection, walletUtils } from '@hathor/wallet-lib';
+import { HathorWallet, Connection, walletUtils, config as libConfig } from '@hathor/wallet-lib';
 import { P2PKH_ACCT_PATH } from '@hathor/wallet-lib/lib/constants';
 import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address';
 import { JSONBigInt } from '@hathor/wallet-lib/lib/utils/bigint';
@@ -25,6 +25,12 @@ const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessio
   || 'https://node-partners.testnet.hathor.network/v1a/';
 const NETWORK = 'testnet';
 const PIN = 'emberfall-session';
+
+// dev realms (testnet-playground) have no public tx-mining service: let the
+// game config point session txs at the local one
+if (typeof window !== 'undefined' && window.GAME && window.GAME.txMiningUrl) {
+  libConfig.setTxMiningUrl(window.GAME.txMiningUrl);
+}
 
 // address 0 straight from the seed words: pure key derivation, no network.
 // mirrors generateAccessDataFromSeed's path (acct path -> change 0 -> index)
@@ -156,6 +162,13 @@ async function open(words) {
       // change stays pinned to address 0 like every other session flow
       const tx = await wallet.sendManyOutputsTransaction(
         [{ type: 'data', data }], { pinCode: PIN, changeAddress: address });
+      return { hash: tx.hash };
+    },
+
+    // plain HTR transfer: session top-ups and the dev main-wallet adapter
+    async sendHtr(to, amount) {
+      const tx = await wallet.sendTransaction(to, BigInt(amount),
+        { pinCode: PIN, changeAddress: address });
       return { hash: tx.hash };
     },
 

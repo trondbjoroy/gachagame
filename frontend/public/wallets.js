@@ -388,7 +388,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=13';
+      el.src = 'session-lib.js?v=14';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
@@ -436,8 +436,25 @@ class SessionWallet {
   async tokenBalance(uid) { return this.handle.balance(uid); }
   async htrBalance() { return this.handle.balance('00'); }
   async sendData(data) { return this.handle.sendData(data); }
+  async sendHtr(to, amount) { return this.handle.sendHtr(to, amount); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
+}
+
+/* Dev-only MAIN wallet: a browser-held key that signs like a wallet would,
+   for realms (testnet-playground) that Snap/WalletConnect cannot reach.
+   Activated by ?devmain=1; never offered in the normal connect panel. */
+class DevMainWallet extends SessionWallet {
+  constructor(handle) {
+    super(handle, null);
+    this.mode = 'devmain';
+    this.label = 'Dev wallet (browser)';
+  }
+
+  static async open(words) {
+    await loadSessionLib();
+    return new DevMainWallet(await window.SessionKit.open(words));
+  }
 }
 
 // HTR balance of any address over plain HTTP: immune to the wallet's live
@@ -445,7 +462,7 @@ class SessionWallet {
 // prefetchSession warms the 3.7MB session bundle so the funding request can
 // publish the instant the player taps, before any app switch suspends us.
 window.WALLETS = {
-  SnapWallet, WcWallet, SessionWallet,
+  SnapWallet, WcWallet, SessionWallet, DevMainWallet,
   addrHtr: a => addrBalance(a, '00'),
   prefetchSession: () => loadSessionLib().catch(() => {}),
   prefetchWc: () => loadWcLib().catch(() => {}),

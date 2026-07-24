@@ -2074,7 +2074,7 @@ async function startSession() {
         + 'could not sync yet. Reload the game to finish the setup.');
     }
     sessionNote('Binding the session to your identity\u2026');
-    await bindSession(sw, addr);
+    sw = await bindSession(sw, addr, words);
     localStorage.setItem(SESSION_LS, JSON.stringify({ words, mainAddr: main.address, addr }));
     S.mainWallet = main;
     S.wallet = sw;
@@ -2208,14 +2208,30 @@ async function awaitOffer(addr, rounds, need) {
 }
 
 // the session key's first promptless act: bind to the offering main wallet
-// and withdraw the escrowed float in the same tx
-async function bindSession(sw, addr) {
+// and withdraw the escrowed float in the same tx. Seen in the wild: the very
+// first nano tx on a freshly-synced empty wallet can stall inside the lib —
+// a reopened wallet signs the same tx instantly, so time out and retry once.
+async function bindSession(sw, addr, words) {
   const q = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`]);
-  if (q[`get_delegate("${addr}")`]) return; // an earlier half-run already bound it
+  if (q[`get_delegate("${addr}")`]) return sw; // an earlier half-run already bound it
   const escrow = q[`get_session_fund("${addr}")`] || 0;
-  const { hash } = await sw.executeNano('accept_session', [],
-    escrow > 0 ? [{ type: 'withdrawal', token: HTR, amount: escrow, address: addr }] : []);
+  const actions = escrow > 0
+    ? [{ type: 'withdrawal', token: HTR, amount: escrow, address: addr }] : [];
+  const attempt = w => w.executeNano('accept_session', [], actions);
+  let hash;
+  try {
+    ({ hash } = await Promise.race([
+      attempt(sw),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('bind stalled')), 45_000)),
+    ]));
+  } catch (e) {
+    if (!words) throw e;
+    await sw.disconnect().catch(() => {});
+    sw = await openSessionWallet(words, sw.mainAddr);
+    ({ hash } = await attempt(sw));
+  }
   await waitForExecution(hash, () => {});
+  return sw;
 }
 
 async function resumeSession() {
@@ -2250,8 +2266,8 @@ async function resumeOfferWait(saved) {
     }
     if (S.sessionStarting || (S.wallet && S.wallet.mode === 'session')) return;
     ribbon('Offer found; finishing your session…');
-    const sw = await openSessionWallet(saved.words, saved.mainAddr);
-    await bindSession(sw, addr);
+    let sw = await openSessionWallet(saved.words, saved.mainAddr);
+    sw = await bindSession(sw, addr, saved.words);
     localStorage.setItem(SESSION_LS, JSON.stringify(
       { words: saved.words, mainAddr: saved.mainAddr, addr }));
     if (S.wallet) S.mainWallet = S.wallet;  // e.g. a silently restored pairing
@@ -2547,6 +2563,22 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
     // start the heavy wallet bundle downloads before anything else
     if (savedSession) window.WALLETS.prefetchSession();
     else if (savedPairing) window.WALLETS.prefetchWc();
+  }
+  // dev-only main wallet (?devmain=1): a browser-held key standing in for
+  // Snap/WC on realms those wallets cannot reach (testnet-playground)
+  if (new URLSearchParams(location.search).has('devmain') && !savedSession) {
+    try {
+      let words = localStorage.getItem('emberfall_dev_main');
+      if (!words) {
+        await new Promise(r => { window.WALLETS.prefetchSession(); r(); });
+        words = await window.WALLETS.SessionWallet.create();
+        localStorage.setItem('emberfall_dev_main', words);
+      }
+      const w = await window.WALLETS.DevMainWallet.open(words);
+      S.wallet = w;
+      S.addr = w.address;
+      console.log('dev main wallet:', w.address);
+    } catch (e) { console.warn('dev main failed:', e); }
   }
   // the session wallet syncs while the first realm read runs, not after it
   const sessionP = resumeSession();
