@@ -168,7 +168,17 @@ async function loadContract(touch) {
   }
 
   if (duelCount > 0) {
-    const ids = [...Array(duelCount).keys()];
+    // reads must not grow with realm history: fetch the newest window plus
+    // any older duel we already know to be live (open/awaiting reveal).
+    // An ancient live duel unseen by this client stays invisible until it
+    // re-enters via the feed or a fresh window; acceptable, and open duels
+    // rarely outlive the window anyway.
+    const FETCH_N = 30;
+    const start = Math.max(0, duelCount - FETCH_N);
+    const carry = (S.duels || [])
+      .filter(d => d.id < start && (d.status === 'open' || d.status === 'reveal'))
+      .map(d => d.id);
+    const ids = [...carry, ...Array.from({ length: duelCount - start }, (_, i) => start + i)];
     const dd = await batchCalls(ids.flatMap(i => [`get_duel(${i})`, `get_duel_challenger(${i})`]));
     S.duels = ids.map(i => {
       const [status, card, wager] = (dd[`get_duel(${i})`] || '||').split('|');
@@ -773,7 +783,14 @@ function render() {
   $('newDuelBtn').disabled = !S.addr;
   $('newDuelBtn').title = S.addr ? '' : 'Connect a wallet to issue a challenge';
   assignSeals();
-  const duelsShown = S.addr ? S.duels : S.duels.filter(d => d.status === 'open');
+  // live fights always show; settled ones age out (newest 5, plus your own
+  // challenges from the fetched window) so the Arena is not a graveyard
+  let settledSeen = 0;
+  const duelsShown = S.duels.filter(d => {
+    if (d.status === 'open' || d.status === 'reveal') return S.addr || d.status === 'open';
+    if (!S.addr) return false;
+    return ++settledSeen <= 5 || isMine(d.challenger);
+  });
   $('duelList').innerHTML = duelsShown.map(d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
