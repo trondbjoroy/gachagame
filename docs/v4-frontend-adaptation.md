@@ -26,34 +26,47 @@ one assertion bug (owner collects rakes even when losing) fixed in the harness.
 Re-run `scripts/v4_playground_test.py` + `scripts/v4_market_fee_test.py`
 against a fresh publish if the blueprints change again.
 
-## Work items when v4 lands on testnet-india
+## Work items — STATUS 2026-07-24 (branch `v4-frontend`)
 
-1. **Instantiate + seed** the v4 gacha (180 templates, writs) and the v4 market
-   (points at the v4 gacha, `card_unit=1`), then update `frontend/public/config.js`
-   with the new `blueprint` / `nc` / `gems` / `market` ids.
-2. **Session delegation flow** — replace the current fund-a-fresh-key session
-   with the v4 offer/accept:
-   - `offer_session(sessionAddr)` from the **main wallet**, escrowing the float
-     (one prompt).
-   - `accept_session()` from the **session key** (its first promptless tx),
-     which withdraws the escrow and binds `delegate[session] = main`.
-   - `revoke_session` to reclaim an unaccepted escrow.
-   - Drop the client-side lineage aggregation and banner-name auto-reclaim once
-     delegation is live — they become unnecessary (see §Acceptance).
-3. **card_unit = 1** — cards are 1 unit in v4, not 100. Audit every deposit/
-   withdrawal amount in `app.js` / `wallets.js` / `server.js` (`CARD_AMT`, the
-   proxy's `cardDep`/`cardWd` `amount === 100` checks, the market's unit) and
-   switch them to the realm's `card_unit`.
-4. **Duel stances (commit-reveal)** — the create-duel UI must generate a stance
-   + salt, store the salt locally, submit `sha3(stance:salt)` on create, and
-   prompt the reveal to settle. Show the 6h reveal window / forfeit affordance.
-5. **Spectator side-bets** — UI to place a bet on an open/awaiting-reveal duel
-   (bettor ≠ duelist), and to show pools + settle payouts/refunds.
-6. **park-not-melt fusion** — parents are parked in contract custody, not
-   burned; the collection/fusion copy and any "burned" wording must change.
-7. **Server proxy** — add the v4 methods (`offer_session`, `accept_session`,
-   `revoke_session`, stance/reveal/forfeit, `place_bet`, bet settlement) to the
-   `METHODS` allowlist in `server.js` with correct action/arg validators.
+Items 2–7 are DONE on branch `v4-frontend` and verified in a live browser
+acceptance run against the playground v4 instance (session identity parity
+held with zero drift; a sealed stance duel with a side bet settled through
+the UI; in-session actions accrued to the main address on-chain). Details:
+
+1. **Instantiate + seed** — REMAINS for launch day: run `scripts/launch_v4.py`
+   (env ARENA_BP/MARKET_BP/NODE_URL) once Hathor publishes on testnet-india,
+   then paste the ids it writes into `frontend/public/config.js` and
+   `frontend/server.js` (NC/MARKET_NC). Config currently points at the
+   playground instance for development.
+2. **Session delegation flow** — DONE: `startSession` sends `offer_session`
+   (one wallet approval, escrowing the float), the session key's first
+   promptless tx is `accept_session` (withdraws the escrow, binds); resume
+   paths poll contract state; lineage aggregation and name auto-reclaim
+   deleted. Known lib quirk handled: the FIRST nano tx on a freshly-synced
+   empty wallet can stall inside wallet-lib — `bindSession` times out at 45s
+   and retries once on a reopened wallet.
+3. **card_unit** — DONE: `CARD_AMT` reads `config.cardUnit` (1 on v4); the
+   proxy reads `CARD_UNIT` env (default 1).
+4. **Duel stances** — DONE: stance row in the pick dialog, browser-side
+   SHA3-256 seal (`sha3.js`, verified bit-exact vs hashlib), salts stored
+   before the tx and adopted onto duel ids after confirm, REVEAL and
+   CLAIM FORFEIT affordances with the 6h window.
+5. **Spectator side-bets** — DONE: BACK CHALLENGER/DEFENDER on open and
+   awaiting-reveal duels, live pool display; settlement is contract-side.
+6. **park-not-melt fusion** — DONE: all "burned" copy now says sealed in the
+   contract's vault; docs synced.
+7. **Server proxy** — DONE for the duel surface (create with commitment,
+   stance accept, reveal, forfeit, place_bet). Deliberate deviation: the
+   session methods (`offer_session`/`accept_session`/`revoke_session`) are
+   NOT in the proxy allowlist — that path signs with the shared demo wallet,
+   which must never delegate itself; real sessions sign their own nano txs
+   in the browser.
+
+Dev conveniences added for playground testing (harmless in prod):
+`?devmain=1` boots a browser-held main wallet (Snap/WC cannot reach the
+playground); `config.js` uses the playground node + local miner off-domain;
+`GAME.txMiningUrl` lets session-lib target a local tx-mining service;
+`miner/miner.py` now answers CORS.
 
 ## No game token — GEMS → Ember points (see docs/v4-economy.md)
 
