@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=101" />
+<link rel="stylesheet" href="style.css?b=102" />
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -479,11 +479,14 @@
     </div>
     <div class="stage" id="stagePick" hidden>
       <div class="wait-title" id="pickTitle">Choose a card</div>
-      <div class="cards pick-cards" id="pickCards"></div>
+      <!-- the wager sits ABOVE the card list: on phones the list fills the
+           screen and anything below it goes unseen -->
       <div class="pick-wager" id="pickWagerRow">
         <label>Wager (Ember): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
         <div class="wait-sub">name your wager; 0 is a free duel, no Ember changes hands</div>
+        <div class="wait-sub pw-hint" id="pickWagerHint" hidden>⚠ Enter a wager first, then pick your champion.</div>
       </div>
+      <div class="cards pick-cards" id="pickCards"></div>
       <div class="pick-wager" id="pickStanceRow" hidden>
         <div class="wait-sub" id="stanceHint"></div>
         <div class="row-btns">
@@ -498,16 +501,16 @@
   </div>
 </div>
 
-<script>window.BUILD = 101;</script>
-<script src="analytics.js?b=101"></script>
-<script src="sha3.js?b=101"></script>
-<script src="config.js?b=101"></script>
-<script src="art.js?b=101"></script>
-<script src="catalog.js?b=101"></script>
-<script src="wallets.js?b=101"></script>
-<script src="app.js?b=101"></script>
-<script src="progress.js?b=101"></script>
-<script src="sounds.js?b=101"></script>
-<script src="tutorial.js?b=101"></script>
+<script>window.BUILD = 102;</script>
+<script src="analytics.js?b=102"></script>
+<script src="sha3.js?b=102"></script>
+<script src="config.js?b=102"></script>
+<script src="art.js?b=102"></script>
+<script src="catalog.js?b=102"></script>
+<script src="wallets.js?b=102"></script>
+<script src="app.js?b=102"></script>
+<script src="progress.js?b=102"></script>
+<script src="sounds.js?b=102"></script>
+<script src="tutorial.js?b=102"></script>
 </body>
 </html>

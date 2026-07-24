@@ -819,8 +819,8 @@ function render() {
     const pools = d.pools && (d.pools[0] || d.pools[1] || canBet)
       ? `<div class="duel-meta">bets: ${fmtEmber(d.pools[0] || 0)} on the challenger · ${
           fmtEmber(d.pools[1] || 0)} on the defender${canBet
-          ? ` <button class="mini-btn alt" data-bet="${d.id}:0">BACK CHALLENGER</button>
-              <button class="mini-btn alt" data-bet="${d.id}:1">BACK DEFENDER</button>` : ''}</div>`
+          ? ` <span class="bet-btns"><button class="mini-btn alt" data-bet="${d.id}:0">BACK CHALLENGER</button>
+              <button class="mini-btn alt" data-bet="${d.id}:1">BACK DEFENDER</button></span>` : ''}</div>`
       : '';
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${rowArt(c)}</span>
@@ -1883,6 +1883,7 @@ function openPick(kind, ref) {
     const w = S.writs[ref.writ];
     $('pickTitle').textContent = `Fight ${w.name} (${WRIT_TIERS[ref.tier]}): choose a mining champion`;
     $('pickWagerRow').hidden = true;
+    $('pickStanceRow').hidden = true; // stances belong to duel picks only
     $('pickCards').innerHTML = marchers.map(c => cardBox(c,
       `<div class="duel-meta">${3 - (c.writFights || 0)} fight${3 - (c.writFights || 0) === 1 ? '' : 's'} left today</div>
        <button class="mini-btn" data-pick="${c.uid}">MARCH</button>`)).join('');
@@ -1900,6 +1901,7 @@ function openPick(kind, ref) {
     }
     $('pickTitle').textContent = 'Choose the champion you want in return';
     $('pickWagerRow').hidden = true;
+    $('pickStanceRow').hidden = true; // stances belong to duel picks only
     $('pickCards').innerHTML = others.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
@@ -1910,6 +1912,7 @@ function openPick(kind, ref) {
   $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge: choose your champion & wager' : `Answer challenge #${ref}: choose your champion`;
   $('pickWagerRow').hidden = kind !== 'create';
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
+  $('pickWagerHint').hidden = true;
   if (kind === 'accept') {
     const d = S.duels.find(x => x.id === ref);
     $('pickTitle').textContent += ` (wager ${fmtEmber(d.wager)})`;
@@ -1949,10 +1952,11 @@ async function submitPick(uid) {
   if (kind === 'create') {
     const raw = $('pickWager').value.trim();
     if (raw === '') {
-      $('errTitle').textContent = 'Name your wager';
-      $('errMsg').textContent = 'Enter a wager in Ember, or 0 for a free duel '
-        + 'where no Ember changes hands.';
-      showStage('stageError');
+      // stay in the picker: on phones the error stage was a dead end that
+      // hid the input entirely. Point at the field and pop the keyboard.
+      showStage('stagePick');
+      $('pickWagerHint').hidden = false;
+      $('pickWager').focus();
       return;
     }
     const wager = Math.max(0, Number(raw) || 0);
