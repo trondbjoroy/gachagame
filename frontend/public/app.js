@@ -353,6 +353,7 @@ async function loadFeed() {
         <span>${x.line}</span></div>`);
     $('feedPanel').hidden = rows.length === 0;
     $('feedList').innerHTML = rows.join('');
+    if (S.addr) checkBetOutcomes(d.events || []);
   } catch { /* the feed is decorative */ }
 }
 
@@ -1461,7 +1462,60 @@ async function placeBet(id, side) {
   const amt = Math.floor(Number(raw));
   if (!Number.isInteger(amt) || amt < 1) { alert('Enter a whole number of Ember.'); return; }
   if (amt > S.ember) { alert(`You have ${fmtEmber(S.ember)}.`); return; }
-  await doTx('Placing your bet', 'place_bet', [id, side, amt], []);
+  const h = await doTx('Placing your bet', 'place_bet', [id, side, amt], []);
+  if (h) {
+    // remembered so the verdict can come tell you how your bet fared —
+    // payouts land silently on the ledger otherwise
+    const bets = loadMyBets();
+    bets.push({ id, side, amt, ts: Date.now() });
+    localStorage.setItem(BETS_LS, JSON.stringify(bets.slice(-30)));
+  }
+}
+
+/* bets settle silently on the ledger; ribbon the outcome when the duel's
+   verdict shows up in the feed */
+const BETS_LS = 'emberfall_my_bets';
+function loadMyBets() {
+  try { return JSON.parse(localStorage.getItem(BETS_LS)) || []; } catch { return []; }
+}
+
+function checkBetOutcomes(events) {
+  let bets = loadMyBets();
+  if (!bets.length) return;
+  const keep = [];
+  for (const b of bets) {
+    // which side took the duel, from the feed's verdict events
+    let winSide = null, refunded = false, decided = false;
+    for (const ev of events) {
+      if (ev.id !== b.id) continue;
+      if (ev.kind === 'forfeit') { winSide = 1; decided = true; break; }
+      if (ev.kind === 'duel_cancel') { refunded = true; decided = true; break; }
+      if ((ev.kind === 'answer' || ev.kind === 'reveal') && ev.verdict) {
+        // 'answer' events carry the acceptor, 'reveal' events the challenger
+        const acceptorWon = ev.kind === 'answer'
+          ? ev.verdict.winner === ev.who
+          : ev.verdict.winner !== ev.who;
+        winSide = acceptorWon ? 1 : 0;
+        decided = true;
+        break;
+      }
+    }
+    if (!decided) {
+      // verdicts age out of the feed; a very old bet resolves quietly
+      if (Date.now() - b.ts > 3 * 86400000) continue;
+      keep.push(b);
+      continue;
+    }
+    const which = b.side === 0 ? 'the challenger' : 'the defender';
+    if (refunded) {
+      ribbon(`Duel #${b.id} was cancelled: your ${fmtEmber(b.amt)} bet came home`, '', 'coin');
+    } else if (winSide === b.side) {
+      ribbon(`Your bet on ${which} in duel #${b.id} paid out: stake back plus a share of the losing pool`, 'level', 'coin');
+    } else {
+      ribbon(`Your ${fmtEmber(b.amt)} bet on ${which} in duel #${b.id} was lost with the fight`, '', 'lose');
+    }
+  }
+  localStorage.setItem(BETS_LS, JSON.stringify(keep));
 }
 
 /* a fight is three rounds, one per aspect: show the matchup so the result

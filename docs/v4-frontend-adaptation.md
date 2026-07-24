@@ -20,10 +20,17 @@ rates [1,2,5,9]; shards and gauntlet progress are not adoptable (small,
 reported losses). Season/raffle crons repointed; their VPS state files
 reset at cutover.
 
-FUTURE (next blueprint revision): Hathor confirmed the events API stays
-off on public nodes, but `syscall.log(...)` output IS served by the logs
-API — add outcome logs (duel winner + rounds, delve haul) to the methods
-then and replace the feed's state-diff inference with log reads.
+FUTURE (next blueprint revision):
+- Hathor confirmed the events API stays off on public nodes, but
+  `syscall.log(...)` output IS served by the logs API. Add outcome logs
+  (duel winner + rounds, delve haul) to the methods then and replace the
+  feed's state-diff inference with log reads.
+- Close the bet-then-accept loophole: `place_bet` refuses participants,
+  but a bettor on an OPEN duel can later `accept_duel` it and become a
+  participant with a live bet. `accept_duel` (and `create_duel` is safe:
+  bets cannot predate the duel) should refuse callers holding a bet on
+  that duel. Also add a `get_bet(duel_id, address)` view so clients can
+  see their own stakes.
 
 ## Validated v4 blueprints (playground)
 
