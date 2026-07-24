@@ -47,6 +47,25 @@ change again.
    `revoke_session`, stance/reveal/forfeit, `place_bet`, bet settlement) to the
    `METHODS` allowlist in `server.js` with correct action/arg validators.
 
+## No game token — GEMS → Ember points (see docs/v4-economy.md)
+
+The v4 blueprint is de-tokenized (done 2026-07-23): no GEMS token; **Ember** is a
+closed points ledger. Frontend/proxy work when v4 lands:
+
+- **Rename GEMS → Ember** everywhere (UI, guide, both FAQs, tutorial, promo).
+  Display Ember as **whole points** (drop the `/100` cents formatting GEMS used).
+- **Remove** the withdraw/deposit-Ember UI (Ember never leaves the contract) and
+  the "wallet GEMS vs ledger GEMS" split — there is only the ledger balance now.
+- **Method renames** in `app.js`/`wallets.js`/proxy: `get_gems_balance`→
+  `get_ember_balance`, `claim_gems`→`claim_ember`, `get_pending_gems`→
+  `get_pending_ember`; **drop** `withdraw_gems`/`deposit_gems`/`get_gems_uid`.
+  Update the proxy `METHODS` allowlist accordingly.
+- **Pricing:** pulls show USD (mainnet $2.50) with the live HTR equivalent read
+  from the contract; a `scripts/price_peg.py` cron sets `pull_price` on mainnet.
+  Testnet stays 1 HTR. Temper/fuse stay Ember.
+- **Market:** instantiate the v4 market with **fee_bps=500** (5%, already
+  lister-side); update the "2% fee" copy to 5%.
+
 ## Acceptance: session identity parity (the reason delegation exists)
 
 This is the concrete bug delegation must close (reported 2026-07-23): a player
