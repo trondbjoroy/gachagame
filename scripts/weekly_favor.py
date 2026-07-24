@@ -26,8 +26,8 @@ import urllib.parse
 import urllib.request
 
 NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
-# v3 arena
-ARENA = os.environ.get("ARENA_NC", "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587")
+# v4 arena (testnet-india, 2026-07-24)
+ARENA = os.environ.get("ARENA_NC", "00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd")
 WALLET = os.environ.get("WALLET_URL", "http://localhost:8000")
 WALLET_ID = os.environ.get("WALLET_ID", "operator")
 STATE = os.environ.get("RAFFLE_STATE", "/opt/gacha/raffle-state.json")

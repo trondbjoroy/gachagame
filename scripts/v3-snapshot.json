@@ -1,0 +1,342 @@
+{
+ "taken_at": 1784889718,
+ "arena": "0082579ce4e9f6726650048ef90f02034f442d65b443b55d1f64b5de90e7a587",
+ "totals": {
+  "get_total_pulls()": 72,
+  "get_pull_price()": 100,
+  "get_favor_pool()": 10,
+  "get_proceeds()": 2484
+ },
+ "players": {
+  "WRJAfZCv13wABi3XKd4Yvb7w1R4gRhcwwC": {
+   "gems_balance": 75,
+   "renown": 10,
+   "wins": 0,
+   "vigil_streak": 1,
+   "shards": 0,
+   "gauntlet_cleared": 0,
+   "player_pulls": 0,
+   "favor_owed": 0
+  },
+  "WShPkufXRqWaERUu6CWRrxBLrF7G9rv9z6": {
+   "gems_balance": 0,
+   "renown": 497,
+   "wins": 0,
+   "vigil_streak": 3,
+   "shards": 5,
+   "gauntlet_cleared": 511,
+   "player_pulls": 13,
+   "favor_owed": 0
+  },
+  "WVw3mVdwTxyPr19sbKCkGmy75Umw47mQiE": {
+   "gems_balance": 10,
+   "renown": 10,
+   "wins": 0,
+   "vigil_streak": 1,
+   "shards": 0,
+   "gauntlet_cleared": 0,
+   "player_pulls": 1,
+   "favor_owed": 0
+  },
+  "WXPSkCjnHKsp8mLGj8NCRR5gUN6HAaRNd3": {
+   "gems_balance": 10,
+   "renown": 118,
+   "wins": 1,
+   "vigil_streak": 1,
+   "shards": 2,
+   "gauntlet_cleared": 1,
+   "player_pulls": 7,
+   "favor_owed": 0
+  },
+  "WanMy2ceSmXX1EYZh4aaaX8vJJ4VA3HRid": {
+   "gems_balance": 108,
+   "renown": 297,
+   "wins": 0,
+   "vigil_streak": 2,
+   "shards": 0,
+   "gauntlet_cleared": 0,
+   "player_pulls": 9,
+   "favor_owed": 0
+  },
+  "Wer2yUudABEUzKbM8Q2qQFvLgW2s5kFkzG": {
+   "gems_balance": 9397,
+   "renown": 89,
+   "wins": 0,
+   "vigil_streak": 1,
+   "shards": 0,
+   "gauntlet_cleared": 1,
+   "player_pulls": 8,
+   "favor_owed": 0
+  },
+  "WhaMRi6KtBikYP48Ej858y2iNR5Ecbh1oi": {
+   "gems_balance": 0,
+   "renown": 25,
+   "wins": 0,
+   "vigil_streak": 1,
+   "shards": 0,
+   "gauntlet_cleared": 0,
+   "player_pulls": 2,
+   "favor_owed": 0
+  },
+  "Wj6HDHBKtJ6kMfKkXB1mg63eDDHGRqWpz5": {
+   "gems_balance": 783,
+   "renown": 300,
+   "wins": 0,
+   "vigil_streak": 2,
+   "shards": 0,
+   "gauntlet_cleared": 0,
+   "player_pulls": 8,
+   "favor_owed": 0
+  }
+ },
+ "cards": {
+  "f7abdbd430dfb58ec3557c58d8bab77e2da0f8e8940215d061fdf5637e76307a": {
+   "name": "Storm Caller",
+   "tier": 1,
+   "power": 43,
+   "aspects": "1|15|27|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "970de46a65e44179589eab5736336931572105d21cc87c0f39b8e8b224bbadf6": {
+   "name": "Wall Louse",
+   "tier": 0,
+   "power": 19,
+   "aspects": "7|6|6|1|0|4|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "9df6eb82f72fe24cb3b7e8d31b315e123d8b541d2d64da867996a45ef074641a": {
+   "name": "Larder Mouse",
+   "tier": 0,
+   "power": 19,
+   "aspects": "1|9|9|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "9e96bcc10692ea9e8c5d3e9920da7f5afb8a6ac20186b9d35eca5fa7e35c0835": {
+   "name": "Ford Washerwoman",
+   "tier": 0,
+   "power": 19,
+   "aspects": "2|8|9|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "affd9e980863fca319297e3acdab2269a6c68968e766ce020ffdf5a62cfaac0a": {
+   "name": "Tomb Herald",
+   "tier": 1,
+   "power": 38,
+   "aspects": "5|19|14|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "a5e841373384542973760c16d83bddf38ab9b407f80e85c570eb6c77f70404d9": {
+   "name": "Crag Behemoth",
+   "tier": 2,
+   "power": 69,
+   "aspects": "37|30|2|0|0|7|1|0",
+   "staker": null,
+   "pending": null
+  },
+  "a1f26bc4708545daa13fd6fc9846162720735cddeb4bfd99347ac571cd0f2ec4": {
+   "name": "Pit Bear",
+   "tier": 1,
+   "power": 46,
+   "aspects": "18|17|11|0|0|0|0|0",
+   "staker": "WanMy2ceSmXX1EYZh4aaaX8vJJ4VA3HRid",
+   "pending": null
+  },
+  "3c4cbba6cd3137098314558cc13a5601dcb12b0c67dd2730f6dea21e4347d961": {
+   "name": "Candle Nun",
+   "tier": 0,
+   "power": 10,
+   "aspects": "2|3|5|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "e39ed33bbdf0b0191e145f58fc37a1533ea7c77506248fe8cd2c3b8e7704bdf6": {
+   "name": "Bramble Hare",
+   "tier": 0,
+   "power": 10,
+   "aspects": "1|5|4|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "be76998d955a52baa1ebe139fb11d230aef58bfb0795d3932adad6a5ddfec7a1": {
+   "name": "Storm Drake",
+   "tier": 2,
+   "power": 93,
+   "aspects": "36|43|14|0|0|2|0|0",
+   "staker": "Wer2yUudABEUzKbM8Q2qQFvLgW2s5kFkzG",
+   "pending": null
+  },
+  "be9f374995b96842b36e40171fbd20e55ea66f59315851659a06b284cd6d4ebf": {
+   "name": "Pitchfork Militiaman",
+   "tier": 0,
+   "power": 15,
+   "aspects": "2|7|6|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "b3c849d10fe11be66f9ea437df4c65b7c295a0a9e65996c45c94c85cba231600": {
+   "name": "The Silent Deep",
+   "tier": 3,
+   "power": 249,
+   "aspects": "100|79|70|10|0|12|1|0",
+   "staker": null,
+   "pending": null
+  },
+  "b912ba12a98af8eef7b59e1d2b114f2d41c45dfcbcc06b04bbe5408e3f566987": {
+   "name": "Maelstrom Matron",
+   "tier": 2,
+   "power": 88,
+   "aspects": "41|21|26|2|0|0|0|0",
+   "staker": "WRJAfZCv13wABi3XKd4Yvb7w1R4gRhcwwC",
+   "pending": null
+  },
+  "bcef015ac0cef3fae8813acdfe4a6848d3884ba9f46f777e48eb272835a9108f": {
+   "name": "Palisade Builder",
+   "tier": 0,
+   "power": 14,
+   "aspects": "5|6|3|0|0|0|0|0",
+   "staker": "Wj6HDHBKtJ6kMfKkXB1mg63eDDHGRqWpz5",
+   "pending": null
+  },
+  "892d6b7771d07188e7299e78919215c9f05292d05f6fa5120c3b245e3e5f822d": {
+   "name": "Gate Creaker",
+   "tier": 0,
+   "power": 11,
+   "aspects": "4|3|4|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "82138025905797507b7530a8e40358b251a936ad2f78c0bb84d3c769101ba402": {
+   "name": "Tallow Cat",
+   "tier": 0,
+   "power": 14,
+   "aspects": "10|2|2|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "84040bf0ac4c74e42c2c44571d8929368da4151c778ab1d4e08b30ca6c24fc40": {
+   "name": "Splintered Oar",
+   "tier": 0,
+   "power": 17,
+   "aspects": "8|4|5|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "2a7b30ac5ec1fc279c44b5d95529469f9dd4de844c3121d7bd925295fb647d38": {
+   "name": "Oathblade",
+   "tier": 1,
+   "power": 40,
+   "aspects": "14|1|25|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "22acb542bcc8c64f41c7f4669636d5ea4a1e67a95e4082808520cedc0987cf6c": {
+   "name": "Cracked Bell",
+   "tier": 0,
+   "power": 12,
+   "aspects": "3|4|5|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "6a87832f8ad32185ae657782986cb4b0d3ece61b755b50995caa554895bfa270": {
+   "name": "The Ember Tyrant",
+   "tier": 3,
+   "power": 285,
+   "aspects": "103|97|85|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "6f35e9e20fbf9ed88719323a76c0bbeba08d4890f60c90eba4f15f36aa2f40f7": {
+   "name": "Moth-Eaten Cloak",
+   "tier": 0,
+   "power": 14,
+   "aspects": "2|10|2|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "10409a09112594d274aaccf31610ea614212dd403c3d1c9c3a041860ded8cbb5": {
+   "name": "Cracked Bell",
+   "tier": 0,
+   "power": 18,
+   "aspects": "7|8|3|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "188dfcd9b29b0721bf0cd7965f6f67dc03a071eefde09174c60d62aa65b96def": {
+   "name": "Bramble Hare",
+   "tier": 0,
+   "power": 12,
+   "aspects": "5|3|4|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "142bda1cbeaba5c366c525717a8be71814f1aec44b3918a284e5641770bab439": {
+   "name": "Bell Sheep",
+   "tier": 0,
+   "power": 18,
+   "aspects": "8|7|3|0|0|0|0|0",
+   "staker": null,
+   "pending": "WhaMRi6KtBikYP48Ej858y2iNR5Ecbh1oi"
+  },
+  "5a71268c144c82a0d83ed296b27d8971b9bcb4bbdd33c2b35e4788ff461bb07e": {
+   "name": "Barn Owl",
+   "tier": 0,
+   "power": 18,
+   "aspects": "3|7|8|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "5ab467865281fdc2bc24fa85c0259e1febf5aff01603b04c9914a38136598dab": {
+   "name": "Genesis Phoenix",
+   "tier": 3,
+   "power": 252,
+   "aspects": "9|34|209|3|0|0|0|0",
+   "staker": "WanMy2ceSmXX1EYZh4aaaX8vJJ4VA3HRid",
+   "pending": null
+  },
+  "7aa63a01a3cd3ee0d4381f2b9deb7409dfbac5a9553f2d5a8e44d9281d6ec0fc": {
+   "name": "Genesis Phoenix",
+   "tier": 3,
+   "power": 303,
+   "aspects": "30|86|187|1|0|0|0|0",
+   "staker": "Wj6HDHBKtJ6kMfKkXB1mg63eDDHGRqWpz5",
+   "pending": null
+  },
+  "094a546f094ece00b3f0dd1a5ea1aa43494f67dcde3c0886c6b27c7f2ad0910a": {
+   "name": "Wickerwork Giant",
+   "tier": 1,
+   "power": 33,
+   "aspects": "18|8|7|1|0|0|0|0",
+   "staker": "WXPSkCjnHKsp8mLGj8NCRR5gUN6HAaRNd3",
+   "pending": null
+  },
+  "0f99e88e4eb7d79c876ada78e55bef5781758b2fbd73d69a561122da95925658": {
+   "name": "Chimney Bat",
+   "tier": 0,
+   "power": 15,
+   "aspects": "5|4|6|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "484f79eb2f095cb5b7cd48f855371f8118dcae973984b028eb0421268ef21765": {
+   "name": "Bog Witch",
+   "tier": 0,
+   "power": 11,
+   "aspects": "3|3|5|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  },
+  "4a8a6a1c7fc3c20ccd4ebb77317272caed16595843afb1e14bc79c94b5563d03": {
+   "name": "Restless Gravedigger",
+   "tier": 0,
+   "power": 11,
+   "aspects": "6|2|3|0|0|0|0|0",
+   "staker": null,
+   "pending": null
+  }
+ }
+}

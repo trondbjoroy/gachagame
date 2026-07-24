@@ -11,9 +11,19 @@ Hathor published the v4 blueprints (byte-identical to our validated sources):
 
 Seeded by `scripts/launch_v4.py`: pull 1 HTR, weights 60/30/9/1, delve 8h,
 card_unit=1, market fee_bps=500. Branch config/server point at this realm.
-PENDING USER DECISIONS: cutover of app.emberfall.fun (merge `v4-frontend`,
-deploy, restart) and migrate-vs-fresh (adopt_player/adopt_card from
-scripts/v3-snapshot.json).
+MIGRATED + CUT OVER 2026-07-24 (user-approved): scripts/migrate_v4.py
+consolidated v3 identities per name lineage (adopt_player: Ember incl.
+wallet GEMS + unclaimed accruals, renown, deeds, wins, pulls; report in
+scripts/migration-report.json). v3 cards cannot enter a card_unit=1 realm
+(100-unit tokens) — owners were refunded HTR at fusion-equivalent tier
+rates [1,2,5,9]; shards and gauntlet progress are not adoptable (small,
+reported losses). Season/raffle crons repointed; their VPS state files
+reset at cutover.
+
+FUTURE (next blueprint revision): Hathor confirmed the events API stays
+off on public nodes, but `syscall.log(...)` output IS served by the logs
+API — add outcome logs (duel winner + rounds, delve haul) to the methods
+then and replace the feed's state-diff inference with log reads.
 
 ## Validated v4 blueprints (playground)
 
