@@ -944,7 +944,11 @@ body.land-flash::before {
 @media (max-width: 860px) {
   header.top { flex-wrap: wrap; position: relative; }
   .wallet-area { flex-basis: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
-  .wallet-chip.as-btn { flex: 1 1 auto; min-width: 0; }
+  /* flex-basis 0: with wrap enabled, line-breaking uses the chip's NATURAL
+     width (pre-shrink), so basis auto shoved it onto its own line whenever
+     name + balance ran long. Basis 0 keeps it beside the session button and
+     lets the name ellipsize instead. */
+  .wallet-chip.as-btn { flex: 1 1 0; min-width: 0; }
   .hdr-tools { display: flex; gap: 8px; position: absolute; right: 0; top: 4px; }
   /* session button and chip together on their own full row */
   .wa-break { display: block; flex-basis: 100%; height: 0; }
@@ -1009,6 +1013,9 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .wordmark { font-size: 18px; }
   .tour-btn { padding: 7px 10px; font-size: 11px; }
   .header-session { font-size: 11px; padding: 7px 10px; }
+  /* the chip slims down so it and the session button share one row */
+  .wallet-chip { font-size: 11px; padding: 6px 11px; gap: 7px; }
+  .wallet-chip #walletAddr { min-width: 60px; }
 
   .machine-panel { padding: 22px 16px 26px; gap: 22px; margin-top: 24px; }
   .pull-col h1 { font-size: 30px; }
