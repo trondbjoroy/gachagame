@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Emberfall promo</title>
+<meta name="hz:slide-selector" content=".infographic" />
+<meta name="hz:canvas-width" content="1600" />
+<meta name="hz:canvas-height" content="900" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@400;500;600;700&family=Fragment+Mono&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; }
+.infographic {
+  position: relative; width: 1600px; height: 900px; overflow: hidden;
+  background: #0b0a08; font-family: 'Outfit', sans-serif; color: #f0e9da;
+}
+/* atmosphere */
+.glow-a { position: absolute; left: -220px; top: -260px; width: 950px; height: 950px;
+  background: radial-gradient(circle, rgba(212,168,67,.16), transparent 62%); }
+.glow-b { position: absolute; right: -180px; bottom: -320px; width: 900px; height: 900px;
+  background: radial-gradient(circle, rgba(212,168,67,.10), transparent 60%); }
+.grid { position: absolute; inset: 0; opacity: .05;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 47px, #d4a843 47px 48px),
+    repeating-linear-gradient(90deg, transparent 0 47px, #d4a843 47px 48px); }
+.frame { position: absolute; inset: 22px; border: 1px solid rgba(212,168,67,.28); border-radius: 10px; }
+.corner { position: absolute; width: 26px; height: 26px; border: 2px solid #d4a843; }
+.c-tl { left: 22px; top: 22px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
+.c-tr { right: 22px; top: 22px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+.c-bl { left: 22px; bottom: 22px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
+.c-br { right: 22px; bottom: 22px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+
+/* left column */
+.brand { position: absolute; left: 96px; top: 88px; display: flex; align-items: center; gap: 22px; }
+.brand img { width: 86px; height: 86px; filter: drop-shadow(0 0 26px rgba(212,168,67,.55)); }
+.wordmark {
+  font-family: 'Cinzel', serif; font-weight: 800; font-size: 88px; letter-spacing: .06em; line-height: 1;
+  background: linear-gradient(100deg, #caa03f 15%, #f2dc9b 42%, #caa03f 62%, #a37e2c 88%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.subline {
+  position: absolute; left: 96px; top: 206px;
+  font-family: 'Cinzel', serif; font-weight: 600; font-size: 21px;
+  letter-spacing: .34em; color: #b5ab99;
+}
+.rule { position: absolute; left: 96px; top: 258px; width: 660px; height: 2px;
+  background: linear-gradient(90deg, #d4a843, transparent 78%); }
+
+.points { position: absolute; left: 96px; top: 300px; width: 680px; }
+.pt { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 27px; }
+.pt .d { color: #d4a843; font-size: 20px; line-height: 30px; }
+.pt .t { font-size: 24.5px; line-height: 30px; color: #e8e1d2; font-weight: 400; }
+.pt .t b { color: #e8c56a; font-weight: 600; }
+
+.cta { position: absolute; left: 96px; top: 636px; display: flex; align-items: center; gap: 26px; }
+.cta .btn {
+  border: 2px solid #d4a843; border-radius: 6px; padding: 15px 30px;
+  font-family: 'Cinzel', serif; font-weight: 700; font-size: 22px; letter-spacing: .14em;
+  color: #0b0a08; background: linear-gradient(180deg, #e2b44d, #c89a35);
+}
+.cta .url { font-family: 'Cinzel', serif; font-weight: 700; font-size: 30px; color: #e8c56a; letter-spacing: .05em; }
+.meta {
+  position: absolute; left: 96px; top: 740px;
+  font-family: 'Fragment Mono', monospace; font-size: 19px; color: #98928a; letter-spacing: .02em;
+}
+.meta b { color: #d4a843; font-weight: 400; }
+
+/* card fan */
+.fan { position: absolute; left: 830px; top: 60px; width: 720px; height: 700px; }
+.card { position: absolute; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 26px 60px rgba(0,0,0,.65); background: #141109; }
+.card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card .cap {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 44px 16px 12px;
+  background: linear-gradient(180deg, transparent, rgba(5,4,2,.94) 58%);
+}
+.card .nm { font-family: 'Cinzel', serif; font-weight: 700; font-size: 21px; color: #f0e9da; }
+.card .st { font-size: 15px; font-weight: 600; letter-spacing: .1em; margin-top: 2px; }
+.card .pw { position: absolute; right: 14px; bottom: 14px; font-weight: 700; font-size: 19px; color: #e8c56a; }
+.k1 { width: 268px; height: 348px; left: 12px; top: 158px; transform: rotate(-9deg);
+  border: 2px solid #6f9bd1; }
+.k1 .st { color: #6f9bd1; }
+.k2 { width: 268px; height: 348px; right: 12px; top: 148px; transform: rotate(8.5deg);
+  border: 2px solid #a678d4; }
+.k2 .st { color: #a678d4; }
+.k2 .cap { text-align: right; }
+.k3 { width: 306px; height: 396px; left: 205px; top: 196px; transform: rotate(-.5deg);
+  border: 2.5px solid #e0a63c; box-shadow: 0 0 46px rgba(224,166,60,.38), 0 30px 60px rgba(0,0,0,.7); }
+.k3 .st { color: #e0a63c; }
+.fan-tag {
+  position: absolute; left: 830px; top: 668px; width: 720px; text-align: center;
+  font-family: 'Cinzel', serif; font-weight: 600; font-size: 16.5px;
+  letter-spacing: .17em; color: #b5ab99; white-space: nowrap;
+}
+.fan-tag b { color: #d4a843; font-weight: 700; }
+
+/* bottom strip */
+.strip {
+  position: absolute; left: 96px; right: 96px; bottom: 52px; height: 66px;
+  border: 1px solid rgba(212,168,67,.35); border-radius: 8px;
+  background: rgba(20,17,9,.72); display: flex; align-items: center; justify-content: space-evenly;
+}
+.strip .s { font-family: 'Cinzel', serif; font-weight: 600; font-size: 19.5px;
+  letter-spacing: .2em; color: #d4a843; }
+.strip .sep { color: #78705f; font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="infographic" data-canvas-width="1600" data-canvas-height="900">
+  <div class="glow-a"></div><div class="glow-b"></div>
+  <div class="grid"></div>
+  <div class="frame"></div>
+  <div class="corner c-tl"></div><div class="corner c-tr"></div>
+  <div class="corner c-bl"></div><div class="corner c-br"></div>
+
+  <div class="brand">
+    <img src="logo.png" alt="" />
+    <div class="wordmark">EMBERFALL</div>
+  </div>
+  <div class="subline">A FULLY ONCHAIN TRADING CARD GAME</div>
+  <div class="rule"></div>
+
+  <div class="points">
+    <div class="pt"><span class="d">◆</span><span class="t"><b>Summon 1-of-1 champions</b>: 180 illustrated cards, every one a real token in your wallet</span></div>
+    <div class="pt"><span class="d">◆</span><span class="t"><b>Mine Ember</b>, temper stats, and <b>fuse rarities</b> from Footman up to Sovereign</span></div>
+    <div class="pt"><span class="d">◆</span><span class="t"><b>Duel with sealed stances</b>, fight ten bosses, and <b>bet Ember</b> on other players' fights</span></div>
+    <div class="pt"><span class="d">◆</span><span class="t"><b>Quick play</b>: one approval binds your identity, then zero wallet popups</span></div>
+  </div>
+
+  <div class="cta">
+    <div class="btn">PLAY FREE ON TESTNET</div>
+    <div class="url">emberfall.fun</div>
+  </div>
+  <div class="meta">play with <b>$HTR</b> · earn <b>Ember</b> · built on <b>@hathornetwork</b> · <b>@emberfall_fun</b></div>
+
+  <div class="fan">
+    <div class="card k1"><img src="cards/storm-caller.jpg" alt="" />
+      <div class="cap"><div class="nm">Storm Caller</div><div class="st">KNIGHT · ⚡43</div></div></div>
+    <div class="card k2"><img src="cards/void-kraken.jpg" alt="" />
+      <div class="cap"><div class="nm">Void Kraken</div><div class="st">HIGHLORD · ⚡88</div></div></div>
+    <div class="card k3"><img src="cards/genesis-phoenix.jpg" alt="" />
+      <div class="cap"><div class="nm">Genesis Phoenix</div><div class="st">SOVEREIGN</div></div>
+      <div class="pw">⚡212</div></div>
+  </div>
+  <div class="fan-tag"><b>180 CHAMPIONS</b> · FOUR RARITIES · YOURS FOREVER</div>
+
+  <div class="strip">
+    <span class="s">SUMMON</span><span class="sep">◆</span>
+    <span class="s">MINE</span><span class="sep">◆</span>
+    <span class="s">FORGE</span><span class="sep">◆</span>
+    <span class="s">FIGHT</span><span class="sep">◆</span>
+    <span class="s">BET</span><span class="sep">◆</span>
+    <span class="s">TRADE</span>
+  </div>
+</div>
+</body>
+</html>
