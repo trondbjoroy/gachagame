@@ -792,6 +792,9 @@ function render() {
     if (!S.addr) return false;
     return ++settledSeen <= 5 || isMine(d.challenger);
   });
+  // fights in motion first, the graveyard below; newest first within each
+  duelsShown.sort((a, b) =>
+    ((a.status === 'closed') - (b.status === 'closed')) || b.id - a.id);
   $('duelList').innerHTML = duelsShown.map(d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
