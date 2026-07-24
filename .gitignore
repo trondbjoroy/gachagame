@@ -14,3 +14,4 @@ frontend/names.json
 
 # wallet-headless seeds — secrets, never committed (env vars override)
 wallet-seeds.js
+frontend/feed-state.json

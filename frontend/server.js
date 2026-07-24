@@ -151,8 +151,25 @@ const METHODS = {
 // reports deeds, not verdicts.
 const FEED_MAX = 60;
 let feed = [];            // newest first: {ts, kind, who, ...detail}
-const feedSeen = new Set();
+let feedSeen = new Set();
 let writNames = null;     // writ id -> name, fetched once
+
+// the feed persists across restarts (next to names.json): card names and
+// verdicts are inferred from state the server WATCHES change, so a restart
+// that re-ingests history cold can never reconstruct them ("summoned a
+// champion" instead of the champion's name). Persisting keeps them.
+const FEED_FILE = path.join(__dirname, 'feed-state.json');
+try {
+  const saved = JSON.parse(fs.readFileSync(FEED_FILE, 'utf8'));
+  feed = saved.events || [];
+  feedSeen = new Set(saved.seen || []);
+} catch { /* first boot */ }
+function saveFeed() {
+  try {
+    fs.writeFileSync(FEED_FILE, JSON.stringify(
+      { events: feed, seen: [...feedSeen].slice(-2000) }));
+  } catch (e) { console.error('feed-state write failed:', e.message); }
+}
 
 function feedPush(ev) {
   feed.unshift(ev);
@@ -355,12 +372,17 @@ async function pollFeed() {
     if (!writNames) await loadWritNames();
     if (!knownUids) knownUids = await contractUids();
     // events waiting on their settle tx to confirm: retry, then give up
+    let lateEnriched = false;
     for (let i = enrichQueue.length - 1; i >= 0; i--) {
       const q = enrichQueue[i];
       try {
-        if (await enrichEvent(q.ev, q.tries) || ++q.tries > 8) enrichQueue.splice(i, 1);
+        if (await enrichEvent(q.ev, q.tries) || ++q.tries > 8) {
+          enrichQueue.splice(i, 1);
+          lateEnriched = true;
+        }
       } catch { if (++q.tries > 8) enrichQueue.splice(i, 1); }
     }
+    if (lateEnriched) saveFeed();
     const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
     const fresh = [];
     const touched = new Set();
@@ -422,6 +444,7 @@ async function pollFeed() {
         idns.forEach((a, i) => emberCache.set(a, v[calls[i]] || 0));
       }
     } catch { /* next poll reseeds */ }
+    if (fresh.length) saveFeed();
     if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
   } catch { /* the feed is decorative; next poll retries */ }
 }
