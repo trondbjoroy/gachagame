@@ -152,6 +152,9 @@ const METHODS = {
   leave_guild:   { actions: [],                args: [] },
   fight_world_boss:   { actions: [],           args: [isHex64] },
   claim_world_bounty: { actions: [],           args: [isSmallInt] },
+  enter_tournament:   { actions: [cardDep],    args: [isSmallInt] },
+  leave_tournament:   { actions: [],           args: [isSmallInt] },
+  advance_tournament: { actions: [],           args: [isSmallInt] },
   claim_forfeit: { actions: [],                args: [isSmallInt] },
   place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
@@ -221,6 +224,23 @@ async function delegateOf(addr) {
 // only round-by-round rolls remain unknowable without the event queue.
 const winsCache = new Map();    // identity -> wins
 const wbHpCache = new Map();    // week -> world-boss hp last seen
+
+// contract views return raw addresses as hex (25 version-prefixed bytes);
+// the feed speaks base58check like everything else
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function addrFromHex(hex) {
+  if (!/^[0-9a-f]{50}$/.test(hex || '')) return null;
+  const payload = Buffer.from(hex, 'hex');
+  const chk = crypto.createHash('sha256')
+    .update(crypto.createHash('sha256').update(payload).digest())
+    .digest().subarray(0, 4);
+  const buf = Buffer.concat([payload, chk]);
+  let n = BigInt('0x' + buf.toString('hex'));
+  let out = '';
+  while (n > 0n) { out = B58[Number(n % 58n)] + out; n /= 58n; }
+  for (const b of buf) { if (b === 0) out = '1' + out; else break; }
+  return out;
+}
 const emberCache = new Map();   // identity -> Ember ledger
 const shardsCache = new Map();  // identity -> shards
 
@@ -303,6 +323,21 @@ async function enrichEvent(ev, tries) {
   if (ev.kind === 'delve_done') {
     if (tries === 0) return false;                 // let the claim tx confirm first
     ev.result = await delveVerdict(ev.who, ev.lone === true);
+    return true;
+  }
+  if (ev.kind === 'tour_enter' || ev.kind === 'tour_leave' || ev.kind === 'tour_round') {
+    const c = `get_tournament(${ev.id})`;
+    const parts = ((await feedViews([c]))[c] || '').split('|');
+    ev.name = parts[0] || null;
+    if (ev.kind === 'tour_round') {
+      if (parts[1] === '2') {
+        ev.done = true;
+        ev.champion = addrFromHex(parts[10] || '');
+        ev.pool = Number(parts[9]) || 0;
+      } else if (parts[1] === '3') {
+        ev.cancelled = true;
+      }
+    }
     return true;
   }
   if (ev.kind === 'guild_join') {
@@ -421,6 +456,15 @@ function feedEventFor(tx) {
       return { ts, kind: 'wb_fight', who };
     case 'claim_world_bounty':
       return { ts, kind: 'wb_claim', who, week: Number(args[0]) || 0 };
+    case 'create_tournament':
+      return { ts, kind: 'tour_new', who, name: String(args[0] || ''),
+               fee: Number(args[1]) || 0 };
+    case 'enter_tournament':
+      return { ts, kind: 'tour_enter', who, id: Number(args[0]) || 0 };
+    case 'leave_tournament':
+      return { ts, kind: 'tour_leave', who, id: Number(args[0]) || 0 };
+    case 'advance_tournament':
+      return { ts, kind: 'tour_round', who, id: Number(args[0]) || 0 };
     case 'claim_forfeit':
       return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
     case 'cancel_duel':

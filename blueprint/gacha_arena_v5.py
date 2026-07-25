@@ -9,113 +9,20 @@ from hathor import (
 
 @export
 class EmberfallArena(Blueprint):
-    """v5 phase 1 (abilities) on top of v4.1:
-    - every champion TYPE carries a keyword ability, stamped on the card
-      at mint from its template: 0 none, 1 Vanguard (+20% Attack round),
-      2 Warden (+20% Defense), 3 Trickster (+20% Cunning), 4 Momentum
-      (+10% in R2/R3 after winning R1), 5 Closer (+25% in a 1-1 decider),
-      6 Underdog (+15% all rounds when total power is lower),
-      7 Stancebreaker (the foe's stance edge is void), 8 Plunderer (a
-      winning Plunderer carries off the Crown's rake too), 9 Scholar
-      (double veterancy XP). 1-7 apply against bosses as well.
+    """Emberfall: the full game in one contract. Design + phase notes in
+    docs/v5-design.md.
 
-    v5 phase 2 (squad duels, 3v3):
-    - create_squad_duel deposits three cards; the SET is public but the
-      lane order is sealed (sha3("perm:salt"), perm a permutation of 012).
-    - accept_squad_duel deposits three cards; deposit order IS the lane
-      assignment (open). Bettors on the duel cannot accept it.
-    - reveal_squad unseals the lanes; each lane fights a full aspect
-      round-set with abilities (no stances in squads); two lanes take the
-      pot. Same wager/rake/bets/forfeit machinery as 1v1 on shared ids.
-
-    v5 phase 3 (rated ladder):
-    - rating per identity, starting 1000; standard Elo K=32 expected-score
-      transfer in 25-point buckets (exact-rounded within the matchmaking
-      band), zero-sum with a 100-point ladder floor.
-    - join_ranked(tier) deposits one card + a fixed wager (0/25/100 Ember).
-      A compatible waiter (same tier, rating within 200) means the joining
-      tx settles the fight at once; otherwise the joiner waits and
-      leave_ranked refunds. No stances, no bets, no choosing opponents.
-
-    v5 phase 4 (guilds and the world boss):
-    - create_guild burns 500 Ember; one banner per identity; join/leave
-      freely. Names are unique, case-insensitively.
-    - One world boss per unix-week, posted by the Crown. Staked champions
-      fight it from the Mines (writ entry fee, three fights per champion
-      per day); damage = rounds won x power. Every summon feeds the
-      week's bounty pool (a tenth of the pull price, in Ember).
-    - When the boss falls, contributors claim the pool pro-rata by
-      damage; members of the top-damage guild (as fought, not as joined
-      afterwards) take +25%. An unslain boss rolls its pool forward.
-
-v4.1 additions (2026-07-24, pending publish):
-    - accept_duel refuses a caller with a bet riding on that duel
-      (closes bet-then-accept: place_bet already refused participants,
-      but a bettor on an open duel could become the acceptor)
-    - get_bet(duel_id, address) view: an address's live stakes
-    - self.log outcome entries (duel rounds/winner side, forfeits,
-      delve hauls) so the logs API can replace state-diff inference
-
-Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
-    against the Gauntlet, delve, grow veterans, and dress cards.
-
-    Core (v2.2/v3, unchanged):
-    - pull(): pay HTR, a fresh 1-of-1 card token is minted from the
-      template catalog of an RNG-rolled rarity tier (0..3) with an
-      RNG-rolled power split into three aspects (valor/bulwark/guile).
-    - stake()/unstake()/claim_ember(): staked cards accrue Ember
-      (a contract-created reward token) per minute by tier.
-    - temper(): pay ember to raise one aspect of a staked card (half
-      burned, half Crown), capped per station.
-    - the Gauntlet (add_writ/fight_writ), delves, veterancy, cosmetics,
-      the daily trial, renown w/ vigil multiplier, deed bounties, the
-      Weaver's favor pool. All rewards funded from proceeds, never
-      printed.
-
-    v4 — session delegation:
-    - offer_session()/accept_session()/revoke_session(): a main wallet
-      offers a session address delegation, escrowing the session's HTR
-      float in the same tx (one prompt); the session key accepts in its
-      first promptless tx and withdraws the escrow. From then on every
-      game method resolves the session caller to the main address, so
-      ember, cards, renown, deeds, streaks and custody all accrue to one
-      identity across session and non-session play. Registration
-      requires both keys to sign (one tx each), so nobody can bind an
-      address they do not control. revoke_session() reclaims an
-      unaccepted offer's escrow and cuts a session loose.
-
-    v4 — fusion parks, never melts:
-    - fuse() keeps both parent cards in contract custody forever
-      (parked) instead of melting them. Works for any card the contract
-      did not mint (adopted realms) and matches the 1-unit NFT spec.
-
-    v4 — card_unit:
-    - initialize takes card_unit (1 or 100): the number of base units a
-      card token is minted with and moved by. Mainnet uses 1 per the
-      Hathor NFT spec; realms adopting 100-unit cards keep 100.
-      adopt_card must only register cards whose unit matches.
-
-    v4 — duel stances (commit-reveal):
-    - create_duel() takes a 32-byte commitment: sha3-256 of
-      "{stance}:{salt}" (empty bytes = classic instant duel, no
-      stances). The acceptor states their stance openly in
-      accept_duel(); the challenger then calls reveal_duel(stance,
-      salt) to settle. Stances are rock-paper-scissors (0 beats 1,
-      1 beats 2, 2 beats 0); the stance winner's aspects are boosted
-      20% in every round. If the challenger does not reveal within the
-      reveal window, anyone may call claim_forfeit() and the acceptor
-      takes the pot.
-
-    v4 — spectator side-bets:
-    - place_bet(): while a duel is open (or awaiting reveal) any
-      non-participant may back a side with ember, up to 50 bets per
-      duel. Winners split the losing pool pro-rata (5% of it raked to
-      the Crown); if a duel is cancelled or nobody backed the winning
-      side, every bet is refunded. Bets never earn renown.
-
-    v4 — honest trials:
-    - unwagered duels (wager 0) settle cards and experience as before
-      but grant no renown and no daily-trial credit.
+    v5 = v4 (session delegation, sealed-stance duels, side-bets,
+    park-not-melt fusion, 1-unit NFT cards, closed Ember points) plus:
+    keyword abilities stamped at mint (template "Name|a", ids 1-9);
+    3v3 squad duels (sealed lane order, deposit order = lanes, 2+ lanes
+    take the pot, shared duel-id space); a rated Elo ladder (K=32 in
+    25-point buckets, queue-on-join within a 200 band, zero-sum, floor
+    100); guilds (500 Ember, unique names) and a weekly world boss
+    (staked champions, damage pro-rata bounty from a tenth of summons,
+    +25% for the top guild as fought); and scheduled tournaments
+    (Crown-seeded pools, one round per interval, 60/25/7.5+7.5 split,
+    cancel-and-refund below four seats). Logging via self.log.info.
     """
 
     owner: Address
@@ -161,6 +68,22 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     wb_top_guild: dict[int, int]
     wb_claimed: dict[str, bool]
     wb_attempts: dict[TokenUid, int]    # day*10+fights, like writ_attempts
+    next_tourney_id: int
+    tour_name: dict[int, str]
+    tour_state: dict[int, int]          # 0 open, 1 running, 2 done, 3 cancelled
+    tour_fee: dict[int, Amount]
+    tour_seed: dict[int, Amount]
+    tour_size: dict[int, int]           # bracket cap: 4/8/16/32
+    tour_start: dict[int, int]          # registration closes, fights may begin
+    tour_round_secs: dict[int, int]
+    tour_round: dict[int, int]
+    tour_next_ts: dict[int, int]        # earliest next advance
+    tour_n: dict[int, int]              # entrants
+    tour_entrant: dict[int, Address]    # t*64 + i
+    tour_card: dict[int, TokenUid]      # t*64 + i
+    tour_alive: dict[int, bool]         # t*64 + i
+    tour_paid: dict[int, Amount]        # semis + runner-up already credited
+    tour_champion: dict[int, Address]
     squad_card: dict[int, TokenUid]          # duel_id*4+slot, challenger
     squad_acceptor_card: dict[int, TokenUid] # duel_id*4+lane, acceptor
     duel_wager: dict[int, Amount]
@@ -277,6 +200,22 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.wb_top_guild = {}
         self.wb_claimed = {}
         self.wb_attempts = {}
+        self.next_tourney_id = 0
+        self.tour_name = {}
+        self.tour_state = {}
+        self.tour_fee = {}
+        self.tour_seed = {}
+        self.tour_size = {}
+        self.tour_start = {}
+        self.tour_round_secs = {}
+        self.tour_round = {}
+        self.tour_next_ts = {}
+        self.tour_n = {}
+        self.tour_entrant = {}
+        self.tour_card = {}
+        self.tour_alive = {}
+        self.tour_paid = {}
+        self.tour_champion = {}
         self.squad_card = {}
         self.squad_acceptor_card = {}
         self.duel_wager = {}
@@ -1292,6 +1231,201 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         return share
 
     # ------------------------------------------------------------------
+    # Tournaments: scheduled brackets, Crown-seeded prize pools
+    # ------------------------------------------------------------------
+
+    @public
+    def create_tournament(self, ctx: Context, name: str, fee: Amount,
+                          size: int, start_ts: int, round_secs: int,
+                          seed: Amount) -> int:
+        """The Crown schedules a bracket. The seed comes out of its own
+        Ember ledger now and returns only if the bracket cancels."""
+        self._check_owner(ctx)
+        if len(name) < 1 or len(name) > 30:
+            raise NCFail("name must be 1-30 chars")
+        if fee < 0 or seed < 0:
+            raise NCFail("fee and seed cannot be negative")
+        if size != 4 and size != 8 and size != 16 and size != 32:
+            raise NCFail("bracket size must be 4, 8, 16 or 32")
+        if start_ts <= ctx.block.timestamp:
+            raise NCFail("the start must lie ahead")
+        if round_secs < 30 or round_secs > 7 * 86400:
+            raise NCFail("round interval out of range")
+        who = self._player(ctx)
+        if seed > 0:
+            if self.ember_ledger.get(who, 0) < seed:
+                raise NCFail("the Crown's ledger cannot cover that seed")
+            self._debit_ember(who, seed)
+        t = self.next_tourney_id
+        self.next_tourney_id = t + 1
+        self.tour_name[t] = name
+        self.tour_state[t] = 0
+        self.tour_fee[t] = fee
+        self.tour_seed[t] = seed
+        self.tour_size[t] = size
+        self.tour_start[t] = start_ts
+        self.tour_round_secs[t] = round_secs
+        self.tour_round[t] = 0
+        self.tour_next_ts[t] = start_ts
+        self.tour_n[t] = 0
+        self.tour_paid[t] = 0
+        self.log.info('tournament_posted', tournament=t, start=start_ts)
+        self.syscall.emit_event(
+            f'{{"event":"tournament","id":{t},"start":{start_ts}}}'.encode()
+        )
+        return t
+
+    @public(allow_deposit=True)
+    def enter_tournament(self, ctx: Context, t: int) -> int:
+        """One champion and the entry fee buy a bracket seat. One seat
+        per identity; leave_tournament refunds fully before the start."""
+        who = self._player(ctx)
+        if self.tour_state.get(t, -1) != 0:
+            raise NCFail("that tournament is not open")
+        if ctx.block.timestamp >= self.tour_start[t]:
+            raise NCFail("registration has closed")
+        n = self.tour_n[t]
+        if n >= self.tour_size[t]:
+            raise NCFail("the bracket is full")
+        i = 0
+        while i < n:
+            if self.tour_entrant[t * 64 + i] == who:
+                raise NCFail("you already hold a seat")
+            i += 1
+        action = self._single_card_deposit(ctx)
+        fee = self.tour_fee[t]
+        if self.ember_ledger.get(who, 0) < fee:
+            raise NCFail("not enough Ember for the entry fee")
+        self._debit_ember(who, fee)
+        key = t * 64 + n
+        self.tour_entrant[key] = who
+        self.tour_card[key] = action.token_uid
+        self.tour_alive[key] = True
+        self.tour_n[t] = n + 1
+        self.log.info('tournament_entered', tournament=t, seat=n)
+        return n
+
+    @public
+    def leave_tournament(self, ctx: Context, t: int) -> None:
+        """Give up the seat before the start: fee and champion return."""
+        who = self._player(ctx)
+        if self.tour_state.get(t, -1) != 0:
+            raise NCFail("that tournament is not open")
+        if ctx.block.timestamp >= self.tour_start[t]:
+            raise NCFail("the bracket is set; seats are held to the end")
+        n = self.tour_n[t]
+        i = 0
+        while i < n:
+            if self.tour_entrant[t * 64 + i] == who:
+                self._credit_ember(who, self.tour_fee[t])
+                self.pending[self.tour_card[t * 64 + i]] = who
+                last = t * 64 + (n - 1)
+                self.tour_entrant[t * 64 + i] = self.tour_entrant[last]
+                self.tour_card[t * 64 + i] = self.tour_card[last]
+                self.tour_n[t] = n - 1
+                self.log.info('tournament_left', tournament=t)
+                return
+            i += 1
+        raise NCFail("you hold no seat in that tournament")
+
+    @public
+    def advance_tournament(self, ctx: Context, t: int) -> int:
+        """Anyone may push the bracket once a round is due. Below four
+        entrants at start the bracket cancels with full refunds. Returns
+        the number of entrants still standing (0 on cancellation)."""
+        now = ctx.block.timestamp
+        state = self.tour_state.get(t, -1)
+        if state != 0 and state != 1:
+            raise NCFail("that tournament is over")
+        if now < self.tour_next_ts[t]:
+            raise NCFail("the next round is not due yet")
+        n = self.tour_n[t]
+        if state == 0:
+            if n < 4:
+                i = 0
+                while i < n:
+                    key = t * 64 + i
+                    self._credit_ember(self.tour_entrant[key], self.tour_fee[t])
+                    self.pending[self.tour_card[key]] = self.tour_entrant[key]
+                    i += 1
+                if self.tour_seed[t] > 0:
+                    self._credit_ember(self.owner, self.tour_seed[t])
+                self.tour_state[t] = 3
+                self.log.info('tournament_cancelled', tournament=t)
+                self.syscall.emit_event(
+                    f'{{"event":"tour_cancel","id":{t}}}'.encode()
+                )
+                return 0
+            self.tour_state[t] = 1
+        pool = self.tour_fee[t] * n + self.tour_seed[t]
+        alive: list[int] = []
+        i = 0
+        while i < n:
+            if self.tour_alive.get(t * 64 + i, False):
+                alive.append(i)
+            i += 1
+        m = len(alive)
+        if m < 2:
+            raise NCFail("the bracket is already decided")
+        fee = self.tour_fee[t]
+        k = 0
+        while k + 1 < m:
+            key_a = t * 64 + alive[k]
+            key_b = t * 64 + alive[k + 1]
+            card_a = self.tour_card[key_a]
+            card_b = self.tour_card[key_b]
+            packed = self._fight_rounds(card_a, card_b, -1, -1)
+            a_won = packed // 1000 >= 2
+            lose_key = key_b if a_won else key_a
+            win_card = card_a if a_won else card_b
+            lose_card = card_b if a_won else card_a
+            loser = self.tour_entrant[lose_key]
+            self._after_fight(win_card, lose_card, fee)
+            self.tour_alive[lose_key] = False
+            self.pending[lose_card] = loser
+            if 2 < m <= 4:
+                # falling in the semifinals still pays: 7.5% of the pool
+                # (the final's loser is the runner-up, paid below instead)
+                share = pool * 75 // 1000
+                if share > 0:
+                    self._credit_ember(loser, share)
+                self.tour_paid[t] = self.tour_paid.get(t, 0) + share
+            k += 2
+        # an odd tail walks through on a bye
+        self.tour_round[t] = self.tour_round.get(t, 0) + 1
+        self.tour_next_ts[t] = now + self.tour_round_secs[t]
+        survivors = m - m // 2
+        if m == 2:
+            # that was the final
+            win_i = alive[0] if self.tour_alive.get(t * 64 + alive[0], False) else alive[1]
+            lose_i = alive[1] if win_i == alive[0] else alive[0]
+            champion = self.tour_entrant[t * 64 + win_i]
+            runner = self.tour_entrant[t * 64 + lose_i]
+            runner_share = pool * 250 // 1000
+            if runner_share > 0:
+                self._credit_ember(runner, runner_share)
+            paid = self.tour_paid.get(t, 0) + runner_share
+            champ_share = pool - paid
+            self._credit_ember(champion, champ_share)
+            self.pending[self.tour_card[t * 64 + win_i]] = champion
+            self.tour_champion[t] = champion
+            self.tour_state[t] = 2
+            self.wins[champion] = self.wins.get(champion, 0) + 1
+            self._earn_renown(champion, 25, now)
+            self._earn_renown(runner, 10, now)
+            self.log.info('tournament_won', tournament=t, prize=champ_share)
+            self.syscall.emit_event(
+                f'{{"event":"tour_won","id":{t},"prize":{champ_share}}}'.encode()
+            )
+            return 1
+        self.log.info('tournament_round', tournament=t,
+                      round_no=self.tour_round[t], standing=survivors)
+        self.syscall.emit_event(
+            f'{{"event":"tour_round","id":{t},"standing":{survivors}}}'.encode()
+        )
+        return survivors
+
+    # ------------------------------------------------------------------
     # Cosmetics: bought identity that travels with the card, never power
     # ------------------------------------------------------------------
 
@@ -2129,6 +2263,33 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             status = "closed"
         card = self.duel_card[duel_id]
         return f"{status}|{card.hex()}|{self.duel_wager[duel_id]}"
+
+    @view
+    def get_tournament_count(self) -> int:
+        return self.next_tourney_id
+
+    @view
+    def get_tournament(self, t: int) -> str:
+        """"name|state|fee|seed|size|n|start|round|next_ts|pool|champion";
+        empty when absent, champion empty until decided."""
+        if t < 0 or t >= self.next_tourney_id:
+            return ""
+        champ = self.tour_champion.get(t)
+        pool = self.tour_fee[t] * self.tour_n[t] + self.tour_seed[t]
+        return (f"{self.tour_name[t]}|{self.tour_state[t]}|{self.tour_fee[t]}"
+                f"|{self.tour_seed[t]}|{self.tour_size[t]}|{self.tour_n[t]}"
+                f"|{self.tour_start[t]}|{self.tour_round.get(t, 0)}"
+                f"|{self.tour_next_ts[t]}|{pool}"
+                f"|{champ.hex() if champ is not None else ''}")
+
+    @view
+    def get_tour_entrant(self, t: int, i: int) -> str:
+        """"addr_hex|card_hex|alive(0/1)", empty when absent."""
+        if i < 0 or i >= self.tour_n.get(t, 0):
+            return ""
+        key = t * 64 + i
+        return (f"{self.tour_entrant[key].hex()}|{self.tour_card[key].hex()}"
+                f"|{1 if self.tour_alive.get(key, False) else 0}")
 
     @view
     def get_guild_count(self) -> int:

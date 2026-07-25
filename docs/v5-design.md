@@ -123,6 +123,39 @@ skill ladder; the season stays the activity sprint).
   entry, abilities 1-7 apply). scripts/world_boss.py posts weekly
   (dry-run default, WB_APPLY=1, no default ARENA_NC).
 
+## 5. Tournaments (scheduled brackets)
+
+Calendar events with entry fees and a Crown-seeded prize pool; the World
+feed's scheduled peak moments. Decisions (2026-07-25): one round per DAY
+(anyone may call advance once the round is due — a 16-bracket is a 4-day
+arc), split 60% champion / 25% runner-up / 7.5% each semifinalist, and
+the Crown's seed is passed at creation, debited from its own Ember
+ledger (its rake income — the tithe made visible).
+
+- `create_tournament(name, fee, size, start_ts, round_secs, seed)`:
+  owner-only (the cron schedules them). size in 4/8/16/32; round_secs is
+  the gap between rounds (86400 live; short in tests). The seed debits
+  the Crown at creation and is refunded only on cancellation.
+- `enter_tournament(t)` deposits ONE champion + debits the fee. One
+  entry per identity; `leave_tournament(t)` refunds fully before start.
+- At start, fewer than 4 entrants cancels (first advance call performs
+  it): fees, cards and seed all return.
+- `advance_tournament(t)`: anyone, once the round is due. Fights the
+  current round's pairs (entry order; odd counts give the tail a bye)
+  with the ability engine, no stances. Losers' cards go to pending at
+  once; hardening/XP apply with the fee as the wager.
+- Payouts are automatic, no claim txs: semifinalists (eliminated when
+  3-4 remain) get pool*75//1000 each, the runner-up pool*250//1000, and
+  the champion takes the remainder (rounding dust and any unpaid semi
+  share in odd brackets included). Champion: +25 renown and a win;
+  runner-up +10 renown.
+- Pool = fee x entrants + seed, all Ember (closed points; conserved
+  exactly, unlike minted bounties).
+- Views: get_tournament(t) ("name|state|fee|seed|size|n|start|round|
+  next_ts|pool|champion"), get_tour_entrant(t, i), get_tournament_count.
+- scripts/tournament.py (cron) schedules the weekly bracket and sizes
+  the seed from the Crown's ledger.
+
 ## Migration to v5
 
 Existing adopt path carries player state; new in v5: `adopt_rating`,
