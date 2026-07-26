@@ -1137,11 +1137,11 @@ body.land-flash::before {
 
 /* progression: daily trial, muster roll, season */
 .trial-note { color: var(--acid); font-size: 13px; }
-/* farm rates read as rank initials in their own metal */
-.rates { display: inline-flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
-.rates i { color: var(--ink-faint); font-style: normal; }
-.rates b { font-family: var(--display); font-weight: 700; }
 .nowrap { white-space: nowrap; }
+.farm-summary .stat .v small {
+  display: block; margin-top: 3px; font-size: 11.5px; color: var(--ink-dim);
+  font-family: var(--body); letter-spacing: 0;
+}
 /* aspects read the same everywhere: glyph, number, a little air */
 .aspect-line { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .aspect-line .g { width: 12px; height: 12px; fill: var(--ink-dim); margin-left: 6px; }
