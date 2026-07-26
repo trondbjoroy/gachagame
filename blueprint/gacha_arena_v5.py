@@ -940,6 +940,49 @@ class EmberfallArena(Blueprint):
         self.writ_guile.append(guile)
 
     @public
+    def set_writ(self, ctx: Context, writ: int, valor: int, bulwark: int,
+                 guile: int) -> None:
+        """Retune a posted boss. Balance is a moving target and a realm
+        should not need a new contract to answer it."""
+        self._check_owner(ctx)
+        if writ < 0 or writ >= len(self.writ_name):
+            raise NCFail("no such writ")
+        if valor < 1 or bulwark < 1 or guile < 1:
+            raise NCFail("aspects must be positive")
+        if valor + bulwark + guile > 4_000:
+            raise NCFail("writ too mighty")
+        self.writ_valor[writ] = valor
+        self.writ_bulwark[writ] = bulwark
+        self.writ_guile[writ] = guile
+        self.log.info('writ_retuned', writ=writ)
+
+    def _writ_spread(self, writ: int, tier: int, power: int) -> list[int]:
+        """The aspects a champion of this power actually faces. Tiers step
+        x1/x3/x9, then the spread is floored at 45/80/115% of the champion's
+        power, keeping its shape: a posting of 6/5/5 was no gate at all for a
+        Highlord, let alone a Sovereign."""
+        mult = [1, 3, 9][tier]
+        bv = self.writ_valor[writ] * mult
+        bb = self.writ_bulwark[writ] * mult
+        bg = self.writ_guile[writ] * mult
+        total = bv + bb + bg
+        floor = power * [45, 80, 115][tier] // 100
+        if 0 < total < floor:
+            bv = bv * floor // total
+            bb = bb * floor // total
+            bg = bg * floor // total
+        return [bv, bb, bg]
+
+    @view
+    def get_writ_spread(self, writ: int, tier: int, power: int) -> str:
+        """What a fight will face, "v|b|g", from the same code the fight
+        runs: the UI never has to guess or duplicate the maths."""
+        if writ < 0 or writ >= len(self.writ_name) or tier < 0 or tier > 2:
+            return ""
+        sp = self._writ_spread(writ, tier, power)
+        return f"{sp[0]}|{sp[1]}|{sp[2]}"
+
+    @public
     def fight_writ(self, ctx: Context, card: TokenUid, writ: int, tier: int) -> int:
         """Best-of-three against a posted writ, tier Grim(0)/Dire(1)/Black(2)
         scaling its aspects 1x/2x/4x. Entry: a fifth of the champion's
@@ -977,10 +1020,7 @@ class EmberfallArena(Blueprint):
         # half to the Crown; the other half simply ceases to exist
         self._credit_ember(self.owner, entry // 2)
 
-        mult = [1, 2, 4][tier]
-        boss = [self.writ_valor[writ] * mult,
-                self.writ_bulwark[writ] * mult,
-                self.writ_guile[writ] * mult]
+        boss = self._writ_spread(writ, tier, self.card_power[card])
         attrs = self.card_attrs[card]
         ab = self.card_ability.get(card, 0)
         weaker = 1 if self.card_power[card] < boss[0] + boss[1] + boss[2] else 0
