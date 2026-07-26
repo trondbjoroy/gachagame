@@ -34,6 +34,7 @@ const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.mp3': 'audio/mpeg',
+  '.webp': 'image/webp', '.mp4': 'video/mp4',
 };
 
 // ---- shared wallet address (callers/claims are pinned to it) ----

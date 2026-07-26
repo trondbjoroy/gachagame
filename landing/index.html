@@ -384,9 +384,10 @@
     <!-- the realm's own numbers, read from the chain on load: the page claims
          every deed is witnessed, so it had better show some -->
     <dl class="counters" id="counters" aria-live="polite">
-      <div><dt>Champions summoned</dt><dd id="cSummons">—</dd></div>
+      <div><dt>Summonings</dt><dd id="cSummons">—</dd></div>
       <div><dt>Duels settled</dt><dd id="cDuels">—</dd></div>
-      <div><dt>Sovereigns bound</dt><dd id="cSov">—</dd></div>
+      <div><dt>Champions bound</dt><dd id="cBound">—</dd></div>
+      <div><dt>Sovereigns</dt><dd id="cSov">—</dd></div>
     </dl>
   </div>
   <div class="scroll-hint">⌄</div>
@@ -444,7 +445,7 @@
     <article class="card cf rank-0">
       <div class="cf-art">
         <img src="grain-weevil-440.webp" srcset="grain-weevil-220.webp 220w, grain-weevil-440.webp 440w"
-             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             sizes="(max-width: 640px) 45vw, 244px" width="440" height="440" loading="lazy" decoding="async"
              alt="Grain Weevil, a Footman of the Vermin" />
         <div class="cf-vign"></div>
         <div class="cf-rank">Footman</div>
@@ -465,7 +466,7 @@
     <article class="card cf rank-1">
       <div class="cf-art">
         <img src="sewer-baron-440.webp" srcset="sewer-baron-220.webp 220w, sewer-baron-440.webp 440w"
-             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             sizes="(max-width: 640px) 45vw, 244px" width="440" height="440" loading="lazy" decoding="async"
              alt="Sewer Baron, a Knight of the Vermin" />
         <div class="cf-vign"></div>
         <div class="cf-rank">Knight</div>
@@ -486,7 +487,7 @@
     <article class="card cf rank-2">
       <div class="cf-art">
         <img src="the-cracked-crown-440.webp" srcset="the-cracked-crown-220.webp 220w, the-cracked-crown-440.webp 440w"
-             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             sizes="(max-width: 640px) 45vw, 244px" width="440" height="440" loading="lazy" decoding="async"
              alt="The Cracked Crown, a Highlord relic" />
         <div class="cf-vign"></div>
         <div class="cf-rank">Highlord</div>
@@ -508,7 +509,7 @@
     <article class="card cf rank-3">
       <div class="cf-art">
         <img src="the-last-king-440.webp" srcset="the-last-king-220.webp 220w, the-last-king-440.webp 440w"
-             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             sizes="(max-width: 640px) 45vw, 244px" width="440" height="440" loading="lazy" decoding="async"
              alt="The Last King, a Sovereign of the Undead" />
         <div class="cf-vign"></div>
         <div class="cf-rank">Sovereign</div>
@@ -579,6 +580,7 @@
           if (el) el.textContent = fmt(v);
         };
         put('cSummons', d.summons);
+        put('cBound', d.champions);
         put('cDuels', d.duels);
         put('cSov', d.sovereigns);
         document.getElementById('counters').classList.add('live');
@@ -589,20 +591,48 @@
   // hero video, if hero.mp4 has been provided (graceful fallback to the still)
   (function () {
     var v = document.createElement('video');
-    v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
-    v.preload = 'none';
-    v.setAttribute('playsinline', ''); v.poster = 'hero-1600.webp';
+    v.loop = true; v.playsInline = true;
+    // muted and autoplay must be ATTRIBUTES: Chrome's autoplay policy reads
+    // them off the element, and a property alone left the loop paused at 0.00
+    // with the poster showing. play() is called too, and its rejection is
+    // fine — the poster simply stays.
+    v.setAttribute('muted', '');
+    v.setAttribute('autoplay', '');
+    v.setAttribute('playsinline', '');
+    v.muted = true; v.autoplay = true;
+    v.poster = 'hero-1600.webp';
     var s = document.createElement('source');
     s.src = 'hero.mp4'; s.type = 'video/mp4';
     s.onerror = function () { v.remove(); };
     v.appendChild(s);
     // the video is the heaviest asset on the page and it competes with the
     // CTA for bandwidth, so the poster carries the hero until the page is
-    // idle and only then does the loop arrive
+    // idle and only then does the loop arrive. No HEAD probe: the source's
+    // own error handler covers a missing file, and HEAD was one more request
+    // (and a 503 from the host during a deploy would have hidden the video).
     var start = function () {
-      fetch('hero.mp4', { method: 'HEAD' }).then(function (r) {
-        if (r.ok) document.getElementById('heroMedia').appendChild(v);
-      }).catch(function () { });
+      document.getElementById('heroMedia').appendChild(v);
+      var tryPlay = function () {
+        var p = v.play();
+        if (p && p.catch) p.catch(function () { });
+      };
+      tryPlay();
+      // some contexts refuse the first attempt (a background tab, a strict
+      // autoplay policy): try again when the page becomes visible and on the
+      // first interaction, then stop asking
+      var again = function () {
+        if (!v.paused) return off();
+        tryPlay();
+        if (!v.paused) off();
+      };
+      var off = function () {
+        document.removeEventListener('visibilitychange', again);
+        document.removeEventListener('pointerdown', again);
+        document.removeEventListener('scroll', again);
+      };
+      document.addEventListener('visibilitychange', again);
+      document.addEventListener('pointerdown', again, { passive: true });
+      document.addEventListener('scroll', again, { passive: true, once: false });
     };
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2600 });

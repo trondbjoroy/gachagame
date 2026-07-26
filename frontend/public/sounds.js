@@ -41,7 +41,7 @@ async function startMusic() {
 function syncMusicBtn() {
   const b = $('musicBtn');
   if (!b) return;
-  b.textContent = '🎵';
+  b.innerHTML = '<svg class="g" aria-hidden="true"><use href="#g-music"/></svg>';
   b.style.opacity = musicOff ? '.35' : '1';
   b.title = musicOff ? 'Music off' : 'Music on';
 }
@@ -113,7 +113,7 @@ window.sfx = function sfx(name, opts) {
 function syncMuteBtn() {
   const b = $('muteBtn');
   if (!b) return;
-  b.textContent = sfxMuted ? '🔇' : '🔊';
+  b.innerHTML = `<svg class="g" aria-hidden="true"><use href="#g-sound-${sfxMuted ? 'off' : 'on'}"/></svg>`;
   b.title = sfxMuted ? 'Sound off' : 'Sound on';
 }
 $('muteBtn').onclick = () => {

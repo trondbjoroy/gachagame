@@ -362,10 +362,17 @@ async function loadMine() {
   } else for (const c of loose) c.heldByMain = false;
 }
 
-async function loadRaffle() {
+/* Some reads do not change on a 45s cadence: banner names and the weekly
+   raffle draw move at most a few times a day, so they are fetched at most
+   every five minutes (a tx-driven refresh passes force to skip the cache). */
+const slowFetch = { names: 0, raffle: 0 };
+const SLOW_MS = 300_000;
+
+async function loadRaffle(force) {
+  if (!force && S.raffle && Date.now() - slowFetch.raffle < SLOW_MS) return;
   try {
     const r = await fetch('/raffle.json');
-    if (r.ok) S.raffle = await r.json();
+    if (r.ok) { S.raffle = await r.json(); slowFetch.raffle = Date.now(); }
   } catch { /* raffle display is optional */ }
 }
 
@@ -484,34 +491,42 @@ async function loadFeed() {
   } catch { /* the feed is decorative */ }
 }
 
-async function loadNames() {
+async function loadNames(force) {
+  if (!force && Object.keys(S.names || {}).length && Date.now() - slowFetch.names < SLOW_MS) return;
   try {
     const r = await fetch('/api/names');
-    if (r.ok) S.names = await r.json();
+    if (r.ok) { S.names = await r.json(); slowFetch.names = Date.now(); }
   } catch { /* names are cosmetic; addresses still show */ }
 }
 
-async function refresh(touch) {
-  // independent reads run together; only loadMarket (flags cards) and
-  // loadMine (needs the card set) wait for the contract
-  await Promise.all([
-    loadContract(touch),
-    loadRaffle(),
-    loadNames(),
-    loadFeed(),
-  ]);
-  await Promise.all([loadMarket().catch(() => {}), loadMine()]);
-  render();
-  maybeAutoClaim();
+let refreshing = null;
+async function refresh(touch, force) {
+  // never two refreshes in flight: the poll and a tx completing together
+  // used to double every read for no gain
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    // independent reads run together; only loadMarket (flags cards) and
+    // loadMine (needs the card set) wait for the contract
+    await Promise.all([
+      loadContract(touch),
+      loadRaffle(force),
+      loadNames(force),
+      loadFeed(),
+    ]);
+    await Promise.all([loadMarket().catch(() => {}), loadMine()]);
+    render();
+    maybeAutoClaim();
+  })();
+  try { await refreshing; } finally { refreshing = null; }
 }
 
 // a refresh that syncs achievement/level/muster state WITHOUT replaying its
 // ribbons: used on connect, restore and session switches so a reconnect never
 // re-announces deeds the player already saw. Genuine play refreshes (doTx, the
 // 45s poll) stay noisy so new achievements still pop.
-async function silentRefresh(touch) {
+async function silentRefresh(touch, force) {
   S.silentSync = true;
-  try { await refresh(touch); } finally { S.silentSync = false; }
+  try { await refresh(touch, force); } finally { S.silentSync = false; }
 }
 
 /* in promptless sessions, claimable champions walk home by themselves */
@@ -763,7 +778,7 @@ function cardBox(c, buttonsHtml, selectable) {
   // a champion is a CARD: framed art up top, a plate, an aspect rail, and a
   // pedigree strip. Rank rides on the frame's material, not on a label.
   const art = meta?.art
-    ? `<img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    ? artImg(c.name, 'ac-img', '(max-width: 700px) 46vw, 232px')
     : `<div class="cf-sigil">${artSvg(c.name)}</div>`;
   const typeBits = [meta?.type, cos.epithet ? EPITHETS[cos.epithet - 1] : null].filter(Boolean);
   return `<div class="card cf rank-${c.tier}${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
@@ -785,10 +800,21 @@ function cardBox(c, buttonsHtml, selectable) {
   </div>`;
 }
 
+/* Card art: 440px covers a grid card at 2x, 880px the detail sheet's
+   column. The JPEGs stay on disk for the share canvas and og:image. */
+function artImg(name, cls, sizes, eager) {
+  const sl = slugOf(name);
+  return `<img class="${cls}" src="cards/${sl}-440.webp"`
+    + ` srcset="cards/${sl}-440.webp 440w, cards/${sl}-880.webp 880w"`
+    + ` sizes="${sizes}" width="440" height="440"`
+    + `${eager ? '' : ' loading="lazy"'} decoding="async" alt="">`;
+}
+
 function rowArt(c) {
   if (!c) return '?';
   const meta = cardMeta(c.name);
-  return meta?.art ? `<img class="row-thumb" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">`
+  return meta?.art ? `<img class="row-thumb" loading="lazy" decoding="async"
+      src="cards/${slugOf(c.name)}-440.webp" width="440" height="440" sizes="34px" alt="">`
     : artSvg(c.name, 'card-art duel-art');
 }
 
@@ -891,7 +917,7 @@ function render() {
      <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
   // the rail keeps the rates at a glance once the hero has retired
   $('oddsMini').innerHTML = TIERS.map(t =>
-    `<span title="${t.name}"><i style="background:${t.color}"></i>${t.pct}</span>`).join('');
+    `<span title="${t.name}"><i style="background:${t.color}"></i><b>${t.name}</b>${t.pct}</span>`).join('');
   applyHeroFold();
 
   // wallets may hold funds on addresses we cannot see; the wallet itself gates affordability
@@ -967,7 +993,14 @@ function render() {
      MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
      MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '',
      `<button class="mini-btn alt" data-dress="${c.uid}">STYLE</button>`]), true)).join('');
-  $('collectionEmpty').hidden = mine.length > 0;
+  // a fresh summon lives in the pending bucket, so the empty line has to
+  // account for it: telling a new player they own nothing while their first
+  // champion waits above is the worst possible moment for that message
+  const pendingNow = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
+  $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0;
+  $('collectionEmpty').textContent = pendingNow.length
+    ? 'Your first champion is waiting below. Claim them and they muster here.'
+    : 'No champions yet. Summon your first.';
 
   const inSession = S.wallet?.mode === 'session';
   const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
@@ -983,17 +1016,30 @@ function render() {
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
   const canPayFuse = S.ember >= fuseFee;
-  $('fuseHint').textContent = !fuseReady ? 'Press and hold two champions of the same rarity to select them.'
+  $('fuseHint').innerHTML = !fuseReady
+    ? `<button class="mini-btn alt${S.fuseMode ? ' active' : ''}" id="fuseModeBtn">${
+        S.fuseMode ? 'PICKING…' : 'PICK TWO'}</button>
+       <span class="fuse-tip">${S.fuseMode
+         ? 'Tap two champions of the same rarity.'
+         : 'or shift-click two of the same rarity'}</span>`
     : (canPayFuse ? `Fuse into the next rarity for ${fmtEmber(fuseFee)}:`
        : `Fusion costs ${fmtEmber(fuseFee)}; you have ${fmtEmber(S.ember)}. Earn more by mining.`);
+  const fmb = $('fuseModeBtn');
+  if (fmb) fmb.onclick = () => { S.fuseMode = !S.fuseMode; S.selected.clear(); render(); };
+  document.body.classList.toggle('fuse-picking', !!S.fuseMode);
   $('fuseBtn').disabled = !(fuseReady && canPayFuse);
 
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.staker));
+  const owed = staked.reduce((a, c) => a + (c.pendingEmber || 0), 0);
   $('farmSummary').innerHTML = `
-    <div class="stat"><div class="k">Ember</div><div class="v">${fmtEmber(S.ember)}</div></div>
-    <div class="stat"><div class="k">Farm rates /min</div><div class="v"><small>C 1 · R 3 · E 10 · L 40</small></div></div>
-    <div class="stat"><div class="k">Relic shards</div><div class="v">${S.shards || 0} <small>· from delves · dress your champions</small></div></div>`;
+    <div class="stat"><div class="k">Ember at the face</div><div class="v">${fmtEmber(owed)}
+      <small>· unclaimed</small></div></div>
+    <div class="stat"><div class="k">Rates /min</div><div class="v"><small class="rates">${
+      TIERS.map((t, i) => `<span title="${t.name}"><b style="color:${t.color}">${t.name[0]}</b> ${
+        [1, 3, 10, 40][i]}</span>`).join('<i>·</i>')}</small></div></div>
+    <div class="stat"><div class="k">Relic shards</div><div class="v">${S.shards || 0}
+      <small class="nowrap">· from delves · dress your champions</small></div></div>`;
   $('stakedCards').innerHTML = staked.map(c => {
     const delving = (c.delveSince || 0) > 0;
     const doneAt = ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000;
@@ -1031,7 +1077,9 @@ function render() {
   // fights in motion first, the graveyard below; newest first within each
   duelsShown.sort((a, b) =>
     ((a.status === 'closed') - (b.status === 'closed')) || b.id - a.id);
-  $('duelList').innerHTML = duelsShown.map(d => {
+  const liveDuels = duelsShown.filter(d => d.status !== 'closed');
+  const pastDuels = duelsShown.filter(d => d.status === 'closed');
+  const duelRow = d => {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
@@ -1078,7 +1126,15 @@ function render() {
       </div>
       ${act}
     </div>`;
-  }).join('');
+  };
+  $('duelList').innerHTML = liveDuels.map(duelRow).join('')
+    + (pastDuels.length
+      ? `<details class="past-fights"${S.pastOpen ? ' open' : ''}>
+           <summary>${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}</summary>
+           ${pastDuels.map(duelRow).join('')}</details>`
+      : '');
+  const det = $('duelList').querySelector('.past-fights');
+  if (det) det.ontoggle = () => { S.pastOpen = det.open; };
   $('duelEmpty').hidden = duelsShown.length > 0;
 
   // the rated ladder: queue-on-join matchmaking within 200 rating
@@ -1194,11 +1250,13 @@ function render() {
 
   // the bosses of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
-  $('gauntletIntro').textContent = S.addr
-    ? 'Ten bosses, each with a public stat spread. Champions fight while they mine: '
-      + 'three fights per champion per day, an Ember entry fee, '
-      + 'bounty and renown for the victor. Beat a boss at Grim to face its Dire; '
-      + 'beat the boss before it to reach the next.'
+  $('gauntletIntro').innerHTML = S.addr
+    ? `<ul class="rulelist">
+        <li>Ten bosses, each with a public spread of aspects.</li>
+        <li>Fought by <b>mining</b> champions, three fights each per day.</li>
+        <li>An Ember entry fee; bounty and renown to the victor.</li>
+        <li>Fell a boss at Grim to unlock its Dire, and the boss before it to reach the next.</li>
+      </ul>`
     : 'Connect a wallet to fight bosses.';
   $('writList').innerHTML = (S.writs || []).map(w => {
     const writOpen = w.id === 0 || !!(cleared & (1 << ((w.id - 1) * 3)));
@@ -1250,6 +1308,12 @@ function render() {
           : '<span class="duel-done">sold</span>'}
       </div>`).join('');
     $('listingEmpty').hidden = listingsShown.length > 0;
+    $('listingEmpty').innerHTML = S.addr
+      ? `Nothing for sale right now. Champions you list appear here, and the
+         Crown takes a 5% tithe on a sale. <b>SELL</b> sits under any champion
+         in your Collection.`
+      : `Nothing for sale right now. Every champion here is listed by a player,
+         never by the house.`;
     let doneSeen = 0;
     const swapsShown = S.swaps.filter(w => {
       if (w.status === 'open') return true;
@@ -1289,6 +1353,18 @@ function sameTierSelected() {
 
 function bindListActions() {
   // tap opens the detail view; press-and-hold selects for fusion
+  const toggleFusePick = uid => {
+    const c = S.cards.get(uid);
+    if (!c?.mine) return false;
+    if (c.tier >= 3) {
+      ribbon('Sovereigns are the top rarity; they cannot be fused');
+      return true;
+    }
+    if (S.selected.has(uid)) S.selected.delete(uid);
+    else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
+    render();
+    return true;
+  };
   document.querySelectorAll('[data-open]').forEach(el => {
     const uid = el.dataset.open;
     let timer = null, held = false;
@@ -1299,14 +1375,7 @@ function bindListActions() {
       timer = setTimeout(() => {
         held = true;
         window.haptic?.([20, 30, 20]);
-        // a hold on a champion that cannot fuse says WHY instead of nothing
-        if (c.tier >= 3) {
-          ribbon('Sovereigns are the top rarity; they cannot be fused');
-          return;
-        }
-        if (S.selected.has(uid)) S.selected.delete(uid);
-        else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
-        render();
+        toggleFusePick(uid);
       }, 450);
     };
     const cancel = () => { clearTimeout(timer); timer = null; };
@@ -1317,6 +1386,7 @@ function bindListActions() {
     el.onclick = e => {
       if (e.target.closest('button, summary')) return;
       if (held) { held = false; return; } // the hold already did its work
+      if ((e.shiftKey || S.fuseMode) && toggleFusePick(uid)) return;
       openCard(uid);
     };
   });
@@ -1714,7 +1784,7 @@ function showRevealNow(won, tierLabel) {
   const meta = cardMeta(won.name);
   pc.classList.toggle('art-reveal', !!meta?.art);
   const face = meta?.art ? `
-    <img class="ac-img" src="cards/${slugOf(won.name)}.jpg" alt="">
+    ${artImg(won.name, 'ac-img', '(max-width: 700px) 80vw, 420px', true)}
     <div class="ac-scrim"></div>
     <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power pw-inline">${glyph('power')}${won.power}</span></div>
     <div class="ac-bottom">
@@ -2062,7 +2132,7 @@ function openDress(uid) {
   const meta = cardMeta(c.name);
   $('dressTitle').textContent = `Dress ${c.name}`;
   const art = meta?.art
-    ? `<img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    ? artImg(c.name, 'ac-img', '(max-width: 700px) 80vw, 300px', true)
     : `<div class="dress-svg">${artSvg(c.name)}</div>`;
   const previewCls = (cur.frame ? ` cframe-${cur.frame}` : '') + (cur.tint ? ` ctint-${cur.tint}` : '');
   $('dressBody').innerHTML = `
@@ -2088,7 +2158,8 @@ function openDress(uid) {
       <div class="dress-row"><b>Tint</b>
         ${[...Array(6)].map((_, i) => `<button class="mini-btn alt dress-btn tint-btn${cur.tint === i + 1 ? ' active' : ''}"
           data-cos="1:${i + 1}" data-prev="tint:${i + 1}">${meta?.art
-            ? `<span class="ctint-${i + 1}"><img class="ac-img tint-thumb" src="cards/${slugOf(c.name)}.jpg" alt="Tint ${i + 1}"></span>`
+            ? `<span class="ctint-${i + 1}"><img class="ac-img tint-thumb" loading="lazy" decoding="async"
+                src="cards/${slugOf(c.name)}-440.webp" sizes="70px" alt="Tint ${i + 1}"></span>`
             : `Tint ${i + 1}`}</button>`).join('')}
         ${cur.tint ? '<button class="ghost-btn" data-cos="1:0">clear</button>' : ''}
       </div>
@@ -2209,7 +2280,7 @@ async function claimName() {
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'the name server rejected the claim');
     localStorage.setItem(NAME_LS, name);
-    await loadNames();
+    await loadNames(true);
     render();
     $('overlay').hidden = true;
     ribbon(`You are now known as <b>${name}</b>`, 'level', 'deed');
@@ -2241,7 +2312,7 @@ function openCard(uid) {
   const cosCls = (cos.frame ? ` cframe-${cos.frame}` : '') + (cos.tint ? ` ctint-${cos.tint}` : '');
   const [, , , tp = 0, hd = 0] = c.aspects || [];
   const art = meta?.art
-    ? `<img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    ? artImg(c.name, 'ac-img', '(max-width: 899px) 92vw, 420px', true)
     : `<div class="cf-sigil">${artSvg(c.name)}</div>`;
   const typeBits = [t.name, meta?.type, cos.epithet ? EPITHETS[cos.epithet - 1] : null].filter(Boolean);
   // the pedigree reads as a record: this history cannot be forged and it
@@ -3414,7 +3485,7 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
     const meta = CATALOG[name];
     const t = TIERS[STATION_TIER[meta.station] ?? 0];
     const incoming = $(front ? 'showA' : 'showB');
-    incoming.src = 'cards/' + slugOf(name) + '.jpg';
+    incoming.src = 'cards/' + slugOf(name) + '-440.webp';
     incoming.onload = () => {
       $('showA').classList.toggle('on', front);
       $('showB').classList.toggle('on', !front);
