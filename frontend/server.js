@@ -587,6 +587,7 @@ setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 // pass ?touch=<uids> after their own tx for instant freshness on those cards.
 const cardCache = { cards: {}, updatedAt: 0 };
 const realmCache = { at: 0, data: null };   // landing-page counters
+const tokenMeta = new Map();                // uid -> token info (immutable)
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
   'get_card_aspects', 'get_card_wins', 'get_card_cosmetics', 'get_card_ability',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
@@ -858,6 +859,37 @@ async function handleApi(req, res, ip) {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ events: feed }));
+  }
+
+  /* Token metadata in ONE call. wallet-lib asks the node for each token it
+     holds, one request apiece, so a 60-card collection meant 60 round trips
+     that grew with the collection. Name and symbol are struck at creation and
+     never change, so they are cached here for good and answered in bulk. */
+  if (req.method === 'GET' && url.pathname === '/tokens') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    const ids = (q.get('ids') || '').split(',').filter(u => HEX64.test(u)).slice(0, 60);
+    const out = {};
+    const missing = ids.filter(u => {
+      const hit = tokenMeta.get(u);
+      if (hit) { out[u] = hit; return false; }
+      return true;
+    });
+    // the node is asked only for what we have never seen
+    await Promise.all(missing.map(async u => {
+      try {
+        const r = await fetch(`${NODE}/thin_wallet/token?id=${u}`);
+        const d = await r.json();
+        if (d && d.success) {
+          tokenMeta.set(u, d);
+          if (tokenMeta.size > 5_000) tokenMeta.clear();
+          out[u] = d;
+        } else {
+          out[u] = d || { success: false };
+        }
+      } catch { /* the client falls back to its own per-token call */ }
+    }));
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(JSON.stringify(out));
   }
 
   // the realm's public numbers for the landing page. Cross-origin because
