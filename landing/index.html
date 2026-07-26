@@ -51,8 +51,9 @@
   .launch.alt:hover { background: rgba(212, 168, 67, .1); border-color: var(--gold); }
   /* the realm's own numbers */
   .counters {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 34px;
-    margin: 30px auto 0; max-width: 640px;
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 8px clamp(16px, 5vw, 34px);
+    margin: clamp(18px, 3.4vh, 30px) auto 0; max-width: 640px;
   }
   .counters div { min-width: 118px; }
   .counters dt {
@@ -203,13 +204,13 @@
       radial-gradient(90% 60% at 50% 42%, transparent 30%, rgba(11, 10, 8, .82) 100%),
       linear-gradient(180deg, rgba(11, 10, 8, .55) 0%, transparent 28%, transparent 62%, var(--bg) 100%);
   }
-  .hero-inner { padding: 8vh 24px 12vh; max-width: 900px; }
+  .hero-inner { padding: clamp(3vh, 6vh, 8vh) 24px clamp(5vh, 9vh, 12vh); max-width: 900px; }
   .hero .mark {
     width: clamp(96px, 15vw, 150px); margin: 0 auto 8px;
     filter: drop-shadow(0 0 34px rgba(212, 168, 67, .45));
     animation: markPulse 3.2s ease-in-out infinite alternate;
   }
-  .hero .mark img { width: 100%; display: block; }
+  .hero .mark img { width: 100%; height: auto; display: block; }
   @keyframes markPulse {
     from { filter: drop-shadow(0 0 18px rgba(212, 168, 67, .3)); transform: scale(.99); }
     to { filter: drop-shadow(0 0 44px rgba(212, 168, 67, .55)); transform: scale(1.015); }
@@ -231,7 +232,7 @@
   }
   .verbs {
     display: flex; justify-content: center; gap: clamp(14px, 3.5vw, 34px);
-    margin: 34px 0 40px; flex-wrap: wrap;
+    margin: clamp(18px, 3.6vh, 34px) 0 clamp(22px, 4.4vh, 40px); flex-wrap: wrap;
   }
   .verbs span {
     font-family: 'Cinzel', serif; font-size: clamp(15px, 2.6vw, 22px);
