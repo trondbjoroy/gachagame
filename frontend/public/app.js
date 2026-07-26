@@ -557,15 +557,15 @@ const DEEDS = [
   { id: 'warband', name: 'Raise a Warband', desc: 'Have five champions at once', test: s => s.owned.length >= 5 },
   { id: 'gem-hoard', name: 'Ember-Hoarder', desc: 'Hold 200 Ember or more', test: s => s.ember >= 200 },
   { id: 'high-court', name: 'Court of Highlords', desc: 'Have a Highlord in your collection', test: s => s.owned.some(c => c.tier >= 2) },
-  { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four stations at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
+  { id: 'muster-four', name: 'Muster of Four', desc: 'Hold all four rarities at once', test: s => new Set(s.owned.map(c => c.tier)).size >= 4 },
   { id: 'host', name: 'Raise a Host', desc: 'Have twelve champions at once', test: s => s.owned.length >= 12 },
-  { id: 'pit-fighter', name: 'Pit Fighter', desc: 'Win five duels', test: s => s.wins >= 5 },
+  { id: 'pit-fighter', name: 'Arena Fighter', desc: 'Win five duels', test: s => s.wins >= 5 },
   { id: 'gathering-storm', name: 'The Gathering Storm', desc: 'Command 300 combined power', test: s => s.power >= 300 },
   { id: 'mine-master', name: 'Master of the Mines', desc: 'Have five champions mining at once', test: s => s.staked >= 5 },
   { id: 'gem-baron', name: 'Ember-Baron', desc: 'Hold 1000 Ember or more', test: s => s.ember >= 1000 },
   { id: 'sovereign', name: "Sovereign's Own", desc: 'Have a Sovereign in your collection', test: s => s.owned.some(c => c.tier >= 3) },
   { id: 'army', name: 'Raise an Army', desc: 'Have twenty-five champions at once', test: s => s.owned.length >= 25 },
-  { id: 'pit-champion', name: 'Pit Champion', desc: 'Win fifteen duels', test: s => s.wins >= 15 },
+  { id: 'pit-champion', name: 'Arena Champion', desc: 'Win fifteen duels', test: s => s.wins >= 15 },
   { id: 'storm-banners', name: 'Storm of Banners', desc: 'Command 750 combined power', test: s => s.power >= 750 },
   { id: 'legion', name: 'The Legion of Emberfall', desc: 'Have forty champions at once', test: s => s.owned.length >= 40 },
 ];
@@ -1192,7 +1192,7 @@ function render() {
         <button class="mini-btn" data-guildcreate="1">CREATE</button></div>` : '')
     + gRows;
 
-  // the Gauntlet: writs of the Sundering, fought from the Mines
+  // the bosses of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
   $('gauntletIntro').textContent = S.addr
     ? 'Ten bosses, each with a public stat spread. Champions fight while they mine: '
@@ -1229,7 +1229,7 @@ function render() {
       return `<span class="duel-emoji">${rowArt(c)}</span>
         <div class="duel-info"><b>${c?.name ?? '?'}</b> <span class="pw-inline" style="color:${t.color}">${glyph('power')}${c?.power ?? '?'}</span>`;
     };
-    // the Bazaar is not a graveyard either: live listings always show,
+    // the Market is not a graveyard either: live listings always show,
     // closed ones age out (newest 5, plus your own) exactly like duels
     let soldSeen = 0;
     const listingsShown = S.listings.filter(l => {
@@ -3018,15 +3018,15 @@ async function endSession() {
     const blockers = [];
     const cs = [...S.cards.values()];
     const n3 = cs.filter(c => c.marketPending === S.addr).length;
-    if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in The Bazaar (claim under 'Held by the guild')`);
-    if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in The Bazaar (withdraw them)`);
+    if (n3) blockers.push(`${n3} champion${n3 > 1 ? 's' : ''} held for you in the Market (claim under 'In escrow: claim yours')`);
+    if (S.marketFunds > 0) blockers.push(`${fmtHtr(S.marketFunds)} sale proceeds in the Market (withdraw them)`);
     const revealing = S.duels.filter(d => d.status === 'reveal' && isMine(d.challenger));
     if (revealing.length) blockers.push(
       `${revealing.length} duel${revealing.length > 1 ? 's' : ''} awaiting your reveal in Arena (reveal now or the fight forfeits)`);
     const n5 = S.listings.filter(l => l.status === 'open' && l.seller === S.addr).length;
-    if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''} in The Bazaar (cancel or sell)`);
+    if (n5) blockers.push(`${n5} open listing${n5 > 1 ? 's' : ''} in the Market (cancel or sell)`);
     const n6 = S.swaps.filter(w => w.status === 'open' && w.maker === S.addr).length;
-    if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''} in The Bazaar (cancel them)`);
+    if (n6) blockers.push(`${n6} open trade${n6 > 1 ? 's' : ''} in the Market (cancel them)`);
     if (blockers.length) {
       sessionNote('Before the session can end, settle: '
         + blockers.join(' · ') + '.');

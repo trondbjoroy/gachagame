@@ -4,18 +4,22 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Emberfall · Trading Card Game</title>
-<meta name="description" content="The throne of Emberfall sits empty. Summon one-of-a-kind champions, work the deep mines, face trial by combat, and trade in the Bazaar. Every deed is witnessed forever." />
+<meta name="description" content="The throne of Emberfall sits empty. Summon one-of-a-kind champions, work the deep mines, face trial by combat, and trade in the Market. Every deed is witnessed forever, and fortunes no one can rig." />
 <link rel="icon" href="favicon.ico" sizes="48x48" />
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=EB+Garamond:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --gold: #d4a843; --gold-hi: #e8c56a;
-    --ink: #f0e9da; --ink-muted: #b5ab99; --ink-dim: #78705f;
-    --bg: #0b0a08; --panel: #141109;
+    --gold: #d4a843; --gold-hi: #e8c56a; --gold-lo: #c79430;
+    --ink: #f0e9da; --ink-muted: #b5ab99; --ink-dim: #78705f; --ink-faint: #5b5449;
+    --bg: #0b0a08; --panel: #141109; --panel-solid: #15130f; --line: rgba(255,245,230,.09);
+    /* rank is a material, not a tier colour (identical to the app) */
+    --pewter: #8e887a; --steel: #7fa0bd; --verdigris: #5fa894; --regal: #e8ae3f;
+    --display: 'Cinzel', Georgia, serif; --body: 'Outfit', system-ui, sans-serif;
+    --flavor: 'EB Garamond', Georgia, serif; --data: 'JetBrains Mono', ui-monospace, monospace;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -23,6 +27,154 @@
     background: var(--bg); color: var(--ink);
     font-family: 'Outfit', system-ui, sans-serif;
     overflow-x: hidden;
+  }
+
+
+  /* ---------- drawn glyphs ---------- */
+  svg.g { width: 14px; height: 14px; fill: currentColor; flex: 0 0 auto; }
+  .feature .ico svg { width: 30px; height: 30px; fill: var(--gold); display: block; }
+
+  /* ---------- hero additions ---------- */
+  .tagline {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(17px, 3.1vw, 27px); line-height: 1.3;
+    margin: 14px auto 2px; max-width: 22em; color: var(--ink);
+    text-shadow: 0 2px 24px rgba(0, 0, 0, .8);
+  }
+  .cta-row {
+    display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center;
+  }
+  .launch.alt {
+    background: none; color: var(--gold-hi);
+    border: 1px solid rgba(212, 168, 67, .5); box-shadow: none;
+  }
+  .launch.alt:hover { background: rgba(212, 168, 67, .1); border-color: var(--gold); }
+  /* the realm's own numbers */
+  .counters {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 8px clamp(16px, 5vw, 34px);
+    margin: clamp(18px, 3.4vh, 30px) auto 0; max-width: 640px;
+  }
+  .counters div { min-width: 118px; }
+  .counters dt {
+    font-size: 9.5px; letter-spacing: .19em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 600;
+  }
+  .counters dd {
+    font-family: var(--data); font-weight: 700; font-size: clamp(20px, 3.4vw, 27px);
+    color: var(--gold-hi); margin-top: 4px;
+  }
+  .counters.live dd { text-shadow: 0 0 22px rgba(212, 168, 67, .3); }
+
+  /* ---------- three sections, three jobs ---------- */
+  .eyebrow {
+    font-size: 10px; letter-spacing: .28em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 600; margin-bottom: 12px;
+  }
+  .sec-lore .lede { font-family: var(--flavor); font-size: clamp(17px, 2.3vw, 21px); font-style: italic; }
+  .sec-cards h2 { font-size: clamp(26px, 4vw, 34px); }
+  .sec-cards .lede { max-width: 62ch; }
+  .gallery-note {
+    margin: 26px auto 0; max-width: 54ch; text-align: center;
+    font-family: var(--flavor); font-style: italic; font-size: 15px; color: var(--ink-dim);
+  }
+  /* proof carries the most weight, so it stops looking like the other two */
+  .sec-proof { padding-bottom: 40px; }
+  .proof-panel {
+    max-width: 900px; margin: 0 auto; padding: clamp(28px, 5vw, 54px);
+    border: 1px solid rgba(212, 168, 67, .26); border-radius: 20px;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(212, 168, 67, .07), transparent 60%),
+      linear-gradient(180deg, #17130c, #100d09);
+    box-shadow: inset 0 1px 0 rgba(255, 228, 170, .07), 0 30px 70px -40px #000;
+    text-align: center;
+  }
+  .sec-proof h2 { font-size: clamp(30px, 5vw, 46px); margin-bottom: 26px; }
+  .sec-proof .oaths { text-align: left; }
+  .sec-proof .oaths div { font-size: clamp(15px, 1.9vw, 17px); line-height: 1.6; }
+  .proof-link {
+    display: inline-block; margin-top: 28px; color: var(--gold-hi); text-decoration: none;
+    font-size: 14px; border-bottom: 1px solid rgba(212, 168, 67, .4); padding-bottom: 4px;
+  }
+  .proof-link:hover { border-color: var(--gold); }
+
+  /* ---------- THE CARD (a trimmed copy of the app's frame) ---------- */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 18px; }
+  .card.cf {
+    --rc: var(--pewter);
+    display: flex; flex-direction: column; overflow: hidden; text-align: left;
+    background: var(--panel-solid); border: 1px solid color-mix(in srgb, var(--rc) 38%, transparent);
+    border-radius: 13px;
+    box-shadow: inset 0 1px 0 rgba(255, 245, 225, .045), 0 10px 26px -18px #000;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .card.cf:hover { transform: translateY(-3px); }
+  .card.rank-0 { --rc: var(--pewter); }
+  .card.rank-1 { --rc: var(--steel); border-width: 1.5px; }
+  .card.rank-2 { --rc: var(--verdigris); border-width: 1.5px; border-color: color-mix(in srgb, var(--rc) 52%, transparent); }
+  .card.rank-3 {
+    --rc: var(--regal); border-width: 2px; border-color: color-mix(in srgb, var(--rc) 72%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 245, 225, .07), 0 0 34px -14px var(--rc), 0 12px 30px -18px #000;
+  }
+  .cf-art {
+    position: relative; aspect-ratio: 1 / 1; overflow: hidden;
+    border-bottom: 1px solid color-mix(in srgb, var(--rc) 30%, transparent);
+    background: #14100c;
+  }
+  .cf-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cf-vign {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(115% 88% at 50% 34%, transparent 44%, rgba(11,10,8,.62) 100%),
+      linear-gradient(180deg, rgba(11,10,8,.5) 0%, transparent 26%, transparent 74%, rgba(11,10,8,.55) 100%);
+  }
+  .cf-rank {
+    position: absolute; top: 8px; left: 9px; z-index: 2;
+    font-family: var(--display); font-weight: 700; font-size: 8.5px;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--rc);
+    padding: 3px 7px; border-radius: 4px; background: rgba(11, 10, 8, .74);
+    border: 1px solid color-mix(in srgb, var(--rc) 46%, transparent);
+  }
+  .cf-med {
+    position: absolute; top: 7px; right: 8px; z-index: 2; display: flex; align-items: center;
+    gap: 4px; padding: 4px 8px 4px 6px; border-radius: 20px; background: rgba(11, 10, 8, .82);
+    border: 1px solid color-mix(in srgb, var(--rc) 62%, transparent);
+  }
+  .cf-med .g { width: 10px; height: 10px; fill: var(--rc); }
+  .cf-med b { font-family: var(--data); font-weight: 700; font-size: 13px; color: var(--ink); }
+  .cf-body { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+  .cf-name { font-family: var(--display); font-weight: 700; font-size: 15px; line-height: 1.16; }
+  .cf-type { font-size: 8.5px; letter-spacing: .19em; text-transform: uppercase; font-weight: 600; color: var(--rc); }
+  .cf-rail {
+    display: flex; border: 1px solid var(--line); border-radius: 7px;
+    background: rgba(11, 10, 8, .5); overflow: hidden;
+  }
+  .cf-cell { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 0; }
+  .cf-cell + .cf-cell { border-left: 1px solid var(--line); }
+  .cf-cell .g { width: 11px; height: 11px; fill: var(--ink-dim); }
+  .cf-cell b { font-family: var(--data); font-weight: 700; font-size: 13px; color: var(--ink); }
+  .cf-flavor {
+    font-family: var(--flavor); font-style: italic; font-size: 13px; line-height: 1.42;
+    color: #9d9384;
+  }
+  .cf-ped {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto;
+    padding-top: 8px; border-top: 1px solid var(--line);
+    font-family: var(--data); font-size: 10px; color: var(--ink-dim);
+  }
+  .cf-ped span { display: inline-flex; align-items: center; gap: 4px; }
+  .cf-ped .g { width: 9px; height: 9px; fill: var(--ink-faint); }
+
+  /* ---------- footer ---------- */
+  .foot-links { display: flex; gap: 26px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .foot-links a {
+    color: var(--ink-muted); text-decoration: none; font-size: 14px;
+    min-height: 44px; display: inline-flex; align-items: center;
+  }
+  .foot-links a:hover { color: var(--gold-hi); }
+  /* tap targets: 26px links were under the 44px minimum */
+  .socials a {
+    min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
   }
 
   /* ---------- hero ---------- */
@@ -33,7 +185,8 @@
   }
   .hero-media {
     position: absolute; inset: -6%; z-index: -2;
-    background: url('hero.jpg') center 30% / cover no-repeat;
+    background-image: image-set(url('hero-1600.webp') type('image/webp'), url('hero.jpg') type('image/jpeg'));
+    background-position: center 30%; background-size: cover; background-repeat: no-repeat;
     animation: kenburns 36s ease-in-out infinite alternate;
     filter: brightness(.6) saturate(.9);
   }
@@ -51,13 +204,13 @@
       radial-gradient(90% 60% at 50% 42%, transparent 30%, rgba(11, 10, 8, .82) 100%),
       linear-gradient(180deg, rgba(11, 10, 8, .55) 0%, transparent 28%, transparent 62%, var(--bg) 100%);
   }
-  .hero-inner { padding: 8vh 24px 12vh; max-width: 900px; }
+  .hero-inner { padding: clamp(3vh, 6vh, 8vh) 24px clamp(5vh, 9vh, 12vh); max-width: 900px; }
   .hero .mark {
     width: clamp(96px, 15vw, 150px); margin: 0 auto 8px;
     filter: drop-shadow(0 0 34px rgba(212, 168, 67, .45));
     animation: markPulse 3.2s ease-in-out infinite alternate;
   }
-  .hero .mark img { width: 100%; display: block; }
+  .hero .mark img { width: 100%; height: auto; display: block; }
   @keyframes markPulse {
     from { filter: drop-shadow(0 0 18px rgba(212, 168, 67, .3)); transform: scale(.99); }
     to { filter: drop-shadow(0 0 44px rgba(212, 168, 67, .55)); transform: scale(1.015); }
@@ -79,7 +232,7 @@
   }
   .verbs {
     display: flex; justify-content: center; gap: clamp(14px, 3.5vw, 34px);
-    margin: 34px 0 40px; flex-wrap: wrap;
+    margin: clamp(18px, 3.6vh, 34px) 0 clamp(22px, 4.4vh, 40px); flex-wrap: wrap;
   }
   .verbs span {
     font-family: 'Cinzel', serif; font-size: clamp(15px, 2.6vw, 22px);
@@ -193,90 +346,215 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <symbol id="g-attack" viewBox="0 0 24 24"><path d="M12 1.5 L14.4 8 L14.4 15.5 L9.6 15.5 L9.6 8 Z M6.5 15.8 H17.5 V18 H6.5 Z M10.9 18.3 H13.1 V22.5 H10.9 Z"/></symbol>
+  <symbol id="g-defense" viewBox="0 0 24 24"><path d="M12 1.5 L20.5 4.8 V12 C20.5 17.4 16.6 21.3 12 22.5 C7.4 21.3 3.5 17.4 3.5 12 V4.8 Z"/></symbol>
+  <symbol id="g-cunning" viewBox="0 0 24 24"><path d="M19.5 2 L22 4.5 L12.2 14.3 L9.7 11.8 Z M8.6 12.9 L11.1 15.4 L8.6 17.9 L6.1 15.4 Z M5.2 16.6 L7.7 19.1 L3 22 Z"/></symbol>
+  <symbol id="g-power" viewBox="0 0 24 24"><path d="M13.6 1.5 L5 13.4 H10.6 L9.4 22.5 L19 9.9 H13.1 Z"/></symbol>
+  <symbol id="g-mines" viewBox="0 0 24 24"><path d="M2.5 21.5 L4.5 19.5 L13.5 10.5 L14.5 11.5 L5.5 20.5 Z"/><path d="M11 2.5 C15.5 2.5 19.5 5 21.5 9 C18 6.8 14 6 11 7.2 C9.8 6 9.8 3.7 11 2.5 Z"/></symbol>
+  <symbol id="g-market" viewBox="0 0 24 24"><rect x="3" y="14.5" width="18" height="4.5" rx="2.25"/><rect x="3" y="8.5" width="18" height="4.5" rx="2.25"/><rect x="6" y="3" width="12" height="4" rx="2"/></symbol>
+  <symbol id="g-flame" viewBox="0 0 24 24"><path d="M13.4 1.5 C14 5.4 11 6.6 9.4 9 C8.2 10.8 8.3 13 9.6 14.3 C8.2 14 7.2 12.7 7 11 C5.6 12.6 4.8 14.4 4.8 16.2 C4.8 19.8 8 22.5 12 22.5 C16 22.5 19.2 19.8 19.2 16.2 C19.2 10.8 14.6 8.4 13.4 1.5 Z"/></symbol>
+  <symbol id="g-star" viewBox="0 0 24 24"><path d="M12 2.4 L14.8 9.1 L22 9.7 L16.5 14.4 L18.2 21.4 L12 17.6 L5.8 21.4 L7.5 14.4 L2 9.7 L9.2 9.1 Z"/></symbol>
+  <symbol id="g-anvil" viewBox="0 0 24 24"><path d="M3 6.5 H13.5 C15.5 6.5 16.5 8 18.5 8 H21.5 V11 H18 C15.5 11 14 12.5 11.5 12.5 H8.5 V15 H15 V17 H4.5 V15 H6.5 V12.5 H3 Z M6 18.5 H18 V21.5 H6 Z"/></symbol>
+</defs></svg>
 <div class="hero">
   <div class="hero-media" id="heroMedia"></div>
   <div class="embers" id="embers"></div>
   <div class="hero-inner">
-    <div class="mark"><img src="logo.png" alt="" /></div>
+    <div class="mark">
+      <img src="crest-300.webp" srcset="crest-150.webp 150w, crest-300.webp 300w"
+           sizes="(max-width: 640px) 96px, 150px" width="300" height="300"
+           alt="The Emberfall crest" fetchpriority="high" />
+    </div>
     <h1 class="wordmark">EMBERFALL</h1>
     <div class="tcg">TRADING CARD GAME</div>
+    <p class="tagline">Fortunes no one can rig, <span class="accent">not even us</span>.</p>
     <div class="verbs">
       <span>SUMMON</span><span class="dot">·</span>
       <span>MINE</span><span class="dot">·</span>
       <span>FIGHT</span><span class="dot">·</span>
       <span>TRADE</span>
     </div>
-    <a class="launch" href="https://app.emberfall.fun" id="launchBtn">LAUNCH GAME</a>
+    <div class="cta-row">
+      <a class="launch" href="https://app.emberfall.fun" id="launchBtn">LAUNCH GAME</a>
+      <a class="launch alt" href="https://docs.emberfall.fun"
+         onclick="try{plausible}catch(e){}">READ THE GUIDE</a>
+    </div>
     <div class="free-note">free to play on the test realm · your cards are truly yours</div>
+    <!-- the realm's own numbers, read from the chain on load: the page claims
+         every deed is witnessed, so it had better show some -->
+    <dl class="counters" id="counters" aria-live="polite">
+      <div><dt>Champions summoned</dt><dd id="cSummons">—</dd></div>
+      <div><dt>Duels settled</dt><dd id="cDuels">—</dd></div>
+      <div><dt>Sovereigns bound</dt><dd id="cSov">—</dd></div>
+    </dl>
   </div>
   <div class="scroll-hint">⌄</div>
 </div>
 
-<section class="reveal">
+<section class="reveal sec-lore">
   <h2>The throne is <span class="accent">empty</span>.</h2>
   <p class="lede">When the last Sovereign died without an heir, the realm's champions were
   bound into soulstone and their fates written into the Great Ledger, a book no lord can
   burn and no scribe can forge. Now the banners are yours to raise: summon champions no
-  one else will ever own, work them in the deep mines, prove them in the Pit, and trade
-  them for gold in the Bazaar. Every deed is witnessed forever.</p>
+  one else will ever own, work them in the deep mines, prove them in the Arena, and trade
+  them for coin in the Market. Every deed is witnessed forever.</p>
   <div class="features">
     <div class="feature">
-      <div class="ico">🔥</div>
+      <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-flame"/></svg></div>
       <h3>SUMMON</h3>
       <p>The Blind Weaver binds a champion into soulstone with every summoning: one of a
-      kind in all the realm, its station and power struck at birth. No two are alike, and
+      kind in all the realm, its rarity and power struck at birth. No two are alike, and
       no one can conjure a copy.</p>
     </div>
     <div class="feature">
-      <div class="ico">⛏️</div>
+      <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-mines"/></svg></div>
       <h3>MINE</h3>
       <p>Send champions into the deep mines, where soulstone sweats Ember by the minute.
       Ember forges greater bloodlines, tempers your champions' aspects, and backs every wager
-      in the Pit.</p>
+      in the Arena.</p>
     </div>
     <div class="feature">
-      <div class="ico">⚔️</div>
+      <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-attack"/></svg></div>
       <h3>FIGHT</h3>
       <p>Trial by combat, best of three: attack, defense, and cunning. Seal a hidden
       stance, wager Ember, bet on other lords' fights, and let veterans carry their
       victories on the card forever.</p>
     </div>
     <div class="feature">
-      <div class="ico">🪙</div>
+      <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-market"/></svg></div>
       <h3>TRADE</h3>
-      <p>Sell champions for coin or strike sworn trades in the Bazaar. A ten-victory
+      <p>Sell champions for coin or strike sworn trades in the Market. A ten-victory
       veteran is provably a ten-victory veteran; pedigree travels with the card.</p>
     </div>
   </div>
 </section>
 
-<section class="reveal">
-  <h2>Champions of the <span class="accent">realm</span></h2>
-  <p class="lede">One hundred and eighty champions across four stations, from moss snails
-  to firstborn flames. Fuse two of a station and forge the next: Sovereigns are one
-  summon in a hundred, or fourteen fusions of patience.</p>
+<section class="reveal sec-cards">
+  <div class="eyebrow">The catalogue</div>
+  <h2>Grain weevils and <span class="accent">dead kings</span></h2>
+  <p class="lede">One hundred and eighty champions across four rarities, and the roll is
+  gloriously uneven: a Tea-Leaf Aunt, a Midden Crow and a Pond Pike are bound by the same
+  rite as the barrow-kings. Fuse two of a rarity to forge the next, so a Sovereign is one
+  summon in a hundred, or <b>seven fusions</b> of patience: eight Footmen make four
+  Knights, four Knights make two Highlords, two Highlords make a Sovereign.</p>
   <div class="gallery">
-    <div class="gcard"><img src="ember-fox.jpg" alt="Ember Fox" /><span>EMBER FOX</span></div>
-    <div class="gcard"><img src="dire-wolf.jpg" alt="Dire Wolf" /><span>DIRE WOLF</span></div>
-    <div class="gcard"><img src="shadow-dragon.jpg" alt="Shadow Dragon" /><span>SHADOW DRAGON</span></div>
-    <div class="gcard"><img src="void-kraken.jpg" alt="Void Kraken" /><span>VOID KRAKEN</span></div>
-    <div class="gcard"><img src="genesis-phoenix.jpg" alt="Genesis Phoenix" /><span>GENESIS PHOENIX</span></div>
-    <div class="gcard"><img src="the-winter-sovereign.jpg" alt="The Winter Sovereign" /><span>THE WINTER SOVEREIGN</span></div>
+    <!-- the same frame the game draws: rarity as material, power in the
+         medallion, the aspect rail, the pedigree strip -->
+    <article class="card cf rank-0">
+      <div class="cf-art">
+        <img src="grain-weevil-440.webp" srcset="grain-weevil-220.webp 220w, grain-weevil-440.webp 440w"
+             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             alt="Grain Weevil, a Footman of the Vermin" />
+        <div class="cf-vign"></div>
+        <div class="cf-rank">Footman</div>
+        <div class="cf-med"><svg class="g" aria-hidden="true"><use href="#g-power"/></svg><b>12</b></div>
+      </div>
+      <div class="cf-body">
+        <div class="cf-name">Grain Weevil</div>
+        <div class="cf-type">Vermin</div>
+        <div class="cf-rail">
+          <span class="cf-cell"><svg class="g"><use href="#g-attack"/></svg><b>5</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-defense"/></svg><b>4</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-cunning"/></svg><b>3</b></span>
+        </div>
+        <div class="cf-flavor">Armies march on their stomachs. The weevil marches slightly ahead of them.</div>
+        <div class="cf-ped"><span><svg class="g"><use href="#g-star"/></svg>0</span></div>
+      </div>
+    </article>
+    <article class="card cf rank-1">
+      <div class="cf-art">
+        <img src="sewer-baron-440.webp" srcset="sewer-baron-220.webp 220w, sewer-baron-440.webp 440w"
+             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             alt="Sewer Baron, a Knight of the Vermin" />
+        <div class="cf-vign"></div>
+        <div class="cf-rank">Knight</div>
+        <div class="cf-med"><svg class="g" aria-hidden="true"><use href="#g-power"/></svg><b>38</b></div>
+      </div>
+      <div class="cf-body">
+        <div class="cf-name">Sewer Baron</div>
+        <div class="cf-type">Vermin</div>
+        <div class="cf-rail">
+          <span class="cf-cell"><svg class="g"><use href="#g-attack"/></svg><b>14</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-defense"/></svg><b>12</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-cunning"/></svg><b>12</b></span>
+        </div>
+        <div class="cf-flavor">He holds a court of rats beneath the counting-house, and it is better attended.</div>
+        <div class="cf-ped"><span><svg class="g"><use href="#g-star"/></svg>2</span><span>Lv 1</span></div>
+      </div>
+    </article>
+    <article class="card cf rank-2">
+      <div class="cf-art">
+        <img src="the-cracked-crown-440.webp" srcset="the-cracked-crown-220.webp 220w, the-cracked-crown-440.webp 440w"
+             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             alt="The Cracked Crown, a Highlord relic" />
+        <div class="cf-vign"></div>
+        <div class="cf-rank">Highlord</div>
+        <div class="cf-med"><svg class="g" aria-hidden="true"><use href="#g-power"/></svg><b>88</b></div>
+      </div>
+      <div class="cf-body">
+        <div class="cf-name">The Cracked Crown</div>
+        <div class="cf-type">Relic</div>
+        <div class="cf-rail">
+          <span class="cf-cell"><svg class="g"><use href="#g-attack"/></svg><b>34</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-defense"/></svg><b>29</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-cunning"/></svg><b>25</b></span>
+        </div>
+        <div class="cf-flavor">Every house swears it is theirs. The crown has outlived all of them.</div>
+        <div class="cf-ped"><span><svg class="g"><use href="#g-star"/></svg>7</span><span>Lv 3</span>
+          <span><svg class="g"><use href="#g-anvil"/></svg>4</span></div>
+      </div>
+    </article>
+    <article class="card cf rank-3">
+      <div class="cf-art">
+        <img src="the-last-king-440.webp" srcset="the-last-king-220.webp 220w, the-last-king-440.webp 440w"
+             sizes="(max-width: 640px) 45vw, 214px" width="440" height="440" loading="lazy" decoding="async"
+             alt="The Last King, a Sovereign of the Undead" />
+        <div class="cf-vign"></div>
+        <div class="cf-rank">Sovereign</div>
+        <div class="cf-med"><svg class="g" aria-hidden="true"><use href="#g-power"/></svg><b>271</b></div>
+      </div>
+      <div class="cf-body">
+        <div class="cf-name">The Last King</div>
+        <div class="cf-type">Undead</div>
+        <div class="cf-rail">
+          <span class="cf-cell"><svg class="g"><use href="#g-attack"/></svg><b>118</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-defense"/></svg><b>74</b></span>
+          <span class="cf-cell"><svg class="g"><use href="#g-cunning"/></svg><b>79</b></span>
+        </div>
+        <div class="cf-flavor">The barrow-kings wait for him. The throne waits for him. He waits, in turn.</div>
+        <div class="cf-ped"><span><svg class="g"><use href="#g-star"/></svg>14</span><span>Lv 6</span>
+          <span><svg class="g"><use href="#g-anvil"/></svg>9</span></div>
+      </div>
+    </article>
   </div>
+  <p class="gallery-note">Four of a hundred and eighty. Rarity is carried by the frame,
+  power by the medallion, and the pedigree strip is the part the Market is really selling.</p>
 </section>
 
-<section class="reveal">
-  <h2>Sworn on the <span class="accent">Ledger</span></h2>
-  <div class="oaths">
-    <div><b>Every champion one of a kind</b>: owned by you, not lent to you</div>
-    <div><b>Nothing conjured from air</b>: every reward traces to real play</div>
-    <div><b>Every deed witnessed forever</b>: fortunes no one can rig, not even us</div>
+<section class="reveal sec-proof">
+  <div class="proof-panel">
+    <div class="eyebrow">The oath</div>
+    <h2>Sworn on the <span class="accent">Ledger</span></h2>
+    <div class="oaths">
+      <div><b>Every champion one of a kind.</b> Owned by you, not lent to you: the token
+        is yours, and it leaves with you.</div>
+      <div><b>Nothing conjured from air.</b> Every reward traces to real play, paid from
+        what the realm actually took in.</div>
+      <div><b>Every deed witnessed forever.</b> Summonings, duels and trades are settled
+        by contract in the open: fortunes no one can rig, not even us.</div>
+    </div>
+    <a class="proof-link" href="https://docs.emberfall.fun">Read every rule and rate in the guide</a>
   </div>
 </section>
 
 <footer class="reveal">
   <a class="launch" href="https://app.emberfall.fun">LAUNCH GAME</a>
   <div class="fine">EMBERFALL · a realm written in soulstone</div>
+  <div class="foot-links">
+    <a href="https://docs.emberfall.fun">The Emberfall Guide</a>
+    <a href="https://app.emberfall.fun">Play now</a>
+  </div>
   <div class="socials">
     <span class="soc-label">Join the community:</span>
     <a href="https://x.com/emberfall_fun" target="_blank" rel="noopener" title="Emberfall on X">𝕏</a>
@@ -286,19 +564,49 @@
 </footer>
 
 <script>
+  /* The realm's own numbers. The app proxies the fullnode and serves a
+     cached summary at /api/realm; if it cannot be reached the counters keep
+     their dashes rather than inventing anything. */
+  (function () {
+    var fmt = function (n) { return n.toLocaleString('en-US'); };
+    fetch('https://app.emberfall.fun/api/realm', { mode: 'cors' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        var put = function (id, v) {
+          if (typeof v !== 'number') return;
+          var el = document.getElementById(id);
+          if (el) el.textContent = fmt(v);
+        };
+        put('cSummons', d.summons);
+        put('cDuels', d.duels);
+        put('cSov', d.sovereigns);
+        document.getElementById('counters').classList.add('live');
+      })
+      .catch(function () { /* the dashes are honest */ });
+  })();
+
   // hero video, if hero.mp4 has been provided (graceful fallback to the still)
   (function () {
     var v = document.createElement('video');
     v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
-    v.setAttribute('playsinline', ''); v.poster = 'hero.jpg';
+    v.preload = 'none';
+    v.setAttribute('playsinline', ''); v.poster = 'hero-1600.webp';
     var s = document.createElement('source');
     s.src = 'hero.mp4'; s.type = 'video/mp4';
     s.onerror = function () { v.remove(); };
     v.appendChild(s);
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // the video is the heaviest asset on the page and it competes with the
+    // CTA for bandwidth, so the poster carries the hero until the page is
+    // idle and only then does the loop arrive
+    var start = function () {
       fetch('hero.mp4', { method: 'HEAD' }).then(function (r) {
         if (r.ok) document.getElementById('heroMedia').appendChild(v);
       }).catch(function () { });
+    };
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2600 });
+      else addEventListener('load', function () { setTimeout(start, 1200); });
     }
   })();
 
