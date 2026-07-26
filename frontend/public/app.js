@@ -962,13 +962,18 @@ function render() {
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
     const sealed = d.stances ? ` · ${glyph('seal')} sealed stance` : '';
+    // backing a fight and then fighting it is a conflict of interest: the
+    // contract refuses it from v5 on, and until then this does
+    const iBackedIt = !!S.addr && loadMyBets().some(b => b.id === d.id);
     let act;
     if (d.status === 'open') {
       act = mineD
         ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
-        : (S.addr
-          ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
-          : '<span class="duel-done">awaiting a challenger</span>');
+        : iBackedIt
+          ? `<span class="duel-done" title="You have Ember riding on this fight, so you cannot also fight it">your bet is in</span>`
+          : (S.addr
+            ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
+            : '<span class="duel-done">awaiting a challenger</span>');
     } else if (d.status === 'reveal') {
       const dueAt = ((d.acceptTs || 0) + (S.revealWindow || 21600)) * 1000;
       const minsLeft = Math.max(0, Math.ceil((dueAt - Date.now()) / 60000));
@@ -1000,7 +1005,7 @@ function render() {
   $('duelList').innerHTML = liveDuels.map(duelRow).join('')
     + (pastDuels.length
       ? `<details class="past-fights"${S.pastOpen ? ' open' : ''}>
-           <summary>${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}
+           <summary>last ${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}
              <span class="feed-chev">&#9662;</span></summary>
            ${pastDuels.map(duelRow).join('')}</details>`
       : '');
@@ -2256,6 +2261,14 @@ function openPick(kind, ref) {
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
   $('pickWagerHint').hidden = true;
   if (kind === 'accept') {
+    if (loadMyBets().some(b => b.id === ref)) {
+      $('errTitle').textContent = 'Your bet is on this fight';
+      $('errMsg').textContent = 'You have Ember riding on this duel, so you cannot also '
+        + 'fight it. Back a fight or join it, never both.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
     const d = S.duels.find(x => x.id === ref);
     $('pickTitle').textContent += ` (wager ${fmtEmber(d.wager)})`;
   }
@@ -2321,6 +2334,13 @@ async function submitPick(uid) {
     await doTx('Issuing challenge', 'create_duel', [wager, commit], [depAct(uid, CARD_AMT)]);
   } else {
     const duel = S.duels.find(x => x.id === ref);
+    if (loadMyBets().some(b => b.id === ref)) {
+      $('errTitle').textContent = 'Your bet is on this fight';
+      $('errMsg').textContent = 'You have Ember riding on this duel, so you cannot also '
+        + 'fight it. Back a fight or join it, never both.';
+      showStage('stageError');
+      return;
+    }
     if (duel && duel.wager > 0 && S.ember < duel.wager) {
       $('errTitle').textContent = 'Not enough Ember for the wager';
       $('errMsg').textContent = `This duel wagers ${fmtEmber(duel.wager)}.`;
