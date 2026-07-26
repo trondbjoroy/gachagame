@@ -487,6 +487,79 @@ function feedEventFor(tx) {
   }
 }
 
+/* The Market is a second contract, so its history is a second pass. The
+   card uid rides in the tx's token list for anything that deposits one; a
+   buy or an accepted swap carries only an id, which the views resolve. */
+function marketEventFor(tx) {
+  const who = tx.nc_address;
+  const args = tx.nc_args_decoded || [];
+  const ts = tx.timestamp;
+  const card = (tx.tokens || [])[0] || null;
+  switch (tx.nc_method) {
+    case 'list_card':
+      return { ts, kind: 'listed', who, uid: card, price: Number(args[0]) || 0 };
+    case 'buy':
+      return { ts, kind: 'bought', who, id: Number(args[0]) || 0 };
+    case 'offer_swap':
+      return { ts, kind: 'swap_offer', who, uid: card, wantUid: String(args[0] || '') };
+    case 'accept_swap':
+      return { ts, kind: 'swap_done', who, id: Number(args[0]) || 0 };
+    default:
+      return null;      // claims and cancels are housekeeping, not news
+  }
+}
+
+// a card's name for the feed: the warm cache first, the chain if unseen
+async function cardName(uid) {
+  if (!uid || !HEX64.test(uid)) return null;
+  const hit = cardCache.cards[uid];
+  if (hit && hit.name) return hit.name;
+  try {
+    const c = `get_card_name("${uid}")`;
+    const v = await ncCalls(NC, [c]);
+    return v[c] || null;
+  } catch { return null; }
+}
+
+async function pollMarketFeed() {
+  if (!MKT_NC) return;
+  const d = await (await fetch(`${NODE}/nano_contract/history?id=${MKT_NC}&count=20`)).json();
+  const fresh = [];
+  for (const tx of d.history || []) {
+    if (feedSeen.has(tx.hash) || tx.is_voided) continue;
+    if (!tx.first_block) continue;      // unconfirmed or failed: not news yet
+    feedSeen.add(tx.hash);
+    const ev = marketEventFor(tx);
+    if (ev) fresh.push(ev);
+  }
+  if (!fresh.length) return;
+  fresh.reverse();
+  for (const ev of fresh) {
+    try {
+      if (ev.who) ev.who = (await delegateOf(ev.who)) || ev.who;
+      if (ev.kind === 'bought') {
+        const c = `get_listing(${ev.id})`, cs = `get_listing_seller(${ev.id})`;
+        const v = await ncCalls(MKT_NC, [c, cs]);
+        const [, uid, price] = (v[c] || '||').split('|');
+        ev.uid = uid || null;
+        ev.price = Number(price) || 0;
+        ev.seller = (await delegateOf(v[cs])) || v[cs] || null;
+      } else if (ev.kind === 'swap_done') {
+        const c = `get_swap(${ev.id})`, cm = `get_swap_maker(${ev.id})`;
+        const v = await ncCalls(MKT_NC, [c, cm]);
+        const [, give, want] = (v[c] || '||').split('|');
+        ev.uid = give || null;
+        ev.wantUid = want || null;
+        ev.maker = (await delegateOf(v[cm])) || v[cm] || null;
+      }
+      ev.card = await cardName(ev.uid);
+      if (ev.wantUid) ev.want = await cardName(ev.wantUid);
+    } catch { /* a nameless line still reads */ }
+    feedPush(ev);
+  }
+  saveFeed();
+}
+
 let knownUids = null; // contract token set, for spotting freshly minted cards
 async function contractUids() {
   const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
@@ -594,8 +667,12 @@ async function pollFeed() {
     pulse.at = Math.floor(Date.now() / 1000);
   } catch { /* the client falls back to its own slower timer */ }
 }
-pollFeed();
-setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
+async function pollAll() {
+  await pollFeed();
+  try { await pollMarketFeed(); } catch { /* the arena feed still stands */ }
+}
+pollAll();
+setInterval(pollAll, 15_000); // our own node: no shared rate limit to respect
 
 // ---- card-state cache: one request serves what cost clients ~500 view calls ----
 // Nano view calls run ~125ms each on the node, so clients reading every card
