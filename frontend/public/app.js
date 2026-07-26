@@ -1021,7 +1021,7 @@ function render() {
         S.fuseMode ? 'PICKING…' : 'PICK TWO'}</button>
        <span class="fuse-tip">${S.fuseMode
          ? 'Tap two champions of the same rarity.'
-         : 'or shift-click two of the same rarity'}</span>`
+         : `or ${coarsePointer() ? 'long press' : 'shift-click'} two of the same rarity`}</span>`
     : (canPayFuse ? `Fuse into the next rarity for ${fmtEmber(fuseFee)}:`
        : `Fusion costs ${fmtEmber(fuseFee)}; you have ${fmtEmber(S.ember)}. Earn more by mining.`);
   const fmb = $('fuseModeBtn');
@@ -1645,6 +1645,11 @@ async function doTemper(aspect) {
 /* ---------------- reveal theater ---------------- */
 
 const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// touch-first devices get told about the long press, a mouse about
+// shift-click. Read per render, not once at load: a tablet that gains a
+// keyboard (or a phone in desktop mode) then says the right thing.
+const coarsePointer = () =>
+  !!(window.matchMedia && matchMedia('(hover: none), (pointer: coarse)').matches);
 const REVEAL_MS = [700, 1100, 1700, 2600];  // anticipation, by station
 
 function spawnEmbers(host, n, big) {
@@ -1827,6 +1832,7 @@ async function fuse() {
   const [a, b] = [...S.selected];
   if (!a || !b) return;  // selection cleared (double-tap): nothing to fuse
   S.selected.clear();
+  S.fuseMode = false;    // the picking is done; the button says PICK TWO again
   const fee = fuseFeeFor(S.cards.get(a)?.tier ?? 0);
   if (S.ember < fee) {
     $('errTitle').textContent = 'Not enough Ember';
