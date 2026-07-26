@@ -335,6 +335,20 @@ function feedLine(ev) {
     case 'duel_cancel': return `${name} withdrew challenge #${ev.id}`;
     case 'bet': return `${name} backed the ${ev.side === 1 ? 'defender' : 'challenger'} in duel #${ev.id}`
       + (ev.amount ? ` · ${fmtEmber(ev.amount)}` : '');
+    case 'listed': return ev.card
+      ? `${name} put <b>${esc(ev.card)}</b> up for ${fmtHtr(ev.price)}`
+      : `${name} listed a champion for ${fmtHtr(ev.price)}`;
+    case 'bought': {
+      const what = ev.card ? `<b>${esc(ev.card)}</b>` : 'a champion';
+      const from = ev.seller && !isMine(ev.seller) ? ` from ${who(ev.seller)}` : '';
+      return `${name} bought ${what}${from} for ${fmtHtr(ev.price || 0)}`;
+    }
+    case 'swap_offer': return ev.card && ev.want
+      ? `${name} offers <b>${esc(ev.card)}</b> for <b>${esc(ev.want)}</b>`
+      : `${name} offered a trade`;
+    case 'swap_done': return ev.card && ev.want
+      ? `${name} traded <b>${esc(ev.want)}</b> for <b>${esc(ev.card)}</b>`
+      : `${name} struck a trade`;
     case 'delve': return `${name} started a delve`;
     case 'delve_done': {
       const r = ev.result;
@@ -2384,6 +2398,15 @@ async function connectWallet(kind) {
 /* While a dialog is open the page behind must not scroll: a second
    scrollbar beside a sheet is noise, and on iOS the page drags under it.
    An observer on the overlay's hidden attribute covers every call site. */
+/* The overflow menu closes as soon as one of its actions is taken. Capture,
+   so it happens before a re-render or a dialog opens over it. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest && e.target.closest('.cf-ovf button, .cf-ovf .mini-btn');
+  if (!btn) return;
+  const menu = btn.closest('details.cf-ovf');
+  if (menu) menu.open = false;
+}, true);
+
 (function lockScrollWithOverlay() {
   const ov = $('overlay');
   if (!ov) return;
