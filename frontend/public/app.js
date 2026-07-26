@@ -3483,7 +3483,13 @@ for (const id of ['errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBt
 $('nameClaimBtn').onclick = claimName;
 // the card, wallet, and reveal views close like any lightbox: Escape or a
 // click outside (a dismissed reveal keeps the champion under New champions)
-const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden || !$('stageReveal').hidden;
+/* Every dialog closes on Escape or a click outside it — an explanation the
+   player has read, or a chooser they thought better of, should never need
+   its one small button hunted down. The exception is stageWait: a
+   transaction is in flight behind it and hiding that would lose the thread. */
+const DISMISSABLE = ['stageCard', 'stageConnect', 'stageReveal', 'stageError',
+  'stageDuel', 'stagePick', 'stageTemper', 'stageDress', 'stageName'];
+const dismissible = () => DISMISSABLE.some(id => $(id) && !$(id).hidden);
 function dismissLightbox() {
   const wasReveal = !$('stageReveal').hidden;
   $('overlay').hidden = true;
