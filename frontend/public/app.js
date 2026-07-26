@@ -695,6 +695,9 @@ const EPITHETS = ['the Unbowed', 'Thrice-Forged', 'of the Deep Seam', 'the Oathk
   'Writ-Feller', 'the Ember-Marked', 'of the Long Vigil', 'the Pale', 'Stonefast',
   'the Whisperblade', 'Crownless', 'the Last Banner'];
 const WRIT_TIERS = ['Grim', 'Dire', 'Black'];
+// what each tier multiplies a boss's aspects by, mirroring fight_writ in the
+// contract this build talks to. Change here and in the blueprint together.
+const WRIT_MULTS = [1, 2, 4];
 
 function cosmeticsOf(c) {
   const cos = c.cosmetics || 0;
@@ -1130,7 +1133,8 @@ function render() {
   $('duelList').innerHTML = liveDuels.map(duelRow).join('')
     + (pastDuels.length
       ? `<details class="past-fights"${S.pastOpen ? ' open' : ''}>
-           <summary>${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}</summary>
+           <summary>${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}
+             <span class="feed-chev">&#9662;</span></summary>
            ${pastDuels.map(duelRow).join('')}</details>`
       : '');
   const det = $('duelList').querySelector('.past-fights');
@@ -1264,16 +1268,22 @@ function render() {
       !!(cleared & (1 << (w.id * 3))),
       !!(cleared & (1 << (w.id * 3 + 1)))];
     const btns = [0, 1, 2].map(t => {
+      const m = WRIT_MULTS[t];
+      // the numbers this tier actually fights, so the comparison with the
+      // champion you are about to send needs no arithmetic
+      const spread = `<span class="writ-spread aspect-line">${glyph('attack')}${w.valor * m}
+        ${glyph('defense')}${w.bulwark * m} ${glyph('cunning')}${w.guile * m}</span>`;
       const done = !!(cleared & (1 << (w.id * 3 + t)));
-      if (done) return `<span class="writ-done">${WRIT_TIERS[t]} ✓</span>`;
-      return writOpen && gates[t] && S.addr
-        ? `<button class="mini-btn alt" data-writ="${w.id}:${t}">${WRIT_TIERS[t]}</button>`
-        : `<span class="writ-locked">${WRIT_TIERS[t]} ${glyph('seal')}</span>`;
+      const head = done
+        ? `<span class="writ-done">${WRIT_TIERS[t]} ${glyph('check')}</span>`
+        : writOpen && gates[t] && S.addr
+          ? `<button class="mini-btn alt" data-writ="${w.id}:${t}">${WRIT_TIERS[t]}</button>`
+          : `<span class="writ-locked">${WRIT_TIERS[t]} ${glyph('seal')}</span>`;
+      return `<div class="writ-tier${done ? ' done' : ''}">${head}${spread}</div>`;
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta aspect-line">${glyph('attack')}${w.valor} ${glyph('defense')}${w.bulwark} ${glyph('cunning')}${w.guile}
-        <small>at Grim · Dire ×2 · Black ×4</small></div></div>
+        <div class="duel-meta">a ${w.valor}·${w.bulwark}·${w.guile} spread, raised by tier</div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');

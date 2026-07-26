@@ -250,6 +250,12 @@ async function open(words) {
 }
 
 window.SessionKit = {
+  // token metadata through the batched path, so the coalescing can be
+  // checked from a console instead of taken on faith
+  tokenInfo: uid => new Promise((res, rej) => {
+    const p = walletApi.getGeneralTokenInfo(uid, res);
+    if (p && p.catch) p.catch(rej);
+  }),
   generateWords: () => walletUtils.generateWalletWords(),
   addressFor,
   open,
