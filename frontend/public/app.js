@@ -2251,7 +2251,7 @@ function openCard(uid) {
     ['Veterancy', c.level > 0 ? `Level ${c.level}` : 'unblooded'],
     ['Tempered', tp > 0 ? `${tp}×` : '—'],
     ['Hardened', hd > 0 ? `${hd}×` : '—'],
-    ['Station', `${t.name}${meta?.type ? ' · ' + meta.type : ''}`],
+    ['Rarity', `${t.name}${meta?.type ? ' · ' + meta.type : ''}`],
     ['Token', `<span class="mono">${c.uid.slice(0, 6)}…${c.uid.slice(-4)}</span>`],
   ].map(([k, v]) => `<div class="lg-row"><span class="lg-k">${k}</span><span class="lg-v">${v}</span></div>`).join('');
   $('cardDetail').innerHTML = `
@@ -2843,6 +2843,17 @@ async function connectWallet(kind) {
 }
 
 /* ---------------- misc / boot ---------------- */
+
+/* While a dialog is open the page behind must not scroll: a second
+   scrollbar beside a sheet is noise, and on iOS the page drags under it.
+   An observer on the overlay's hidden attribute covers every call site. */
+(function lockScrollWithOverlay() {
+  const ov = $('overlay');
+  if (!ov) return;
+  const sync = () => document.documentElement.classList.toggle('modal-open', !ov.hidden);
+  new MutationObserver(sync).observe(ov, { attributes: true, attributeFilter: ['hidden'] });
+  sync();
+})();
 
 function showStage(id) {
   for (const s of ['stageWait', 'stageReveal', 'stageDuel', 'stageError', 'stageConnect', 'stagePick', 'stageTemper', 'stageDress', 'stageName', 'stageCard'])
