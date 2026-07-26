@@ -38,6 +38,10 @@
   --data: 'JetBrains Mono', ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
+/* reserve the scrollbar's width always, so locking the page for a dialog
+   cannot shift the layout underneath it */
+html { scrollbar-gutter: stable; }
+html.modal-open { overflow: hidden; }
 /* inline drawn glyphs: sized by context, coloured by currentColor */
 svg.g { width: 14px; height: 14px; fill: currentColor; display: inline-block; vertical-align: -2px; flex: 0 0 auto; }
 svg.gl { width: 17px; height: 17px; }
@@ -487,7 +491,12 @@ footer a { color: var(--acid); text-decoration: none; }
   border-width: 2px; border-color: color-mix(in srgb, var(--rc) 74%, transparent);
   box-shadow: 0 0 50px -18px var(--rc), 0 30px 70px -30px #000;
 }
-.ds-art { position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: #14100c; }
+/* single column (phones): cap the art so the record and the action bar
+   still make the screen */
+.ds-art {
+  position: relative; aspect-ratio: 1 / 1; overflow: hidden; background: #14100c;
+  max-height: min(44vh, 420px);
+}
 .ds-art .ac-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .ds-art .cf-sigil { position: absolute; inset: 0; display: grid; place-items: center; }
 .ds-art .cf-sigil .card-art { width: 54%; height: 54%; }
@@ -538,6 +547,46 @@ footer a { color: var(--acid); text-decoration: none; }
 }
 .ds-icon:hover { border-color: var(--line-hi); color: var(--ink); }
 .ds-acts .duel-done { align-self: center; }
+
+/* Wide enough for a landscape sheet: the art stands beside the record
+   instead of above it, so a Sovereign's full pedigree fits on screen and
+   the page never grows a scrollbar. The art loses its square ratio here
+   and fills the column, which suits portrait card art anyway. */
+@media (min-width: 900px) {
+  .detail-sheet {
+    width: min(900px, 94vw); display: grid; align-items: stretch;
+    grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  }
+  .ds-art { aspect-ratio: auto; height: 100%; max-height: none; min-height: 340px; }
+  .ds-body {
+    padding: 20px 22px 22px; display: flex; flex-direction: column;
+    max-height: min(78vh, 760px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .ds-body .ledger { margin-top: 14px; }
+  .ds-body .ds-flavor { margin-top: 13px; }
+  .ds-acts { width: min(900px, 94vw); }
+  /* the name plate sits on the art, which is now taller than it is wide */
+  .ds-name { font-size: 28px; }
+}
+/* Single column (phones): the record pairs up two-across so a full
+   pedigree, the art and the action bar all make one screen. The token id
+   keeps the full width because a hash does not abbreviate well. */
+@media (max-width: 899px) {
+  .ds-art { max-height: 34vh; }
+  .ledger { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
+  .lg-row { padding: 8px 0; }
+  .lg-row:last-child { grid-column: 1 / -1; }
+  .lg-k { flex: 0 0 76px; }
+  .ds-flavor { font-size: 14.5px; margin-top: 12px; }
+  .ds-body { padding: 14px 16px 16px; }
+  .verify { margin-top: 12px; }
+}
+/* short-and-wide windows: trim the record's breathing room rather than scroll */
+@media (min-width: 900px) and (max-height: 720px) {
+  .lg-row { padding: 8px 0; }
+  .ds-body .ds-flavor { font-size: 14px; margin-top: 10px; }
+  .ds-body { padding: 16px 18px 18px; }
+}
 
 /* overlay */
 .overlay {
