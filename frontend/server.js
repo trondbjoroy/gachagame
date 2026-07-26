@@ -462,6 +462,7 @@ setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 // updating incrementally from the same tx stream the feed watches; clients
 // pass ?touch=<uids> after their own tx for instant freshness on those cards.
 const cardCache = { cards: {}, updatedAt: 0 };
+const realmCache = { at: 0, data: null };   // landing-page counters
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
   'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
@@ -733,6 +734,35 @@ async function handleApi(req, res, ip) {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ events: feed }));
+  }
+
+  // the realm's public numbers for the landing page. Cross-origin because
+  // emberfall.fun is a separate static site; read-only and cached 60s.
+  if (req.method === 'GET' && url.pathname === '/realm') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    const now = Date.now();
+    if (!realmCache.at || now - realmCache.at > 60_000) {
+      try {
+        const v = await ncCalls(NC, ['get_total_pulls()', 'get_duel_count()']);
+        const cards = Object.values(cardCache.cards);
+        realmCache.data = {
+          summons: v['get_total_pulls()'] ?? null,
+          duels: v['get_duel_count()'] ?? null,
+          // Sovereigns are counted from the warm card cache, so it is the
+          // number the realm can actually show, not an estimate
+          sovereigns: cards.length ? cards.filter(c => c.tier === 3).length : null,
+          champions: cards.length || null,
+        };
+        realmCache.at = now;
+      } catch { /* serve whatever we last had; the page shows dashes if empty */ }
+    }
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=60',
+      'Access-Control-Allow-Origin': 'https://emberfall.fun',
+      'Vary': 'Origin',
+    });
+    return res.end(JSON.stringify(realmCache.data || {}));
   }
 
   if (req.method === 'GET' && url.pathname === '/cards') {
