@@ -168,21 +168,22 @@ header.top .net-flag { font-size: 7.5px; }
 
 /* the nav sits in the header, not below a screenful of pitch */
 header.top .tabs {
-  flex: 1 1 auto; margin: 0; border: none; gap: 2px; min-width: 0;
-  justify-content: flex-start; overflow: hidden;
+  flex: 0 0 auto; margin: 0; border: none; gap: 2px; min-width: 0;
+  justify-content: flex-start;
 }
 header.top .tab { padding: 8px 12px; font-size: 12.5px; }
 
 /* Ember, renown and level as chips: the four stat tiles compressed */
-.hdr-chips { display: flex; gap: 6px; flex: 0 1 auto; min-width: 0; }
+.hdr-chips { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; justify-content: flex-end; overflow: hidden; }
 .hdr-chips .stat {
   border: 1px solid var(--line); background: rgba(11, 10, 8, .5);
-  border-radius: 999px; padding: 5px 11px; display: flex; align-items: baseline; gap: 6px;
-  white-space: nowrap; overflow: hidden;
+  border-radius: 999px; padding: 5px 10px; display: flex; align-items: center; gap: 6px;
+  white-space: nowrap; flex: 0 0 auto;
 }
-.hdr-chips .k {
-  font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim);
-  font-weight: 600;
+.hdr-chips .k { display: flex; align-items: center; color: var(--ink-dim); }
+.hdr-chips .k .g { width: 11px; height: 11px; fill: currentColor; }
+.hdr-chips .k .lv {
+  font-family: var(--display); font-size: 9px; letter-spacing: .1em; font-weight: 700;
 }
 .hdr-chips .v { font-family: var(--data); font-size: 12px; color: var(--ink); }
 .hdr-chips .v small { display: none; }
@@ -247,7 +248,7 @@ header.top .tab { padding: 8px 12px; font-size: 12.5px; }
 .rail-feed .feed-panel { margin: 0; }
 .rail-feed #feedList { max-height: 62vh; overflow-y: auto; }
 
-@media (max-width: 1180px) {
+@media (max-width: 1290px) {
   header.top { flex-wrap: wrap; }
   .layout { grid-template-columns: 1fr; }
   /* summon above the tab, the realm's chatter below it */
@@ -1045,7 +1046,23 @@ body.land-flash::before {
 
 /* progression: daily trial, muster roll, season */
 .trial-note { color: var(--acid); font-size: 13px; }
-.trial-done { color: var(--acid-hot); font-weight: 700; letter-spacing: .08em; }
+.trial-row { display: flex; align-items: center; gap: 8px; }
+.trial-row .trial-text { flex: 1; min-width: 0; color: var(--acid); }
+.trial-row.done .trial-text { color: var(--ink-muted); }
+.trial-check { display: flex; }
+.trial-check .g { width: 13px; height: 13px; fill: var(--acid-hot); }
+/* settled: a gold chip, not a tick buried in a sentence */
+.trial-done {
+  flex: 0 0 auto; font-family: var(--display); font-size: 9px; font-weight: 700;
+  letter-spacing: .18em; color: #171104; background: linear-gradient(180deg, var(--acid-hot), var(--acid-lo));
+  border-radius: 999px; padding: 3px 9px;
+}
+.trial-sub {
+  margin-top: 6px; font-family: var(--flavor); font-style: italic;
+  font-size: 13px; color: var(--ink-dim);
+}
+.trial-streak { color: var(--ink-muted); font-style: normal; font-family: var(--body); font-size: 11.5px; }
+.trial-block .rail-h { display: flex; align-items: center; justify-content: space-between; }
 .m-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .m-label { width: 110px; font-size: 13px; color: var(--ink-muted); }
 .m-bar {

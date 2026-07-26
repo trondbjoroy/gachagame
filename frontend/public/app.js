@@ -738,11 +738,13 @@ function render() {
   const deeds = computeDeeds();
   const deedsDone = deeds.filter(d => d.done).length;
   announceNewDeeds(deeds);
+  const lvl0 = levelFor(deedsDone);
   $('statsRow').innerHTML = [
-    ['Ember', me(S.ember)],
-    ['Renown', me(S.renown + (S.vigil > 1 ? ` · ${S.vigil}d` : ''))],
-    ['Level', me(`${levelFor(deedsDone)} · ${titleFor(deedsDone)}`)],
-  ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+    ['Ember', glyph('flame'), me(S.ember), 'Ember'],
+    ['Renown', glyph('star'), me(S.renown), S.vigil > 1 ? `Renown · ${S.vigil}-day vigil` : 'Renown'],
+    ['Level', '<b class="lv">Lv</b>', me(lvl0), S.addr ? `Level ${lvl0} · ${titleFor(deedsDone)}` : 'Level'],
+  ].map(([k, mark, v, tip]) =>
+    `<div class="stat" data-stat="${k}" title="${tip}"><div class="k">${mark}</div><div class="v">${v}</div></div>`).join('');
 
   // the Weaver's favor: claimable winnings under the summon button
   const fn = $('favorNote');
@@ -757,7 +759,7 @@ function render() {
     };
   }
   $('statsRow').querySelectorAll('.stat').forEach(s =>
-    animateStatEl(s.querySelector('.v'), s.querySelector('.k').textContent));
+    animateStatEl(s.querySelector('.v'), s.dataset.stat));
 
   // deeds of renown (Codex)
   const lvl = levelFor(deedsDone);
