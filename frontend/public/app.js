@@ -2243,7 +2243,8 @@ function openPick(kind, ref) {
     $('pickTitle').textContent = 'Choose the champion you want in return';
     $('pickWagerRow').hidden = true;
     $('pickStanceRow').hidden = true; // stances belong to duel picks only
-    $('pickCards').innerHTML = others.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    $('pickCards').innerHTML = others.map(c =>
+      cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">OFFER THE TRADE</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
     return;
@@ -2264,13 +2265,19 @@ function openPick(kind, ref) {
   if (stanceRow) {
     stanceRow.hidden = !(kind === 'create' || acceptStances);
     pickStance = kind === 'create' ? -1 : null; // create defaults open; accept must choose
-    $('stanceHint').textContent = acceptStances
-      ? 'This challenge is sealed: pick your stance. Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.'
-      : 'Optionally seal a stance (hidden until you reveal it after the fight is answered). Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.';
+    $('stanceHint').innerHTML = acceptStances
+      ? '<b>Pick your stance.</b> This challenge is sealed, so you must answer with one. '
+        + 'Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.'
+      : '<b>Seal a stance, or don\'t.</b> A sealed stance stays hidden until you reveal it after '
+        + 'the fight is answered. Attack beats Defense, Defense beats Cunning, Cunning beats Attack; '
+        + 'the winning stance boosts every round by 20%.';
     $('stanceNone').hidden = acceptStances;
     syncStanceBtns();
   }
-  $('pickCards').innerHTML = mine.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+  // the label names the deed, so the last click is never a surprise
+  const pickLabel = kind === 'create' ? 'ISSUE CHALLENGE' : 'ANSWER THE CHALLENGE';
+  $('pickCards').innerHTML = mine.map(c =>
+    cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">${pickLabel}</button>`)).join('');
   document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
   if (kind === 'create' && typeof ref === 'string') {
     // preselect via direct card button

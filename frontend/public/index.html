@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=127" />
+<link rel="stylesheet" href="style.css?b=128" />
 </head>
 <body>
 <svg width="0" height="0" class="glyph-defs" aria-hidden="true" focusable="false"><defs>
@@ -531,14 +531,14 @@
     </div>
     <div class="stage" id="stagePick" hidden>
       <div class="wait-title" id="pickTitle">Choose a card</div>
-      <!-- the wager sits ABOVE the card list: on phones the list fills the
-           screen and anything below it goes unseen -->
+      <!-- Wager and stance come BEFORE the champions: picking a champion is
+           what sends the tx, so nothing that shapes the fight may sit
+           below it (and on phones the list fills the screen anyway) -->
       <div class="pick-wager" id="pickWagerRow">
         <label>Wager (Ember): <input type="number" id="pickWager" min="0" step="1" placeholder="?"></label>
         <div class="wait-sub">name your wager; 0 is a free duel, no Ember changes hands</div>
         <div class="wait-sub pw-hint" id="pickWagerHint" hidden>⚠ Enter a wager first, then pick your champion.</div>
       </div>
-      <div class="cards pick-cards" id="pickCards"></div>
       <div class="pick-wager" id="pickStanceRow" hidden>
         <div class="wait-sub" id="stanceHint"></div>
         <div class="row-btns">
@@ -548,21 +548,22 @@
           <button class="mini-btn alt stance-btn" data-stance="2"><svg class="g"><use href="#g-cunning"/></svg> CUNNING</button>
         </div>
       </div>
+      <div class="cards pick-cards" id="pickCards"></div>
       <button class="ghost-btn" id="pickCloseBtn">cancel</button>
     </div>
   </div>
 </div>
 
-<script>window.BUILD = 127;</script>
-<script src="analytics.js?b=127"></script>
-<script src="sha3.js?b=127"></script>
-<script src="config.js?b=127"></script>
-<script src="art.js?b=127"></script>
-<script src="catalog.js?b=127"></script>
-<script src="wallets.js?b=127"></script>
-<script src="app.js?b=127"></script>
-<script src="progress.js?b=127"></script>
-<script src="sounds.js?b=127"></script>
-<script src="tutorial.js?b=127"></script>
+<script>window.BUILD = 128;</script>
+<script src="analytics.js?b=128"></script>
+<script src="sha3.js?b=128"></script>
+<script src="config.js?b=128"></script>
+<script src="art.js?b=128"></script>
+<script src="catalog.js?b=128"></script>
+<script src="wallets.js?b=128"></script>
+<script src="app.js?b=128"></script>
+<script src="progress.js?b=128"></script>
+<script src="sounds.js?b=128"></script>
+<script src="tutorial.js?b=128"></script>
 </body>
 </html>
