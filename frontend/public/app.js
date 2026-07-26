@@ -1108,13 +1108,18 @@ function render() {
     const mineD = isMine(d.challenger);
     const sealed = d.stances ? ` · ${glyph('seal')} sealed stance`
       : d.squad ? ` · ${glyph('attack')} 3v3 squad` : '';
+    // backing a fight and then fighting it is a conflict of interest: this
+    // realm's contract refuses it too, but the button should not offer it
+    const iBackedIt = !!S.addr && loadMyBets().some(b => b.id === d.id);
     let act;
     if (d.status === 'open') {
       act = mineD
         ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
-        : (S.addr
-          ? `<button class="mini-btn" data-${d.squad ? 'acceptsquad' : 'acceptduel'}="${d.id}">FIGHT</button>`
-          : '<span class="duel-done">awaiting a challenger</span>');
+        : iBackedIt
+          ? `<span class="duel-done" title="You have Ember riding on this fight, so you cannot also fight it">your bet is in</span>`
+          : (S.addr
+            ? `<button class="mini-btn" data-${d.squad ? 'acceptsquad' : 'acceptduel'}="${d.id}">FIGHT</button>`
+            : '<span class="duel-done">awaiting a challenger</span>');
     } else if (d.status === 'reveal') {
       const dueAt = ((d.acceptTs || 0) + (S.revealWindow || 21600)) * 1000;
       const minsLeft = Math.max(0, Math.ceil((dueAt - Date.now()) / 60000));
@@ -1153,7 +1158,7 @@ function render() {
   $('duelList').innerHTML = liveDuels.map(duelRow).join('')
     + (pastDuels.length
       ? `<details class="past-fights"${S.pastOpen ? ' open' : ''}>
-           <summary>${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}
+           <summary>last ${pastDuels.length} settled fight${pastDuels.length > 1 ? 's' : ''}
              <span class="feed-chev">&#9662;</span></summary>
            ${pastDuels.map(duelRow).join('')}</details>`
       : '');
@@ -2660,7 +2665,8 @@ function openPick(kind, ref) {
     $('pickTitle').textContent = 'Choose the champion you want in return';
     $('pickWagerRow').hidden = true;
     $('pickStanceRow').hidden = true; // stances belong to duel picks only
-    $('pickCards').innerHTML = others.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    $('pickCards').innerHTML = others.map(c =>
+      cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">OFFER THE TRADE</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
     return;
@@ -2788,6 +2794,14 @@ function openPick(kind, ref) {
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
   $('pickWagerHint').hidden = true;
   if (kind === 'accept') {
+    if (loadMyBets().some(b => b.id === ref)) {
+      $('errTitle').textContent = 'Your bet is on this fight';
+      $('errMsg').textContent = 'You have Ember riding on this duel, so you cannot also '
+        + 'fight it. Back a fight or join it, never both.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
     const d = S.duels.find(x => x.id === ref);
     $('pickTitle').textContent += ` (wager ${fmtEmber(d.wager)})`;
   }
@@ -2797,13 +2811,19 @@ function openPick(kind, ref) {
   if (stanceRow) {
     stanceRow.hidden = !(kind === 'create' || acceptStances);
     pickStance = kind === 'create' ? -1 : null; // create defaults open; accept must choose
-    $('stanceHint').textContent = acceptStances
-      ? 'This challenge is sealed: pick your stance. Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.'
-      : 'Optionally seal a stance (hidden until you reveal it after the fight is answered). Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.';
+    $('stanceHint').innerHTML = acceptStances
+      ? '<b>Pick your stance.</b> This challenge is sealed, so you must answer with one. '
+        + 'Attack beats Defense, Defense beats Cunning, Cunning beats Attack; the winning stance boosts every round by 20%.'
+      : '<b>Seal a stance, or don\'t.</b> A sealed stance stays hidden until you reveal it after '
+        + 'the fight is answered. Attack beats Defense, Defense beats Cunning, Cunning beats Attack; '
+        + 'the winning stance boosts every round by 20%.';
     $('stanceNone').hidden = acceptStances;
     syncStanceBtns();
   }
-  $('pickCards').innerHTML = mine.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+  // the label names the deed, so the last click is never a surprise
+  const pickLabel = kind === 'create' ? 'ISSUE CHALLENGE' : 'ANSWER THE CHALLENGE';
+  $('pickCards').innerHTML = mine.map(c =>
+    cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">${pickLabel}</button>`)).join('');
   document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
   if (kind === 'create' && typeof ref === 'string') {
     // preselect via direct card button
@@ -2915,6 +2935,13 @@ async function submitPick(uid) {
     await doTx('Issuing challenge', 'create_duel', [wager, commit], [depAct(uid, CARD_AMT)]);
   } else {
     const duel = S.duels.find(x => x.id === ref);
+    if (loadMyBets().some(b => b.id === ref)) {
+      $('errTitle').textContent = 'Your bet is on this fight';
+      $('errMsg').textContent = 'You have Ember riding on this duel, so you cannot also '
+        + 'fight it. Back a fight or join it, never both.';
+      showStage('stageError');
+      return;
+    }
     if (duel && duel.wager > 0 && S.ember < duel.wager) {
       $('errTitle').textContent = 'Not enough Ember for the wager';
       $('errMsg').textContent = `This duel wagers ${fmtEmber(duel.wager)}.`;
