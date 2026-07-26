@@ -2773,7 +2773,17 @@ function dismissLightbox() {
   if (wasReveal) revealDismissed();
 }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !$('overlay').hidden && dismissible()) dismissLightbox();
+  if (e.key !== 'Escape') return;
+  if (!$('overlay').hidden) {
+    if (dismissible()) dismissLightbox();
+    return;                       // a dialog takes the key before the board
+  }
+  // champions picked for a fusion let go on Escape, the way any selection does
+  if (S.selected.size || S.fuseMode) {
+    S.selected.clear();
+    S.fuseMode = false;
+    render();
+  }
 });
 $('overlay').addEventListener('click', e => {
   if (dismissible() && !e.target.closest('.stage')) dismissLightbox();
