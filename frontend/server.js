@@ -456,6 +456,20 @@ async function pollFeed() {
     if (fresh.length) saveFeed();
     if (feedSeen.size > 5000) feedSeen.clear(); // crude memory cap
   } catch { /* the feed is decorative; next poll retries */ }
+  // the counters clients watch: one state call per contract, per poll,
+  // shared by every player instead of each of them asking
+  try {
+    const a = await ncCalls(NC, ['get_duel_count()']);
+    pulse.duels = a['get_duel_count()'] ?? pulse.duels;
+    if (MKT_NC) {
+      const m = await ncCalls(MKT_NC, ['get_listing_count()', 'get_swap_count()']);
+      pulse.listings = m['get_listing_count()'] ?? pulse.listings;
+      pulse.swaps = m['get_swap_count()'] ?? pulse.swaps;
+    }
+    pulse.cards = Object.keys(cardCache.cards).length;
+    pulse.feed = feed.length ? feed[0].ts : 0;
+    pulse.at = Math.floor(Date.now() / 1000);
+  } catch { /* the client falls back to its own slower timer */ }
 }
 pollFeed();
 setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
@@ -468,6 +482,9 @@ setInterval(pollFeed, 15_000); // our own node: no shared rate limit to respect
 const cardCache = { cards: {}, updatedAt: 0 };
 const realmCache = { at: 0, data: null };   // landing-page counters
 const tokenMeta = new Map();                // uid -> token info (immutable)
+/* What "something changed" looks like, refreshed by the feed poll. Clients
+   watch these counters instead of refetching the world on a timer. */
+const pulse = { at: 0, feed: 0, duels: 0, listings: 0, swaps: 0, cards: 0 };
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
   'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
@@ -745,6 +762,13 @@ async function handleApi(req, res, ip) {
      holds, one request apiece, so a 60-card collection meant 60 round trips
      that grew with the collection. Name and symbol are struck at creation and
      never change, so they are cached here for good and answered in bulk. */
+  // a few bytes that say whether anything moved
+  if (req.method === 'GET' && url.pathname === '/pulse') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(pulse));
+  }
+
   if (req.method === 'GET' && url.pathname === '/tokens') {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     const ids = (q.get('ids') || '').split(',').filter(u => HEX64.test(u)).slice(0, 60);
