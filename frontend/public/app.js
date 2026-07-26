@@ -697,7 +697,7 @@ const EPITHETS = ['the Unbowed', 'Thrice-Forged', 'of the Deep Seam', 'the Oathk
 const WRIT_TIERS = ['Grim', 'Dire', 'Black'];
 // what each tier multiplies a boss's aspects by, mirroring fight_writ in the
 // contract this build talks to. Change here and in the blueprint together.
-const WRIT_MULTS = [1, 2, 4];
+const WRIT_MULTS = [1, 3, 9];   // v5: see _writ_spread in the blueprint
 
 function cosmeticsOf(c) {
   const cos = c.cosmetics || 0;
@@ -1283,7 +1283,8 @@ function render() {
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">a ${w.valor}·${w.bulwark}·${w.guile} spread, raised by tier</div></div>
+        <div class="duel-meta">a ${w.valor}·${w.bulwark}·${w.guile} spread, raised by tier
+          <small>and never weaker than 45/80/115% of the champion you send</small></div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');
