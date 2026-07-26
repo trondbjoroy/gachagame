@@ -68,7 +68,7 @@ body {
 .glow.a { top: -140px; left: -100px; width: 420px; height: 420px; background: #1a140c; opacity: .75; }
 .glow.b { bottom: -180px; right: -140px; width: 480px; height: 480px; background: #33230f; opacity: .28; }
 
-main { position: relative; z-index: 1; max-width: 1380px; margin: 0 auto; padding: 0 26px 90px; }
+main { position: relative; z-index: 1; max-width: 1460px; margin: 0 auto; padding: 0 26px 90px; }
 /* single-column pages (no rail) stay narrow enough to read */
 .narrow-page main { max-width: 1020px; }
 
@@ -171,21 +171,27 @@ header.top .tabs {
   flex: 0 0 auto; margin: 0; border: none; gap: 2px; min-width: 0;
   justify-content: flex-start;
 }
-header.top .tab { padding: 8px 12px; font-size: 12.5px; }
+header.top .tab { padding: 8px 9px; font-size: 12px; }
 
 /* Ember, renown and level as chips: the four stat tiles compressed */
-.hdr-chips { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; justify-content: flex-end; overflow: hidden; }
+.hdr-chips { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; justify-content: flex-end; overflow: hidden; }
 .hdr-chips .stat {
   border: 1px solid var(--line); background: rgba(11, 10, 8, .5);
-  border-radius: 999px; padding: 5px 10px; display: flex; align-items: center; gap: 6px;
+  border-radius: 999px; padding: 5px 8px; display: flex; align-items: center; gap: 5px;
   white-space: nowrap; flex: 0 0 auto;
 }
 .hdr-chips .k { display: flex; align-items: center; color: var(--ink-dim); }
+/* nothing in the header shrinks except the chip row, which gives way by
+   dropping chips (see fitHeaderChips) rather than by clipping */
+header.top .hdr-tools > .mini-btn, header.top .header-session,
+header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
+/* the chip's own display:flex outranks the UA [hidden] rule, so say it here */
+.hdr-chips .stat[hidden] { display: none; }
 .hdr-chips .k .g { width: 11px; height: 11px; fill: currentColor; }
 .hdr-chips .k .lv {
   font-family: var(--display); font-size: 9px; letter-spacing: .1em; font-weight: 700;
 }
-.hdr-chips .v { font-family: var(--data); font-size: 12px; color: var(--ink); }
+.hdr-chips .v { font-family: var(--data); font-size: 11.5px; color: var(--ink); }
 .hdr-chips .v small { display: none; }
 
 /* two columns: the tab, then the rail */

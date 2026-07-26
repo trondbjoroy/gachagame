@@ -650,6 +650,30 @@ function rowArt(c) {
 
 /* the delve is an appointment; the appointment should announce itself:
    a badge on The Mines tab and a counter in the browser tab title */
+/* Ember can be five figures and the level title can be long, so whether
+   three chips fit is a question about content, not about viewport width.
+   Drop chips from the right until the row fits its box. */
+function fitHeaderChips() {
+  const sr = $('statsRow');
+  if (!sr) return;
+  const chips = [...sr.children];
+  chips.forEach(c => { c.hidden = false; });
+  // measure real geometry, not summed widths plus a guessed gap: the row is
+  // right-aligned, so the leftmost visible chip is the one that overflows,
+  // and a one-pixel arithmetic error used to drop a chip that did fit
+  const room = () => {
+    const vis = chips.filter(c => !c.hidden);
+    if (!vis.length) return true;
+    return vis[0].getBoundingClientRect().left >= sr.getBoundingClientRect().left - 0.5;
+  };
+  for (let i = chips.length - 1; i >= 0 && !room(); i--) chips[i].hidden = true;
+}
+let fitTimer = null;
+addEventListener('resize', () => {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(fitHeaderChips, 120);
+});
+
 /* the hero is a pitch for people who have not summoned. Once a champion
    has answered, it retires for good and the rail carries the brazier. */
 const HERO_LS = 'emberfall_summoned';
@@ -712,8 +736,8 @@ function render() {
   const inSess = S.wallet?.mode === 'session';
   // long and short labels; CSS picks per width so the chip never gets cut
   hsb.innerHTML = inSess
-    ? '\u26a1 <span class="hs-l">SESSION ACTIVE</span><span class="hs-s">SESSION</span>'
-    : '\u26a1 <span class="hs-l">QUICK PLAY</span><span class="hs-s">PLAY</span>';
+    ? `${glyph('flame')} <span class="hs-l">SESSION ACTIVE</span><span class="hs-s">SESSION</span>`
+    : `${glyph('flame')} <span class="hs-l">QUICK PLAY</span><span class="hs-s">PLAY</span>`;
   hsb.classList.toggle('active', inSess);
   hsb.classList.toggle('beckon', !!S.qpBeckon && !inSess && !!S.addr);
   syncSessionBox();
@@ -760,6 +784,7 @@ function render() {
   }
   $('statsRow').querySelectorAll('.stat').forEach(s =>
     animateStatEl(s.querySelector('.v'), s.dataset.stat));
+  fitHeaderChips();
 
   // deeds of renown (Codex)
   const lvl = levelFor(deedsDone);
@@ -938,9 +963,19 @@ function render() {
       const c = S.cards.get(uid);
       const t = TIERS[c?.tier ?? 0] || TIERS[0];
       return `<span class="duel-emoji">${rowArt(c)}</span>
-        <div class="duel-info"><b>${c?.name ?? '?'}</b> <span style="color:${t.color}">\u26a1${c?.power ?? '?'}</span>`;
+        <div class="duel-info"><b>${c?.name ?? '?'}</b> <span class="pw-inline" style="color:${t.color}">${glyph('power')}${c?.power ?? '?'}</span>`;
     };
-    $('listingList').innerHTML = S.listings.map(l => `
+    // the Bazaar is not a graveyard either: live listings always show,
+    // closed ones age out (newest 5, plus your own) exactly like duels
+    let soldSeen = 0;
+    const listingsShown = S.listings.filter(l => {
+      if (l.status === 'open') return true;
+      if (!S.addr) return false;          // nothing to act on for a visitor
+      return ++soldSeen <= 5 || isMine(l.seller);
+    });
+    listingsShown.sort((a, b) =>
+      ((a.status !== 'open') - (b.status !== 'open')) || b.id - a.id);
+    $('listingList').innerHTML = listingsShown.map(l => `
       <div class="duel ${l.status}">${cardBit(l.card)}
         <div class="duel-meta">#${l.id} \u00b7 ${fmtHtr(l.price)} \u00b7 by ${isMine(l.seller) ? 'you' : who(l.seller)}</div></div>
         ${l.status === 'open' ? (isMine(l.seller)
@@ -950,8 +985,16 @@ function render() {
           : `<button class="mini-btn" data-buy="${l.id}" data-price="${l.price}">BUY</button>`)
           : '<span class="duel-done">sold</span>'}
       </div>`).join('');
-    $('listingEmpty').hidden = S.listings.length > 0;
-    $('swapList').innerHTML = S.swaps.map(w => {
+    $('listingEmpty').hidden = listingsShown.length > 0;
+    let doneSeen = 0;
+    const swapsShown = S.swaps.filter(w => {
+      if (w.status === 'open') return true;
+      if (!S.addr) return false;
+      return ++doneSeen <= 5 || isMine(w.maker);
+    });
+    swapsShown.sort((a, b) =>
+      ((a.status !== 'open') - (b.status !== 'open')) || b.id - a.id);
+    $('swapList').innerHTML = swapsShown.map(w => {
       const wantMine = S.cards.get(w.want)?.mine;
       return `<div class="duel ${w.status}">${cardBit(w.give)}
         <div class="duel-meta">#${w.id} \u00b7 wants ${S.cards.get(w.want)?.name ?? w.want.slice(0, 10)} \u00b7 by ${isMine(w.maker) ? 'you' : who(w.maker)}</div></div>
@@ -963,7 +1006,7 @@ function render() {
           : '<span class="duel-done">done</span>'}
       </div>`;
     }).join('');
-    $('swapEmpty').hidden = S.swaps.length > 0;
+    $('swapEmpty').hidden = swapsShown.length > 0;
     const mpend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.marketPending === S.addr);
     $('marketPendingWrap').hidden = mpend.length === 0;
     $('marketPendingCards').innerHTML = mpend.map(c =>
@@ -1369,7 +1412,7 @@ function showRevealNow(won, tierLabel) {
   const face = meta?.art ? `
     <img class="ac-img" src="cards/${slugOf(won.name)}.jpg" alt="">
     <div class="ac-scrim"></div>
-    <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power">\u26a1${won.power}</span></div>
+    <div class="ac-top"><span class="ac-name">${won.name}</span><span class="ac-power pw-inline">${glyph('power')}${won.power}</span></div>
     <div class="ac-bottom">
       <div class="ac-station" style="color:${t.color}">${tierLabel} \u00b7 ${meta.type}</div>
       ${aspectsRow(won)}
@@ -1378,7 +1421,7 @@ function showRevealNow(won, tierLabel) {
     <div class="prize-emoji">${artSvg(won.name, 'card-art prize-art')}</div>
     <div class="prize-tier">${tierLabel}</div>
     <div class="prize-name">${won.name}</div>
-    <div class="prize-power">\u26a1 POWER ${won.power}</div>
+    <div class="prize-power">${glyph('power')} POWER ${won.power}</div>
     ${aspectsRow(won)}`;
   pc.innerHTML = `
     <div class="flip-inner">
@@ -2522,7 +2565,7 @@ async function resumeOfferWait(saved) {
     const st = await batchCalls([`get_delegate("${addr}")`, `get_session_fund("${addr}")`])
       .catch(() => ({}));
     if (!st[`get_delegate("${addr}")`] && (st[`get_session_fund("${addr}")`] || 0) < need) {
-      ribbon('An unfinished session awaits its wallet approval: open \u26a1 QUICK PLAY to finish or discard it');
+      ribbon('An unfinished session awaits its wallet approval: open QUICK PLAY to finish or discard it');
       const ok = await awaitOffer(addr, 600, need);
       if (!ok) return;  // the key stays saved; the next visit tries again
     }
