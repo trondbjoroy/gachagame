@@ -592,6 +592,8 @@ const FRAMES = ['Ember', 'Silver', 'Gold', 'Void'];
 const EPITHETS = ['the Unbowed', 'Thrice-Forged', 'of the Deep Seam', 'the Oathkeeper',
   'Writ-Feller', 'the Ember-Marked', 'of the Long Vigil', 'the Pale', 'Stonefast',
   'the Whisperblade', 'Crownless', 'the Last Banner'];
+// Ember a minute per rarity, as the contract pays it
+const MINE_RATES = [1, 3, 10, 40];
 const WRIT_TIERS = ['Grim', 'Dire', 'Black'];
 // what each tier multiplies a boss's aspects by, mirroring fight_writ in the
 // contract this build talks to. Change here and in the blueprint together.
@@ -915,14 +917,20 @@ function render() {
   // farm
   const staked = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.staker));
   const owed = staked.reduce((a, c) => a + (c.pendingEmber || 0), 0);
+  // a delving champion is away from the face, so it earns nothing meanwhile
+  const delving = staked.filter(c => (c.delveSince || 0) > 0);
+  const rate = staked.reduce((a, c) =>
+    a + ((c.delveSince || 0) > 0 ? 0 : (MINE_RATES[c.tier] || 0)), 0);
   $('farmSummary').innerHTML = `
     <div class="stat"><div class="k">Ember at the face</div><div class="v">${fmtEmber(owed)}
-      <small>· unclaimed</small></div></div>
-    <div class="stat"><div class="k">Rates /min</div><div class="v"><small class="rates">${
-      TIERS.map((t, i) => `<span title="${t.name}"><b style="color:${t.color}">${t.name[0]}</b> ${
-        [1, 3, 10, 40][i]}</span>`).join('<i>·</i>')}</small></div></div>
+      <small>${owed > 0 ? 'waiting to be claimed' : 'nothing to claim yet'}</small></div></div>
+    <div class="stat" title="${TIERS.map((t, i) => `${t.name} ${MINE_RATES[i]}`).join(' · ')} Ember a minute">
+      <div class="k">Earning /min</div><div class="v">${fmtEmber(rate)}
+      <small>${!staked.length ? 'no champion is mining'
+        : delving.length ? `${staked.length - delving.length} at the face, ${delving.length} delving`
+        : `${staked.length} champion${staked.length > 1 ? 's' : ''} at the face`}</small></div></div>
     <div class="stat"><div class="k">Relic shards</div><div class="v">${S.shards || 0}
-      <small class="nowrap">· from delves · dress your champions</small></div></div>`;
+      <small>from delves, spent on adornments</small></div></div>`;
   $('stakedCards').innerHTML = staked.map(c => {
     const delving = (c.delveSince || 0) > 0;
     const doneAt = ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000;
@@ -1175,7 +1183,7 @@ function bindListActions() {
   bind('[data-unstake]', async u => {
     const c = S.cards.get(u);
     // hours of toil approximated from accrued Ember and the station's rate
-    const hours = c ? c.pendingEmber / ([1, 3, 10, 40][c.tier] * 60) : 0;
+    const hours = c ? c.pendingEmber / ((MINE_RATES[c.tier] || 1) * 60) : 0;
     const h = await doTx('Recalling champion', 'unstake', [], [wdAct(u, CARD_AMT)]);
     if (h) window.trialEvent?.('recall8', { hours });
   });
