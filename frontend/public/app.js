@@ -9,10 +9,10 @@ const ECON = window.GAME.economy || { sessionFund: 100, fusionFees: [5, 5, 5, 5]
 const fuseFeeFor = tier => ECON.fusionFees[tier] ?? 5;
 
 const TIERS = [
-  { name: 'Footman', color: 'var(--common)', pct: '60%', fallback: '🪓' },
-  { name: 'Knight', color: 'var(--rare)', pct: '30%', fallback: '🛡️' },
-  { name: 'Highlord', color: 'var(--epic)', pct: '9%', fallback: '🏰' },
-  { name: 'Sovereign', color: 'var(--legendary)', pct: '1%', fallback: '👑' },
+  { name: 'Footman', color: 'var(--common)', pct: '60%' },
+  { name: 'Knight', color: 'var(--rare)', pct: '30%' },
+  { name: 'Highlord', color: 'var(--epic)', pct: '9%' },
+  { name: 'Sovereign', color: 'var(--legendary)', pct: '1%' },
 ];
 const EXPLORER = 'https://explorer.testnet.hathor.network';
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
@@ -1008,7 +1008,7 @@ function render() {
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">⚔ ${w.valor} · 🛡 ${w.bulwark} · 🗡 ${w.guile}
+        <div class="duel-meta aspect-line">${glyph('attack')}${w.valor} ${glyph('defense')}${w.bulwark} ${glyph('cunning')}${w.guile}
         <small>at Grim · Dire ×2 · Black ×4</small></div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
@@ -1310,7 +1310,8 @@ function openTemper(uid) {
   if (!c || !c.temperCost) return;
   temperUid = uid;
   const [v, b, g, t] = c.aspects || [0, 0, 0, 0];
-  $('temperInfo').innerHTML = `<b>${c.name}</b> · ⚔ ${v} · 🛡 ${b} · 🗡 ${g}<br>
+  $('temperInfo').innerHTML = `<b>${c.name}</b> <span class="aspect-line">${
+    glyph('attack')}${v} ${glyph('defense')}${b} ${glyph('cunning')}${g}</span><br>
     Raise one aspect by 1–3 for <b>${fmtEmber(c.temperCost)}</b>.`;
   showStage('stageTemper');
 }
@@ -1604,7 +1605,15 @@ function assignSeals() {
 }
 
 const STANCE_NAMES = ['Attack', 'Defense', 'Cunning'];
-const STANCE_ICONS = ['⚔', '🛡', '🗡'];
+/* the three aspect marks as raw paths, for the one place that cannot use
+   the sprite: the share canvas. Keep in step with the <symbol>s. */
+const GLYPH_PATHS = {
+  attack: 'M12 1 L15.2 7.5 V14.2 H8.8 V7.5 Z M4.8 15.2 H19.2 V18.4 H13.7 V23 H10.3 V18.4 H4.8 Z',
+  defense: 'M12 1.2 L21 4.6 V11.4 C21 17.4 17.2 21.6 12 23 C6.8 21.6 3 17.4 3 11.4 V4.6 Z '
+    + 'M12 4.6 L6 6.9 V11.4 C6 15.4 8.4 18.4 12 19.7 C15.6 18.4 18 15.4 18 11.4 V6.9 Z',
+  cunning: 'M20.6 1.4 L22.6 3.4 L13 13 L11 11 Z M11.6 13.4 L10.6 14.4 L6.4 10.2 L7.4 9.2 Z '
+    + 'M9.5 15.5 L8.5 16.5 L4.3 12.3 L5.3 11.3 Z M6.4 17.2 L8.4 19.2 L2.6 23 Z',
+};
 
 function randSalt() {
   const b = crypto.getRandomValues(new Uint8Array(12));
@@ -2077,9 +2086,23 @@ async function cardShareImage(c) {
   g.fillText(stationLine(c, t, meta).toUpperCase(), 40, y);
   y += 52;
   const [v, b, gu] = c.aspects || [0, 0, 0];
-  g.font = '32px "Fragment Mono", monospace';
-  g.fillStyle = '#e8dfc9';
-  g.fillText(`⚔ ${v}   🛡 ${b}   🗡 ${gu}`, 40, y);
+  g.font = '32px "JetBrains Mono", "Fragment Mono", monospace';
+  // the same three marks the app draws, as paths: a canvas cannot reach the
+  // sprite, and emoji here would land in a PNG shared with strangers
+  let ax = 40;
+  for (const [d, n] of [[GLYPH_PATHS.attack, v], [GLYPH_PATHS.defense, b], [GLYPH_PATHS.cunning, gu]]) {
+    g.save();
+    g.translate(ax, y - 26);
+    g.scale(34 / 24, 34 / 24);          // the sprite's 24-unit viewBox
+    g.fillStyle = '#b5ab99';
+    g.fill(new Path2D(d));
+    g.restore();
+    ax += 44;
+    g.fillStyle = '#e8dfc9';
+    const label = `${n}`;
+    g.fillText(label, ax, y);
+    ax += g.measureText(label).width + 34;
+  }
   // footer
   g.fillStyle = 'rgba(212,168,67,.25)';
   g.fillRect(0, H - 92, W, 1);

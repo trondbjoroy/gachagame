@@ -1138,6 +1138,10 @@ body.land-flash::before {
 .rates i { color: var(--ink-faint); font-style: normal; }
 .rates b { font-family: var(--display); font-weight: 700; }
 .nowrap { white-space: nowrap; }
+/* aspects read the same everywhere: glyph, number, a little air */
+.aspect-line { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.aspect-line .g { width: 12px; height: 12px; fill: var(--ink-dim); margin-left: 6px; }
+.aspect-line .g:first-child { margin-left: 0; }
 /* rules read as rules, not as a paragraph in a quote block */
 .rulelist { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
 .rulelist li { font-size: 13px; line-height: 1.5; color: var(--ink-muted); }

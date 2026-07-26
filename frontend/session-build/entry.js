@@ -5,6 +5,7 @@ import { HathorWallet, Connection, walletUtils, config as libConfig } from '@hat
 import { P2PKH_ACCT_PATH } from '@hathor/wallet-lib/lib/constants';
 import { deriveAddressFromXPubP2PKH } from '@hathor/wallet-lib/lib/utils/address';
 import { JSONBigInt } from '@hathor/wallet-lib/lib/utils/bigint';
+import walletApi from '@hathor/wallet-lib/lib/api/wallet';
 import JSONBigIntFactory from 'json-bigint';
 
 // wallet-lib's BigInt JSON codec is engine-specific twice over: it needs the
@@ -19,6 +20,63 @@ import JSONBigIntFactory from 'json-bigint';
   const JB = JSONBigIntFactory({ useNativeBigInt: true });
   JSONBigInt.parse = text => JB.parse(text);
   JSONBigInt.stringify = (value, space) => JB.stringify(value, null, space);
+})();
+
+/* Token metadata, batched. wallet-lib calls getGeneralTokenInfo(uid) once
+   per token it holds — 28 requests for 28 cards, and it grows with the
+   collection. Name and symbol are struck at creation and never change, so
+   the uids are collected within a tick and answered from ONE /api/tokens
+   call against our own server (which caches them for good). If that path
+   fails for any reason the original per-token request still runs, so a
+   proxy hiccup cannot stall a wallet sync. */
+(function batchTokenInfo() {
+  if (typeof window === 'undefined' || !walletApi || !walletApi.getGeneralTokenInfo) return;
+  const original = walletApi.getGeneralTokenInfo.bind(walletApi);
+  const cache = new Map();
+  let queue = [];       // {uid, resolve, reject}
+  let scheduled = false;
+
+  const flush = async () => {
+    scheduled = false;
+    const batch = queue;
+    queue = [];
+    const uids = [...new Set(batch.map(w => w.uid))];
+    let got = {};
+    try {
+      const r = await fetch(location.origin + '/api/tokens?ids=' + uids.join(','));
+      if (r.ok) got = await r.json();
+    } catch { /* fall through to the per-token path below */ }
+    for (const w of batch) {
+      const info = got[w.uid];
+      if (info && info.success) {
+        cache.set(w.uid, info);
+        try { w.resolve(info); } catch { /* the caller's own handler threw */ }
+      } else {
+        // never seen, or the batch could not be reached: ask the node directly
+        original(w.uid, w.resolve).catch(w.reject);
+      }
+    }
+  };
+
+  walletApi.getGeneralTokenInfo = (uid, resolve) => {
+    const hit = cache.get(uid);
+    if (hit) {
+      resolve(hit);
+      return Promise.resolve();
+    }
+    return new Promise((res, rej) => {
+      queue.push({
+        uid,
+        resolve: info => { resolve(info); res(); },
+        reject: err => rej(err),
+      });
+      if (!scheduled) {
+        scheduled = true;
+        // a tick is enough: the lib queues every token of a wallet in one pass
+        setTimeout(flush, 0);
+      }
+    });
+  };
 })();
 
 const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessionNode)
