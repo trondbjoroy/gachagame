@@ -27,7 +27,10 @@ const MKT_NC = process.env.MARKET_NC || '000000001bc502cf793a7343de99816f574b3b7
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
-const MAX_HTR = 100_000;    // HTR cents cap for market prices/withdrawals
+const MAX_HTR = 100_000;    // HTR cents the shared wallet may SPEND or withdraw
+// an ask is not a spend: a seller names any price, so this only keeps the
+// number sane (well past Hathor's whole supply) instead of capping the market
+const MAX_PRICE = 100_000_000_000;
 const HEX64 = /^[0-9a-f]{64}$/;
 
 const MIME = {
@@ -123,7 +126,7 @@ const isSide = v => v === 0 || v === 1;
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
   && Number.isInteger(a.amount) && a.amount > 0 && a.amount <= MAX_HTR;
 const MKT_METHODS = {
-  list_card:      { actions: [cardDep],      args: [v => Number.isInteger(v) && v > 0 && v <= MAX_HTR] },
+  list_card:      { actions: [cardDep],      args: [v => Number.isInteger(v) && v > 0 && v <= MAX_PRICE] },
   buy:            { actions: [marketHtrDep], args: [isSmallInt] },
   cancel_listing: { actions: [],         args: [isSmallInt] },
   offer_swap:     { actions: [cardDep],  args: [isHex64] },

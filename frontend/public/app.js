@@ -1283,8 +1283,8 @@ function render() {
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">a ${w.valor}·${w.bulwark}·${w.guile} spread, raised by tier
-          <small>and never weaker than 45/80/115% of the champion you send</small></div></div>
+        <div class="duel-meta">base ${w.valor}·${w.bulwark}·${w.guile}
+          <small>· at least 45/80/115% of your champion</small></div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');
@@ -1475,10 +1475,10 @@ function bindListActions() {
     placeBet(id, side);
   });
   bind('[data-sell]', u => {
-    const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
+    const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR). Name any price you like:', '5');
     if (raw === null) return;
     const p = Math.floor(Number(raw));
-    if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
+    if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
     doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
   });
   bind('[data-trade]', u => openPick('want', u));
@@ -1489,10 +1489,31 @@ function bindListActions() {
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT });
     if (h) crashLand(u, tier);
   });
-  document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () =>
-    doTx('Buying champion', 'buy', [Number(el.dataset.buy)], [depAct(HTR, Number(el.dataset.price))], { target: MKT }));
-  document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () =>
-    doTx('Accepting trade', 'accept_swap', [Number(el.dataset.acceptswap)], [depAct(el.dataset.want, CARD_AMT)], { target: MKT }));
+  // buying spends real HTR, so it asks first: the name, the price and the
+  // fact that the champion arrives in escrow
+  document.querySelectorAll('[data-buy]').forEach(el => el.onclick = () => {
+    const id = Number(el.dataset.buy);
+    const price = Number(el.dataset.price);
+    const l = S.listings.find(x => x.id === id);
+    const c = l && S.cards.get(l.card);
+    const who = c ? c.name : 'this champion';
+    if (!confirm(`Buy ${who} for ${fmtHtr(price)}?
+
+`
+        + `The coin leaves your wallet now and ${c ? 'the champion' : 'it'} lands `
+        + `in the Market's escrow for you to claim.`)) return;
+    doTx('Buying champion', 'buy', [id], [depAct(HTR, price)], { target: MKT });
+  });
+  document.querySelectorAll('[data-acceptswap]').forEach(el => el.onclick = () => {
+    const id = Number(el.dataset.acceptswap);
+    const w = S.swaps.find(x => x.id === id);
+    const give = S.cards.get(el.dataset.want), get = w && S.cards.get(w.give);
+    if (!confirm(`Trade away ${give ? give.name : 'your champion'} for ${
+        get ? get.name : 'theirs'}?
+
+The swap is final once it settles.`)) return;
+    doTx('Accepting trade', 'accept_swap', [id], [depAct(el.dataset.want, CARD_AMT)], { target: MKT });
+  });
 }
 
 const depAct = (token, amount) => ({ type: 'deposit', token, amount });
@@ -2393,10 +2414,10 @@ function openCard(uid) {
     });
     acts.querySelectorAll('[data-dduel]').forEach(el => el.onclick = () => openPick('create', uid));
     acts.querySelectorAll('[data-dsell]').forEach(el => el.onclick = () => {
-      const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
+      const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR). Name any price you like:', '5');
       if (raw === null) return;
       const p = Math.floor(Number(raw));
-      if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
+      if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
       $('overlay').hidden = true;
       doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT });
     });
