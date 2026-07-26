@@ -20,6 +20,10 @@ const fmtEmber = n => n + ' Ember';
 const short = u => u.slice(0, 10) + '…';
 // banner name if the address claimed one, else the shortened address
 const who = a => (a && S.names[a]) || short(a || '?');
+// on-chain text the contract only length-checks (champion names, guild names)
+// is escaped before it reaches innerHTML
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_ ]{1,14}[A-Za-z0-9_]$/;
 // v4 delegation: contract state (renown, Ember, wins, cards' staker/pending)
 // is keyed by the MAIN identity; a session acts as the wallet that offered it.
