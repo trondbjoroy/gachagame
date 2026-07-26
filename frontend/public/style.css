@@ -206,8 +206,17 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 .col-main { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
 .col-main .shelf { margin-top: 0; }
 .col-main .shelf + .shelf { margin-top: 34px; }
-.rail-summon { grid-column: 2; grid-row: 1; position: sticky; top: 84px; }
-.rail-feed { grid-column: 2; grid-row: 2; }
+/* One sticky unit: summon, trial and feed hold their place together for the
+   whole scroll. Sticky is bounded by its containing block, so this wrapper
+   spans both rows — two separately sticky asides each slipped once their own
+   row's bottom edge caught up with them. */
+.rail-col {
+  grid-column: 2; grid-row: 1 / span 2; min-width: 0;
+  position: sticky; top: 84px;
+  display: flex; flex-direction: column; gap: 16px;
+  max-height: calc(100vh - 104px);
+}
+.rail-summon, .rail-feed { min-height: 0; }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .rail-block {
   border: 1px solid var(--line); border-radius: var(--r-md);
@@ -256,15 +265,19 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 
 /* the feed has a column to live in now, so it stays open and scrolls */
 .rail-feed .feed-panel { margin: 0; }
-.rail-feed #feedList { max-height: 62vh; overflow-y: auto; }
+.rail-feed .feed-panel { display: flex; flex-direction: column; min-height: 0; }
+.rail-feed #feedList {
+  flex: 1 1 auto; min-height: 96px; overflow-y: auto; overscroll-behavior: contain;
+}
 
 @media (max-width: 1290px) {
   header.top { flex-wrap: wrap; }
   .layout { grid-template-columns: 1fr; }
   /* summon above the tab, the realm's chatter below it */
   .col-main { grid-column: 1; grid-row: auto; order: 2; }
+  .rail-col { display: contents; }
   .rail-summon { grid-column: 1; grid-row: auto; order: 1; position: static; }
-  .rail-feed { grid-column: 1; grid-row: auto; order: 3; }
+  .rail-feed { grid-column: 1; grid-row: auto; order: 3; position: static; }
   .rail-feed #feedList { max-height: none; }
   .hdr-chips { order: 4; flex: 1 1 100%; }
   header.top .tabs { order: 3; flex: 1 1 100%; }
