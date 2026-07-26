@@ -48,7 +48,10 @@ const S = {
 
 /* ---------------- chain reads ---------------- */
 
-async function node(path) { return (await fetch('/node' + path)).json(); }
+async function node(path) {
+  // a hung request must not wedge the single-flight guard in refresh()
+  return (await fetch('/node' + path, { signal: AbortSignal.timeout(20_000) })).json();
+}
 const ncState = qs => node(`/nano_contract/state?id=${NC}&` + qs);
 const callQs = cs => cs.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
 
@@ -500,10 +503,13 @@ async function loadNames(force) {
 }
 
 let refreshing = null;
+let refreshStarted = 0;
 async function refresh(touch, force) {
   // never two refreshes in flight: the poll and a tx completing together
-  // used to double every read for no gain
-  if (refreshing) return refreshing;
+  // used to double every read for no gain. A stuck one is abandoned after
+  // 30s so a single bad request cannot freeze the app.
+  if (refreshing && Date.now() - refreshStarted < 30_000) return refreshing;
+  refreshStarted = Date.now();
   refreshing = (async () => {
     // independent reads run together; only loadMarket (flags cards) and
     // loadMine (needs the card set) wait for the contract
@@ -3657,7 +3663,29 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   S.restoring = false;
   render();
 })();
-setInterval(() => refresh().catch(() => {}), 45000);
+/* Watch rather than poll. /api/pulse is a few bytes served from the
+   server's own 15s chain poll, so this can run often: another player's
+   listing, duel or summon shows up within seconds, and a quiet realm costs
+   almost nothing. The 45s sweep stays as a backstop. */
+let lastPulse = null;
+async function watchPulse() {
+  if (document.hidden) return;
+  try {
+    const p = await (await fetch('/api/pulse', { signal: AbortSignal.timeout(8000) })).json();
+    const key = `${p.duels}|${p.listings}|${p.swaps}|${p.cards}|${p.feed}`;
+    if (lastPulse === null) { lastPulse = key; return; }
+    if (key !== lastPulse) {
+      lastPulse = key;
+      await silentRefresh();          // no ribbons for someone else's deed
+    }
+  } catch { /* the backstop below still runs */ }
+}
+setInterval(watchPulse, 6000);
+setInterval(() => { if (!document.hidden) refresh().catch(() => {}); }, 45000);
+// coming back to the tab should never show a stale realm
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { lastPulse = null; refresh().catch(() => {}); }
+});
 
 /* WalletConnect sendTransaction probe matrix (?wctest=1): three variants of
    htr_sendTransaction isolating amount and recipient. "OPER" sends to the
