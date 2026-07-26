@@ -652,7 +652,24 @@ footer a { color: var(--acid); text-decoration: none; }
   border: 1px solid var(--line); border-radius: 8px; color: var(--ink-muted);
   font-family: var(--data); font-size: 10px; padding: 8px;
 }
-.pick-cards { max-width: 640px; margin: 22px auto; max-height: 46vh; overflow-y: auto; }
+/* the picker holds CARDS, so they keep card proportions instead of one
+   stretching to the container width and overflowing a short scroll box */
+.pick-cards {
+  max-width: min(700px, 92vw); margin: 16px auto;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 196px));
+  justify-content: center; gap: 14px;
+  max-height: min(66vh, 620px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 2px;
+}
+/* a compact face: choosing needs the name, rank, power and aspects, so the
+   flavour steps out and the whole card fits without a scrollbar */
+.pick-cards .cf-flavor { display: none; }
+.pick-cards .cf-body { padding: 9px 10px 10px; gap: 6px; }
+.pick-cards .cf-name { font-size: 14px; }
+.pick-cards .mini-btn { padding: 8px 6px; font-size: 11px; }
+.pick-cards::-webkit-scrollbar { width: 8px; }
+.pick-cards::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 4px; }
+.pick-cards::-webkit-scrollbar-track { background: transparent; }
 .pick-wager { color: var(--ink-muted); font-size: 14px; }
 .pw-hint { color: var(--acid); }
 .pick-wager input {
@@ -1400,7 +1417,7 @@ body.land-flash::before {
 button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .temper-opts { flex-wrap: wrap; }
 .duel-info { flex: 1; min-width: 0; }
-.pick-cards { width: 100%; }
+.pick-cards { max-width: 100%; }
 
 @media (max-width: 600px) {
   main { padding-left: 14px; padding-right: 14px; }
