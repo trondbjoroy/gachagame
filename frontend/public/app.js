@@ -14,6 +14,7 @@ const TIERS = [
   { name: 'Highlord', color: 'var(--epic)', pct: '9%', fallback: '🏰' },
   { name: 'Sovereign', color: 'var(--legendary)', pct: '1%', fallback: '👑' },
 ];
+const EXPLORER = 'https://explorer.testnet.hathor.network';
 const fmtHtr = c => (c / 100).toFixed(2) + ' HTR';
 const fmtEmber = n => n + ' Ember';
 const short = u => u.slice(0, 10) + '…';
@@ -487,7 +488,7 @@ function announceNewDeeds(deeds) {
     track('deed_complete', { deed: id });
     if (!silent) {
       const d = DEEDS.find(x => x.id === id);
-      ribbon(`⚜ Achievement: <b>${d ? d.name : id}</b>`, null, 'deed');
+      ribbon(`${glyph('favor')} Achievement: <b>${d ? d.name : id}</b>`, null, 'deed');
     }
   }
   const lvl = levelFor(done.length);
@@ -559,17 +560,55 @@ function cosmeticsOf(c) {
   return { frame: cos & 0xFF, tint: (cos >> 8) & 0xFF, epithet: (cos >> 16) & 0xFF };
 }
 
+/* drawn marks, not OS emoji: the aspect glyphs sit on every card and in
+   every duel, so they must have one optical weight everywhere */
+const glyph = (id, cls) =>
+  `<svg class="g${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#g-${id}"/></svg>`;
+
 function aspectsRow(c) {
   if (!c.aspects) return '';
   const [v, b, g, t, h] = c.aspects;
   const marks = (t > 0 ? ` · tempered ×${t}` : '') + (h > 0 ? ` · hardened ×${h}` : '');
   return `<div class="ac-aspects" title="attack · defense · cunning${marks}">
-    ⚔ ${v} &nbsp; 🛡 ${b} &nbsp; 🗡 ${g}</div>`;
+    <span>${glyph('attack')}${v}</span><span>${glyph('defense')}${b}</span><span>${glyph('cunning')}${g}</span></div>`;
+}
+
+/* the aspect rail: three numbers behind hairline dividers. Reading a
+   matchup is the actual skill in the Arena, so they are the second thing
+   the eye lands on after the rank. */
+function aspectRail(c) {
+  if (!c.aspects) return '';
+  const [v, b, g] = c.aspects;
+  return `<div class="cf-rail">
+    <span class="cf-cell" title="Attack">${glyph('attack')}<b>${v}</b></span>
+    <span class="cf-cell" title="Defense">${glyph('defense')}<b>${b}</b></span>
+    <span class="cf-cell" title="Cunning">${glyph('cunning')}<b>${g}</b></span>
+  </div>`;
+}
+
+/* provenance is what the Market is really selling, so it lives on the
+   card face permanently rather than in a tooltip */
+function pedigree(c) {
+  const [, , , tp = 0, hd = 0] = c.aspects || [];
+  const bits = [`<span title="victories">${glyph('star')}${c.wins || 0}</span>`];
+  if (c.level > 0) bits.push(`<span title="veterancy">Lv ${c.level}</span>`);
+  if (tp > 0) bits.push(`<span title="tempered ×${tp}">${glyph('anvil')}${tp}</span>`);
+  if (hd > 0) bits.push(`<span title="battle-hardened ×${hd}">${glyph('defense')}${hd}</span>`);
+  return `<div class="cf-ped">${bits.join('')}</div>`;
+}
+
+/* one action people should take often, three they take rarely: MINE is a
+   full-width primary, the rest fold behind an overflow */
+function cardActs(primary, secondary) {
+  const more = (secondary || []).filter(Boolean);
+  return `<div class="cf-acts">${primary || ''}${more.length ? `
+    <details class="cf-ovf"><summary title="More actions">${glyph('more')}</summary>
+      <div class="cf-menu">${more.join('')}</div></details>` : ''}</div>`;
 }
 
 function stationLine(c, t, meta) {
   return `${t.name}${meta ? ' · ' + meta.type : ''}`
-    + `${c.level > 0 ? ` · Lv ${c.level}` : ''}${c.wins > 0 ? ` · ★ ${c.wins}` : ''}`;
+    + `${c.level > 0 ? ` · Lv ${c.level}` : ''}${c.wins > 0 ? ` · ${c.wins} won` : ''}`;
 }
 
 function cardBox(c, buttonsHtml, selectable) {
@@ -578,29 +617,27 @@ function cardBox(c, buttonsHtml, selectable) {
   const meta = cardMeta(c.name);
   const cos = cosmeticsOf(c);
   const cosCls = (cos.frame ? ` cframe-${cos.frame}` : '') + (cos.tint ? ` ctint-${cos.tint}` : '');
-  const epLine = cos.epithet && EPITHETS[cos.epithet - 1]
-    ? `<div class="ac-epithet">${EPITHETS[cos.epithet - 1]}</div>` : '';
-  if (meta?.art) {
-    return `<div class="card art-card${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
-      <img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">
-      <div class="ac-scrim"></div>
-      <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
-      <div class="ac-bottom">
-        ${epLine}
-        <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
-        ${aspectsRow(c)}
-        <div class="ac-flavor">${meta.flavor}</div>
-        ${buttonsHtml || ''}
-      </div>
-    </div>`;
-  }
-  return `<div class="card${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
-    <div class="emoji">${artSvg(c.name)}</div>
-    <div class="name">${c.name}</div>
-    ${epLine}
-    <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
-    ${aspectsRow(c)}
-    ${buttonsHtml || ''}
+  // a champion is a CARD: framed art up top, a plate, an aspect rail, and a
+  // pedigree strip. Rank rides on the frame's material, not on a label.
+  const art = meta?.art
+    ? `<img class="ac-img" loading="lazy" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    : `<div class="cf-sigil">${artSvg(c.name)}</div>`;
+  const typeBits = [meta?.type, cos.epithet ? EPITHETS[cos.epithet - 1] : null].filter(Boolean);
+  return `<div class="card cf rank-${c.tier}${sel}${cosCls}" style="--rc:${t.color}" data-open="${c.uid}">
+    <div class="cf-art">
+      ${art}
+      <div class="cf-vign"></div>
+      <div class="cf-rank">${t.name}</div>
+      <div class="cf-med" title="power">${glyph('power')}<b>${c.power ?? '?'}</b></div>
+    </div>
+    <div class="cf-body">
+      <div class="cf-name">${c.name}</div>
+      ${typeBits.length ? `<div class="cf-type">${typeBits.join(' · ')}</div>` : ''}
+      ${aspectRail(c)}
+      ${meta?.flavor ? `<div class="cf-flavor">${meta.flavor}</div>` : ''}
+      ${pedigree(c)}
+      ${buttonsHtml || ''}
+    </div>
   </div>`;
 }
 
@@ -613,6 +650,27 @@ function rowArt(c) {
 
 /* the delve is an appointment; the appointment should announce itself:
    a badge on The Mines tab and a counter in the browser tab title */
+/* the hero is a pitch for people who have not summoned. Once a champion
+   has answered, it retires for good and the rail carries the brazier. */
+const HERO_LS = 'emberfall_summoned';
+function heroRetired() {
+  if (localStorage.getItem(HERO_LS) === '1') return true;
+  const owned = [...S.cards.values()].some(c => c.mine || isMine(c.pending) || isMine(c.staker));
+  if (owned) { localStorage.setItem(HERO_LS, '1'); return true; }
+  return false;
+}
+function applyHeroFold() {
+  const hero = $('heroWrap');
+  if (hero) hero.hidden = heroRetired();
+}
+
+/* the brazier that shakes on a summon: the hero's showcase while it is
+   still up, the rail's panel after it retires */
+function brazierEl() {
+  const hero = $('heroWrap');
+  return (hero && !hero.hidden) ? $('machine') : $('brazier');
+}
+
 function updateCues() {
   const ready = [...S.cards.values()].filter(c =>
     S.addr && isMine(c.staker) && (c.delveSince || 0) > 0
@@ -659,6 +717,10 @@ function render() {
   $('odds').innerHTML = TIERS.map(t =>
     `<div class="odd"><span class="swatch" style="background:${t.color}"></span>
      <b style="color:${t.color}">${t.name}</b><span class="pct">${t.pct}</span></div>`).join('');
+  // the rail keeps the rates at a glance once the hero has retired
+  $('oddsMini').innerHTML = TIERS.map(t =>
+    `<span title="${t.name}"><i style="background:${t.color}"></i>${t.pct}</span>`).join('');
+  applyHeroFold();
 
   // wallets may hold funds on addresses we cannot see; the wallet itself gates affordability
   const canPull = S.addr && S.pullPrice != null;
@@ -673,9 +735,8 @@ function render() {
   const deedsDone = deeds.filter(d => d.done).length;
   announceNewDeeds(deeds);
   $('statsRow').innerHTML = [
-    ['Ember', me(fmtEmber(S.ember))],
-    ['Duels won', me(S.wins)],
-    ['Renown', me(S.renown + (S.vigil > 1 ? ` · ${S.vigil}d streak` : ''))],
+    ['Ember', me(S.ember)],
+    ['Renown', me(S.renown + (S.vigil > 1 ? ` · ${S.vigil}d` : ''))],
     ['Level', me(`${levelFor(deedsDone)} · ${titleFor(deedsDone)}`)],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
@@ -725,21 +786,20 @@ function render() {
   // collection, mightiest first
   const mine = [...S.cards.values()].filter(c => c.mine)
     .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
-  $('collectionCards').innerHTML = mine.map(c => cardBox(c, `
-    <div class="row-btns">
-      <button class="mini-btn alt" data-stake="${c.uid}">MINE</button>
-      <button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>
-      ${MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>
-      <button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : ''}
-    </div>`, true)).join('');
+  $('collectionCards').innerHTML = mine.map(c => cardBox(c, cardActs(
+    `<button class="cf-primary" data-stake="${c.uid}">SEND TO MINES</button>`,
+    [`<button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>`,
+     MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
+     MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '',
+     `<button class="mini-btn alt" data-dress="${c.uid}">STYLE</button>`]), true)).join('');
   $('collectionEmpty').hidden = mine.length > 0;
 
   const inSession = S.wallet?.mode === 'session';
   const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
   $('pendingCards').innerHTML = pend.map(c =>
     cardBox(c, inSession
-      ? '<div class="pending-gems">coming home…</div>'
-      : `<button class="claim-mini" data-claim="${c.uid}">CLAIM</button>`)).join('');
+      ? '<div class="cf-state">coming home…</div>'
+      : cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, []))).join('');
   $('pendingWrap').hidden = pend.length === 0;
 
   const selCount = S.selected.size;
@@ -764,19 +824,19 @@ function render() {
     const doneAt = ((c.delveSince || 0) + (S.delveSeconds || 28800)) * 1000;
     const ready = delving && Date.now() >= doneAt;
     const mins = Math.max(0, Math.ceil((doneAt - Date.now()) / 60000));
-    return cardBox(c, `
-    <div class="pending-gems">${delving
-      ? (ready ? '🕯️ the delve is done' : `🕯️ delving · ${Math.floor(mins / 60)}h ${mins % 60}m left`)
-      : `⛏️ ${fmtEmber(c.pendingEmber)} pending`}</div>
-    <div class="row-btns">
-      ${delving
-        ? (ready ? `<button class="mini-btn" data-claimdelve="${c.uid}">CLAIM DELVE</button>` : '')
-        : `<button class="mini-btn" data-claimember="${c.uid}" ${c.pendingEmber < 1 ? 'disabled' : ''}>CLAIM</button>
-      <button class="mini-btn alt" data-unstake="${c.uid}">UNSTAKE</button>
-      ${c.temperCost > 0 ? `<button class="mini-btn alt" data-temper="${c.uid}">TEMPER</button>` : ''}
-      <button class="mini-btn alt" data-delve="${c.uid}">DELVE</button>
-      <button class="mini-btn alt" data-dress="${c.uid}">STYLE</button>`}
-    </div>`);
+    const state = delving
+      ? `<div class="cf-state">${glyph('delve')}${ready ? 'the delve is done'
+          : `delving · ${Math.floor(mins / 60)}h ${mins % 60}m left`}</div>`
+      : `<div class="cf-state">${glyph('mines')}${fmtEmber(c.pendingEmber)} pending</div>`;
+    return cardBox(c, state + (delving
+      ? cardActs(ready
+          ? `<button class="cf-primary" data-claimdelve="${c.uid}">CLAIM THE DELVE</button>` : '', [])
+      : cardActs(
+          `<button class="cf-primary" data-claimember="${c.uid}"${c.pendingEmber < 1 ? ' disabled' : ''}>CLAIM EMBER</button>`,
+          [`<button class="mini-btn alt" data-delve="${c.uid}">DELVE</button>`,
+           c.temperCost > 0 ? `<button class="mini-btn alt" data-temper="${c.uid}">TEMPER</button>` : '',
+           `<button class="mini-btn alt" data-dress="${c.uid}">STYLE</button>`,
+           `<button class="mini-btn alt" data-unstake="${c.uid}">RECALL</button>`])));
   }).join('');
   $('stakedEmpty').hidden = staked.length > 0;
 
@@ -799,7 +859,7 @@ function render() {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
-    const sealed = d.stances ? ' · 🔒 sealed stance' : '';
+    const sealed = d.stances ? ` · ${glyph('seal')} sealed stance` : '';
     let act;
     if (d.status === 'open') {
       act = mineD
@@ -828,7 +888,7 @@ function render() {
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${rowArt(c)}</span>
       <div class="duel-info">
-        <b>${c?.name ?? '?'}</b> <span style="color:${t.color}">⚡${c?.power ?? '?'}</span>
+        <b>${c?.name ?? '?'}</b> <span class="pw-inline" style="color:${t.color}">${glyph('power')}${c?.power ?? '?'}</span>
         <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}${sealed}</div>
         ${pools}
       </div>
@@ -855,7 +915,7 @@ function render() {
       if (done) return `<span class="writ-done">${WRIT_TIERS[t]} ✓</span>`;
       return writOpen && gates[t] && S.addr
         ? `<button class="mini-btn alt" data-writ="${w.id}:${t}">${WRIT_TIERS[t]}</button>`
-        : `<span class="writ-locked">${WRIT_TIERS[t]} 🔒</span>`;
+        : `<span class="writ-locked">${WRIT_TIERS[t]} ${glyph('seal')}</span>`;
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
@@ -921,7 +981,7 @@ function bindListActions() {
     let timer = null, held = false;
     el.onpointerdown = e => {
       const c = S.cards.get(uid);
-      if (e.target.closest('button') || !c?.mine) return;
+      if (e.target.closest('button, summary') || !c?.mine) return;
       held = false;
       timer = setTimeout(() => {
         held = true;
@@ -942,7 +1002,7 @@ function bindListActions() {
     el.onpointercancel = cancel;
     el.oncontextmenu = e => { if (S.cards.get(uid)?.mine) e.preventDefault(); };
     el.onclick = e => {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button, summary')) return;
       if (held) { held = false; return; } // the hold already did its work
       openCard(uid);
     };
@@ -1105,12 +1165,13 @@ async function doTx(label, method, args, actions, { target } = {}) {
 async function pull() {
   const before = new Set([...S.cards.values()].filter(c => isMine(c.pending)).map(c => c.uid));
   const favorBefore = S.favorOwed;
-  $('machine').classList.add('shaking');
+  const brz = brazierEl();
+  brz.classList.add('shaking');
   window.sfx?.('summon');
-  spawnEmbers($('machine'), 6);
-  const emberInt = REDUCED ? null : setInterval(() => spawnEmbers($('machine'), 6), 1500);
+  spawnEmbers(brz, 6);
+  const emberInt = REDUCED ? null : setInterval(() => spawnEmbers(brz, 6), 1500);
   const hash = await doTx('Summoning', 'pull', [], [depAct(HTR, S.pullPrice)]);
-  $('machine').classList.remove('shaking');
+  brz.classList.remove('shaking');
   if (emberInt) clearInterval(emberInt);
   if (!hash) return;
   if (S.favorOwed > favorBefore)
@@ -1380,17 +1441,12 @@ async function fightWrit(uid, writ, tier) {
   const won = S.ember > before;  // victory pays 4x the entry
   const w = S.writs[writ] || { name: 'the writ' };
   const mult = [1, 2, 4][tier] || 1;
-  const mu = matchupHtml(S.cards.get(uid)?.aspects,
-    [w.valor * mult, w.bulwark * mult, w.guile * mult]);
-  $('duelResult').innerHTML = (won
-    ? `<div class="duel-banner win">⚔️ THE WRIT IS FELLED</div>
+  showFight(won
+    ? `<div class="duel-banner win">THE WRIT IS FELLED</div>
        <div class="wait-sub">${w.name} (${WRIT_TIERS[tier]}) falls. The bounty and the renown are yours.</div>`
-    : `<div class="duel-banner lose">💀 THE WRIT STANDS</div>
-       <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`) + mu;
-  window.sfx?.('clash');
-  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
-  showStage('stageDuel');
-  $('overlay').hidden = false;
+    : `<div class="duel-banner lose">THE WRIT STANDS</div>
+       <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`,
+    S.cards.get(uid)?.aspects, [w.valor * mult, w.bulwark * mult, w.guile * mult], won);
 }
 
 /* ---------------- sealed stances & side bets ---------------- */
@@ -1449,14 +1505,11 @@ async function revealDuel(id) {
   const home = S.wallet?.mode === 'session'
     ? 'Your champion is already on the way home.'
     : 'Your champion returns; claim them under Collection.';
-  const mu = d ? matchupHtml(S.cards.get(d.card)?.aspects,
-    S.cards.get(d.acceptorCard)?.aspects) : '';
-  $('duelResult').innerHTML = (won
-    ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">Your ${STANCE_NAMES[seal.stance]} stance is unsealed and the pot is yours. ${home}</div>`
-    : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The stance is unsealed, the pot is lost, but your champion lives. ${home}</div>`) + mu;
-  window.sfx?.('clash');
-  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
-  showStage('stageDuel');
+  showFight(won
+    ? `<div class="duel-banner win">VICTORY</div><div class="wait-sub">Your ${STANCE_NAMES[seal.stance]} stance is unsealed and the pot is yours. ${home}</div>`
+    : `<div class="duel-banner lose">DEFEAT</div><div class="wait-sub">The stance is unsealed, the pot is lost, but your champion lives. ${home}</div>`,
+    d ? S.cards.get(d.card)?.aspects : null,
+    d ? S.cards.get(d.acceptorCard)?.aspects : null, won);
 }
 
 async function placeBet(id, side) {
@@ -1521,21 +1574,61 @@ function checkBetOutcomes(events) {
   localStorage.setItem(BETS_LS, JSON.stringify(keep));
 }
 
-/* a fight is three rounds, one per aspect: show the matchup so the result
-   reads as a story, not a coin flip */
+/* A fight is three rounds, one per aspect. Each round is a proportional
+   bar with its own chance spelled out, so reading a matchup takes no
+   arithmetic. The bars arrive one at a time: this is the only dramatic
+   beat in the loop and it used to happen instantly inside a list row.
+
+   The bars show the ODDS, not per-round verdicts. The contract rolls the
+   rounds but a public node exposes neither its return value nor its
+   emitted events, so the honest thing to show is the chance that stood
+   and then the settled outcome. When the log API serves the per-round
+   marks the v5 blueprint writes, these same bars can fill in for real. */
+const ASPECT_IDS = ['attack', 'defense', 'cunning'];
+const ASPECT_NAMES = ['Attack', 'Defense', 'Cunning'];
+const ROUND_STAGGER = 780;
+
 function matchupHtml(mine, theirs) {
-  const icons = ['⚔', '🛡', '🗡'];
-  const names = ['Attack', 'Defense', 'Cunning'];
   if (!mine || !theirs) return '';
   const rows = [0, 1, 2].map(i => {
     const a = mine[i] || 0, b = theirs[i] || 0;
     const pct = a + b > 0 ? Math.round(100 * a / (a + b)) : 50;
-    return `<div class="mu-row"><span class="mu-k">${icons[i]} ${names[i]}</span>
-      <span class="mono mu-a">${a}</span><span class="mu-vs">vs</span><span class="mono mu-b">${b}</span>
-      <span class="mu-pct mono">${pct}% yours</span></div>`;
+    return `<div class="rnd" data-rnd="${i}">
+      <div class="rnd-head">${glyph(ASPECT_IDS[i])}<span class="rnd-nm">${ASPECT_NAMES[i]}</span>
+        <span class="rnd-odds mono">${pct}% yours</span></div>
+      <div class="rnd-bar"><span class="rnd-mine" style="flex-basis:${pct}%">${a}</span>
+        <span class="rnd-theirs" style="flex-basis:${100 - pct}%">${b}</span></div>
+    </div>`;
   }).join('');
   return `<div class="matchup">${rows}
     <div class="mu-note">three rounds, one per aspect · win two to take the fight</div></div>`;
+}
+
+/* the staged reveal: banner last, rounds one at a time before it */
+function showFight(bannerHtml, mine, theirs, won) {
+  const mu = matchupHtml(mine, theirs);
+  $('duelResult').innerHTML = mu
+    ? `<div class="fight-rounds">${mu}</div><div class="fight-verdict">${bannerHtml}</div>`
+    : bannerHtml;
+  showStage('stageDuel');
+  $('overlay').hidden = false;
+  const rounds = [...document.querySelectorAll('#duelResult .rnd')];
+  const verdict = $('duelResult').querySelector('.fight-verdict');
+  if (REDUCED || !rounds.length) {
+    rounds.forEach(r => r.classList.add('in'));
+    verdict?.classList.add('in');
+    window.sfx?.('clash');
+    setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 300);
+    return;
+  }
+  rounds.forEach((r, i) => setTimeout(() => {
+    r.classList.add('in');
+    window.sfx?.('clash', { rate: 0.92 + i * 0.09, volume: 0.55 });
+  }, ROUND_STAGGER * i));
+  setTimeout(() => {
+    verdict?.classList.add('in');
+    window.sfx?.(won ? 'win' : 'lose');
+  }, ROUND_STAGGER * rounds.length + 120);
 }
 
 async function claimDelve(uid) {
@@ -1737,27 +1830,73 @@ function openCard(uid) {
   const meta = cardMeta(c.name);
   const cos = cosmeticsOf(c);
   const cosCls = (cos.frame ? ` cframe-${cos.frame}` : '') + (cos.tint ? ` ctint-${cos.tint}` : '');
-  const epLine = cos.epithet && EPITHETS[cos.epithet - 1]
-    ? `<div class="ac-epithet">${EPITHETS[cos.epithet - 1]}</div>` : '';
-  $('cardDetail').innerHTML = meta?.art
-    ? `<div class="card art-card detail-card${cosCls}" style="--rc:${t.color}">
-        <img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">
-        <div class="ac-scrim"></div>
-        <div class="ac-top"><span class="ac-name">${c.name}</span><span class="ac-power">⚡${c.power}</span></div>
-        <div class="ac-bottom">
-          ${epLine}
-          <div class="ac-station" style="color:${t.color}">${stationLine(c, t, meta)}</div>
-          ${aspectsRow(c)}
-          <div class="ac-flavor">${meta.flavor}</div>
+  const [, , , tp = 0, hd = 0] = c.aspects || [];
+  const art = meta?.art
+    ? `<img class="ac-img" src="cards/${slugOf(c.name)}.jpg" alt="">`
+    : `<div class="cf-sigil">${artSvg(c.name)}</div>`;
+  const typeBits = [t.name, meta?.type, cos.epithet ? EPITHETS[cos.epithet - 1] : null].filter(Boolean);
+  // the pedigree reads as a record: this history cannot be forged and it
+  // travels with the card to the next owner. That IS the product claim.
+  const rows = [
+    ['Victories', `${c.wins || 0}`],
+    ['Veterancy', c.level > 0 ? `Level ${c.level}` : 'unblooded'],
+    ['Tempered', tp > 0 ? `${tp}×` : '—'],
+    ['Hardened', hd > 0 ? `${hd}×` : '—'],
+    ['Station', `${t.name}${meta?.type ? ' · ' + meta.type : ''}`],
+    ['Token', `<span class="mono">${c.uid.slice(0, 6)}…${c.uid.slice(-4)}</span>`],
+  ].map(([k, v]) => `<div class="lg-row"><span class="lg-k">${k}</span><span class="lg-v">${v}</span></div>`).join('');
+  $('cardDetail').innerHTML = `
+    <div class="detail-sheet rank-${c.tier}${cosCls}" style="--rc:${t.color}">
+      <div class="ds-art">
+        ${art}
+        <div class="cf-vign"></div>
+        <div class="cf-med" title="power">${glyph('power')}<b>${c.power ?? '?'}</b></div>
+        <div class="ds-plate">
+          <div class="ds-name">${c.name}</div>
+          <div class="ds-type">${typeBits.join(' · ')}</div>
         </div>
-      </div>`
-    : `<div class="card detail-card${cosCls}" style="--rc:${t.color}">
-        <div class="emoji">${artSvg(c.name)}</div>
-        <div class="name">${c.name}</div>
-        ${epLine}
-        <div class="tier">${stationLine(c, t, null)} · ⚡${c.power}</div>
-        ${aspectsRow(c)}
-      </div>`;
+      </div>
+      <div class="ds-body">
+        ${aspectRail(c)}
+        ${meta?.flavor ? `<div class="ds-flavor">${meta.flavor}</div>` : ''}
+        <div class="ledger">${rows}</div>
+        <a class="verify" href="${EXPLORER}/token_detail/${c.uid}" target="_blank" rel="noopener">
+          ${glyph('link')}Read this champion on the Ledger</a>
+      </div>
+    </div>`;
+  // one gold action, the rest quiet icons beside it
+  const acts = $('cardDetailActs');
+  if (acts) {
+    const mineNow = c.mine, staked = isMine(c.staker);
+    acts.innerHTML = (mineNow
+      ? `<button class="cf-primary" data-dstake="${uid}">SEND TO MINES</button>`
+      : staked
+        ? `<button class="cf-primary" data-dunstake="${uid}">RECALL FROM MINES</button>`
+        : '<span class="duel-done">not yours to command</span>')
+      + `<button class="ds-icon" id="cardShareBtn" title="${matchMedia('(pointer: coarse)').matches
+        ? 'Share this champion' : 'Share on X'}">${glyph('share', 'gl')}</button>`
+      + (mineNow ? `<button class="ds-icon" data-dduel="${uid}" title="Challenge in the Arena">${glyph('attack', 'gl')}</button>` : '')
+      + (mineNow && MKT ? `<button class="ds-icon" data-dsell="${uid}" title="List in the Market">${glyph('market', 'gl')}</button>` : '');
+    acts.querySelectorAll('[data-dstake]').forEach(el => el.onclick = () => {
+      $('overlay').hidden = true;
+      doTx('Staking in the mines', 'stake', [], [depAct(uid, CARD_AMT)]);
+    });
+    acts.querySelectorAll('[data-dunstake]').forEach(el => el.onclick = () => {
+      $('overlay').hidden = true;
+      doTx('Recalling champion', 'unstake', [], [wdAct(uid, CARD_AMT)]);
+    });
+    acts.querySelectorAll('[data-dduel]').forEach(el => el.onclick = () => openPick('create', uid));
+    acts.querySelectorAll('[data-dsell]').forEach(el => el.onclick = () => {
+      const raw = prompt('Ask price in HTR cents (5 = 0.05 HTR, max 100000):', '5');
+      if (raw === null) return;
+      const p = Math.floor(Number(raw));
+      if (!Number.isInteger(p) || p < 1 || p > 100000) { alert('Price must be a whole number of HTR cents between 1 and 100000.'); return; }
+      $('overlay').hidden = true;
+      doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT });
+    });
+    const sb = $('cardShareBtn');
+    if (sb) sb.onclick = () => cardDetailUid && shareCard(cardDetailUid);
+  }
   $('cardShareMsg').textContent = '';
   showStage('stageCard');
   $('overlay').hidden = false;
@@ -1804,7 +1943,7 @@ async function cardShareImage(c) {
   g.fillText(c.name, 40, y);
   g.font = '700 40px "Fragment Mono", monospace';
   g.fillStyle = '#d4a843';
-  const pw = `⚡${c.power}`;
+  const pw = `${c.power}`;
   g.fillText(pw, W - 40 - g.measureText(pw).width, y);
   y += 44;
   g.font = '700 24px Outfit, sans-serif';
@@ -1833,7 +1972,7 @@ async function shareCard(uid) {
   if (!c) return;
   const msg = $('cardShareMsg');
   const t = TIERS[c.tier] || TIERS[0];
-  const text = `${c.name} · ${t.name} ⚡${c.power}, bound to my banner in Emberfall, `
+  const text = `${c.name} · ${t.name}, power ${c.power}, bound to my banner in Emberfall, `
     + `the fully onchain TCG on @hathornetwork.\n\n`
     + `Free on testnet. Play with $HTR, earn Ember at emberfall.fun`;
   try {
@@ -1994,7 +2133,7 @@ async function submitPick(uid) {
         [ref, pickStance], [depAct(uid, CARD_AMT)]);
       if (!hash) return;
       const hours = Math.round((S.revealWindow || 21600) / 3600);
-      $('duelResult').innerHTML = `<div class="duel-banner">🔒 THE DUEL IS SEALED</div>
+      $('duelResult').innerHTML = `<div class="duel-banner">${glyph('seal', 'gl')} THE DUEL IS SEALED</div>
         <div class="wait-sub">Your ${STANCE_NAMES[pickStance]} stance is in. The challenger
         now has ${hours}h to reveal theirs and settle the fight; if they never do,
         you claim the pot by forfeit. Watch this duel in the Arena list.</div>`;
@@ -2011,15 +2150,10 @@ async function submitPick(uid) {
       ? 'Your champion is already on the way home.'
       : 'Your champion returns; claim them under Collection.';
     const d = S.duels.find(x => x.id === ref);
-    const mu = matchupHtml(S.cards.get(uid)?.aspects,
-      d ? S.cards.get(d.card)?.aspects : null);
-    $('duelResult').innerHTML = (won
-      ? `<div class="duel-banner win">⚔️ VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
-      : `<div class="duel-banner lose">💀 DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`) + mu;
-    window.sfx?.('clash');
-    setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
-    showStage('stageDuel');
-    $('overlay').hidden = false;
+    showFight(won
+      ? `<div class="duel-banner win">VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
+      : `<div class="duel-banner lose">DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`,
+      S.cards.get(uid)?.aspects, d ? S.cards.get(d.card)?.aspects : null, won);
   }
 }
 
@@ -2078,18 +2212,21 @@ document.querySelectorAll('.stance-btn').forEach(el => el.onclick = () => {
 /* the realm feed folds away; closed until the player opens it */
 const FEED_LS = 'emberfall_feed_open';
 function applyFeedFold() {
-  const open = localStorage.getItem(FEED_LS) === '1';
+  const open = localStorage.getItem(FEED_LS) !== '0';
   $('feedPanel').classList.toggle('collapsed', !open);
   $('feedList').hidden = !open;
   $('feedToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 $('feedToggle').onclick = () => {
-  const open = localStorage.getItem(FEED_LS) === '1';
+  const open = localStorage.getItem(FEED_LS) !== '0';
   localStorage.setItem(FEED_LS, open ? '0' : '1');
   applyFeedFold();
   window.track && track('feed_toggle', { open: !open });
 };
 applyFeedFold();
+// the hero folds on the FIRST paint, not after the realm loads: a
+// returning player should never see the pitch flash past
+applyHeroFold();
 /* ---------------- promptless session ---------------- */
 
 const SESSION_LS = 'emberfall_session';
@@ -2362,7 +2499,7 @@ async function resumeSession() {
     S.addr = sw.address;
     if (sw.unbound) {
       ribbon('This quick play session is from the old realm and plays as its own '
-        + 'identity; see ⚡ QUICK PLAY before ending it.');
+        + 'identity; see QUICK PLAY before ending it.');
       track('session_unbound_legacy', {});
     }
     await silentRefresh();
@@ -2496,9 +2633,6 @@ document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => conne
 for (const id of ['errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel', 'cardCloseBtn'])
   $(id).onclick = () => { $('overlay').hidden = true; };
 $('nameClaimBtn').onclick = claimName;
-$('cardShareBtn').onclick = () => cardDetailUid && shareCard(cardDetailUid);
-// desktop lands in the X composer, mobile in the app-agnostic share sheet
-$('cardShareBtn').textContent = matchMedia('(pointer: coarse)').matches ? 'SHARE' : 'SHARE ON X';
 // the card, wallet, and reveal views close like any lightbox: Escape or a
 // click outside (a dismissed reveal keeps the champion under New champions)
 const dismissible = () => !$('stageCard').hidden || !$('stageConnect').hidden || !$('stageReveal').hidden;
@@ -2627,6 +2761,7 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
       const st = $('showStation');
       st.textContent = `${meta.station} · ${meta.type}`;
       st.style.color = t.color;
+      localStorage.setItem(HERO_LS, '1');
       $('machine').style.setProperty('--rc', t.color);
       front = !front;
     };
@@ -2817,3 +2952,4 @@ if (new URLSearchParams(location.search).has('wctest')) {
   wrap.appendChild(bf);
   document.body.appendChild(wrap);
 }
+
