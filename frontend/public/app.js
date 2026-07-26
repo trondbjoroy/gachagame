@@ -2893,6 +2893,17 @@ function dismissLightbox() {
   $('overlay').hidden = true;
   if (wasReveal) revealDismissed();
 }
+/* On a tall dialog the strip of screen outside it can be 70px, so "click
+   away to close" needs the dialog's own inert space to count as well: its
+   heading, the gaps between cards, the room under the buttons. Anything you
+   can actually act on is excluded, and the card sheet, the connect view and
+   the name form keep outside-only dismissal so reading or typing in them
+   cannot close them by accident. */
+const INERT_STAGES = ['stageError', 'stageDuel', 'stagePick', 'stageTemper', 'stageDress'];
+const clickedInertSpace = e =>
+  INERT_STAGES.some(id => $(id) && !$(id).hidden && e.target.closest('#' + id))
+  && !e.target.closest('button, a, input, select, textarea, label, summary, .card, .mini-btn');
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('overlay').hidden) {
@@ -2907,7 +2918,8 @@ document.addEventListener('keydown', e => {
   }
 });
 $('overlay').addEventListener('click', e => {
-  if (dismissible() && !e.target.closest('.stage')) dismissLightbox();
+  if (!dismissible()) return;
+  if (!e.target.closest('.stage') || clickedInertSpace(e)) dismissLightbox();
 });
 document.querySelectorAll('[data-aspectpick]').forEach(el =>
   el.onclick = () => doTemper(Number(el.dataset.aspectpick)));
