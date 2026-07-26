@@ -655,6 +655,10 @@ function rowArt(c) {
 const HERO_LS = 'emberfall_summoned';
 function heroRetired() {
   if (localStorage.getItem(HERO_LS) === '1') return true;
+  // no wallet sworn: the visitor is new to us, so the pitch stands. (Without
+  // this guard an archived lineage address matched realm cards and retired
+  // the hero for first-time visitors.)
+  if (!S.addr) return false;
   const owned = [...S.cards.values()].some(c => c.mine || isMine(c.pending) || isMine(c.staker));
   if (owned) { localStorage.setItem(HERO_LS, '1'); return true; }
   return false;
