@@ -659,6 +659,8 @@ footer a { color: var(--acid); text-decoration: none; }
 .row-btns { display: flex; gap: 8px; margin-top: 12px; }
 .row-btns .mini-btn { flex: 1; }
 
+body.fuse-picking .card.cf[data-open] { cursor: copy; }
+body.fuse-picking .card.cf[data-open]:hover { border-color: var(--acid); }
 .card.selected { outline: 2px solid var(--acid); outline-offset: 2px; }
 .fuse-bar { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-muted); }
 .pending-gems { margin-top: 10px; font-family: var(--data); font-size: 12px; color: var(--acid); }
@@ -1118,6 +1120,31 @@ body.land-flash::before {
 
 /* progression: daily trial, muster roll, season */
 .trial-note { color: var(--acid); font-size: 13px; }
+/* farm rates read as rank initials in their own metal */
+.rates { display: inline-flex; gap: 5px; align-items: baseline; flex-wrap: wrap; }
+.rates i { color: var(--ink-faint); font-style: normal; }
+.rates b { font-family: var(--display); font-weight: 700; }
+.nowrap { white-space: nowrap; }
+/* rules read as rules, not as a paragraph in a quote block */
+.rulelist { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.rulelist li { font-size: 13px; line-height: 1.5; color: var(--ink-muted); }
+.rulelist li::marker { color: var(--ink-faint); }
+/* fusion: a button and a keyboard path, not a hidden long-press */
+.fuse-tip { font-size: 11.5px; color: var(--ink-dim); }
+#fuseModeBtn.active { border-color: var(--acid); color: var(--acid-hot); }
+/* settled fights fold away so anything live dominates the Arena */
+.past-fights { margin-top: 4px; }
+.past-fights > summary {
+  cursor: pointer; list-style: none; padding: 9px 12px; border-radius: 10px;
+  border: 1px dashed var(--line); color: var(--ink-dim);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+}
+.past-fights > summary::-webkit-details-marker { display: none; }
+.past-fights > summary:hover { border-color: var(--line-hi); color: var(--ink-muted); }
+.past-fights[open] > summary { margin-bottom: 8px; }
+/* the odds legend names each rank instead of relying on colour memory */
+.odds-mini span { display: inline-flex; align-items: center; gap: 5px; }
+.odds-mini b { font-weight: 600; color: var(--ink-muted); font-size: 10.5px; }
 .trial-row { display: flex; align-items: center; gap: 8px; }
 .trial-row .trial-text { flex: 1; min-width: 0; color: var(--acid); }
 .trial-row.done .trial-text { color: var(--ink-muted); }
@@ -1293,6 +1320,10 @@ body.land-flash::before {
   color: #9d9384;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* every card reserves its action row, so a delving champion and one with
+   Ember to claim still line up in the grid */
+.card.cf .cf-acts { margin-top: auto; min-height: 40px; }
+.card.cf .cf-state { min-height: 40px; display: flex; align-items: center; justify-content: center; }
 .cf-ped {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding-top: 8px; border-top: 1px solid var(--line);
