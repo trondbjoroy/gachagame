@@ -53,33 +53,52 @@
       if (trial.id !== kind) return;
       if (kind === 'recall8' && !(data && data.hours >= 8)) return;
       if (!markDoneLocally()) return;
-      ribbon('Daily trial done: ' + trial.text + ' (bonus paid)', 'level', 'deed');
+      ribbon('Daily trial done: ' + trial.text + ' · bonus paid', 'level', 'deed');
       track('trial_complete', { trial: trial.id, streak: tState().streak });
       renderProgress();
     } catch { /* progression must never break the game */ }
   };
 
+  // a background refresh may be the first to see the chain's trial flag.
+  // Marking it done there used to swallow the celebration for good, since
+  // markDoneLocally() only returns true once. Hold the cheer instead and
+  // let the next visible render deliver it.
+  let cheerOwed = false;
+
   function renderTrial() {
     // the contract settled a trial we didn't catch locally (e.g. a duel or
     // writ won elsewhere): sync the streak and celebrate
     try {
-      if (S.addr && S.trialDoneChain === true && markDoneLocally() && !S.silentSync) {
-        ribbon('Daily trial done: ' + todaysTrial().text + ' (bonus paid)', 'level', 'deed');
-        track('trial_complete', { trial: todaysTrial().id, streak: tState().streak });
+      if (S.addr && S.trialDoneChain === true && markDoneLocally()) cheerOwed = true;
+      if (cheerOwed && !S.silentSync) {
+        cheerOwed = false;
+        const t0 = todaysTrial();
+        ribbon('Daily trial done: ' + t0.text + ' · bonus paid', 'level', 'deed');
+        track('trial_complete', { trial: t0.id, streak: tState().streak });
       }
     } catch { /* progression must never break the game */ }
     const t = todaysTrial();
     const done = S.addr && trialDone();
     const line = $('trialLine');
     if (line) {
-      line.innerHTML = `⚜ Daily trial: <b>${t.text}</b>`
-        + (done ? ' · <span class="trial-done">DONE ✓</span>' : '');
+      const st = tState();
+      const streak = S.addr && st.streak > 1
+        ? `<span class="trial-streak">${st.streak} days in a row</span>` : '';
+      line.innerHTML = done
+        ? `<div class="trial-row done"><span class="trial-check">${typeof glyph === 'function' ? glyph('check') : ''}</span>
+             <span class="trial-text"><b>${t.text}</b></span>
+             <span class="trial-done">DONE</span></div>
+           <div class="trial-sub">The bonus is paid. ${streak || 'Come back tomorrow for the next one.'}</div>`
+        : `<div class="trial-row"><span class="trial-text"><b>${t.text}</b></span></div>
+           <div class="trial-sub">${S.addr
+             ? 'Renown and Ember on the first one today.' : 'Connect a wallet to earn it.'}
+             ${streak}</div>`;
     }
     const c = $('trialCodex');
     if (c) {
       const st = tState();
       c.innerHTML = `Each day (midnight UTC) there is one trial.
-        Today: <b>${t.text}</b>${done ? ' · <span class="trial-done">DONE ✓</span>' : ''}
+        Today: <b>${t.text}</b>${done ? ' · <span class="trial-done">DONE</span>' : ''}
         ${S.addr && st.streak ? `<br>Days in a row: <b>${st.streak}</b>
         (best ${st.best || st.streak})` : ''}`;
     }
