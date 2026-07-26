@@ -10,10 +10,37 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fragment+Mono&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=104" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css?b=110" />
 </head>
 <body>
+<svg width="0" height="0" class="glyph-defs" aria-hidden="true" focusable="false"><defs>
+  <symbol id="g-attack" viewBox="0 0 24 24"><path d="M12 1.5 L14.4 8 L14.4 15.5 L9.6 15.5 L9.6 8 Z M6.5 15.8 H17.5 V18 H6.5 Z M10.9 18.3 H13.1 V22.5 H10.9 Z"/></symbol>
+  <symbol id="g-defense" viewBox="0 0 24 24"><path d="M12 1.5 L20.5 4.8 V12 C20.5 17.4 16.6 21.3 12 22.5 C7.4 21.3 3.5 17.4 3.5 12 V4.8 Z"/></symbol>
+  <symbol id="g-cunning" viewBox="0 0 24 24"><path d="M19.5 2 L22 4.5 L12.2 14.3 L9.7 11.8 Z M8.6 12.9 L11.1 15.4 L8.6 17.9 L6.1 15.4 Z M5.2 16.6 L7.7 19.1 L3 22 Z"/></symbol>
+  <symbol id="g-power" viewBox="0 0 24 24"><path d="M13.6 1.5 L5 13.4 H10.6 L9.4 22.5 L19 9.9 H13.1 Z"/></symbol>
+  <symbol id="g-mines" viewBox="0 0 24 24"><path d="M2.5 21.5 L4.5 19.5 L13.5 10.5 L14.5 11.5 L5.5 20.5 Z"/><path d="M11 2.5 C15.5 2.5 19.5 5 21.5 9 C18 6.8 14 6 11 7.2 C9.8 6 9.8 3.7 11 2.5 Z"/></symbol>
+  <symbol id="g-market" viewBox="0 0 24 24"><rect x="3" y="14.5" width="18" height="4.5" rx="2.25"/><rect x="3" y="8.5" width="18" height="4.5" rx="2.25"/><rect x="6" y="3" width="12" height="4" rx="2"/></symbol>
+  <symbol id="g-swap" viewBox="0 0 24 24"><path d="M7 4 L11 8 H8.2 V15 H5.8 V8 H3 Z M17 20 L13 16 H15.8 V9 H18.2 V16 H21 Z"/></symbol>
+  <symbol id="g-seal" viewBox="0 0 24 24"><path d="M12 1.5 A5 5 0 0 0 7 6.5 V9 H5 V22 H19 V9 H17 V6.5 A5 5 0 0 0 12 1.5 Z M9.4 6.5 A2.6 2.6 0 0 1 14.6 6.5 V9 H9.4 Z"/></symbol>
+  <symbol id="g-link" viewBox="0 0 24 24"><path d="M10 13.5 A4.5 4.5 0 0 0 16.4 13.5 L19.5 10.4 A4.5 4.5 0 0 0 13.1 4 L11.4 5.7 L13.1 7.4 L14.8 5.7 A2.1 2.1 0 0 1 17.8 8.7 L14.7 11.8 A2.1 2.1 0 0 1 11.7 11.8 Z M14 10.5 A4.5 4.5 0 0 0 7.6 10.5 L4.5 13.6 A4.5 4.5 0 0 0 10.9 20 L12.6 18.3 L10.9 16.6 L9.2 18.3 A2.1 2.1 0 0 1 6.2 15.3 L9.3 12.2 A2.1 2.1 0 0 1 12.3 12.2 Z"/></symbol>
+  <symbol id="g-favor" viewBox="0 0 24 24"><path d="M12 1.8 L14.1 8.2 H20.8 L15.4 12.2 L17.5 18.6 L12 14.6 L6.5 18.6 L8.6 12.2 L3.2 8.2 H9.9 Z"/></symbol>
+  <symbol id="g-star" viewBox="0 0 24 24"><path d="M12 2.4 L14.8 9.1 L22 9.7 L16.5 14.4 L18.2 21.4 L12 17.6 L5.8 21.4 L7.5 14.4 L2 9.7 L9.2 9.1 Z"/></symbol>
+  <symbol id="g-anvil" viewBox="0 0 24 24"><path d="M3 6.5 H13.5 C15.5 6.5 16.5 8 18.5 8 H21.5 V11 H18 C15.5 11 14 12.5 11.5 12.5 H8.5 V15 H15 V17 H4.5 V15 H6.5 V12.5 H3 Z M6 18.5 H18 V21.5 H6 Z"/></symbol>
+  <symbol id="g-crown" viewBox="0 0 24 24"><path d="M2.5 7 L6.5 11.5 L12 3.5 L17.5 11.5 L21.5 7 L20 19 H4 Z"/></symbol>
+  <symbol id="g-boss" viewBox="0 0 24 24"><path d="M12 2 C7 2 3.5 5.5 3.5 10.5 V15 L6 13.5 L8 16 L12 13 L16 16 L18 13.5 L20.5 15 V10.5 C20.5 5.5 17 2 12 2 Z M8.8 8.8 A1.7 1.7 0 1 1 8.8 8.81 Z M15.2 8.8 A1.7 1.7 0 1 1 15.2 8.81 Z M7.5 18 H16.5 L15 21.5 H9 Z"/></symbol>
+  <symbol id="g-banner" viewBox="0 0 24 24"><path d="M5 2.5 H7 V21.5 H5 Z M8.5 3 H19.5 L17 8 L19.5 13 H8.5 Z"/></symbol>
+  <symbol id="g-bracket" viewBox="0 0 24 24"><path d="M2.5 4 H9.5 V6 H4.5 V11 H9.5 V13 H2.5 Z M14.5 4 H21.5 V13 H14.5 V11 H19.5 V6 H14.5 Z M11 7.5 H13 V17 H19 V19 H11 Z"/></symbol>
+  <symbol id="g-ladder" viewBox="0 0 24 24"><path d="M4 21.5 V13 H8.5 V21.5 Z M9.8 21.5 V4 H14.2 V21.5 Z M15.5 21.5 V9 H20 V21.5 Z"/></symbol>
+  <symbol id="g-delve" viewBox="0 0 24 24"><path d="M12 2.5 L21 8 V16 L12 21.5 L3 16 V8 Z M12 6 L6.5 9.4 V14.6 L12 18 L17.5 14.6 V9.4 Z"/></symbol>
+  <symbol id="g-sound-on" viewBox="0 0 24 24"><path d="M3 9 H6.5 L11.5 4.5 V19.5 L6.5 15 H3 Z M14 8.4 A5 5 0 0 1 14 15.6 V13.2 A2.6 2.6 0 0 0 14 10.8 Z M16.6 5.6 A8.2 8.2 0 0 1 16.6 18.4 V16 A5.8 5.8 0 0 0 16.6 8 Z"/></symbol>
+  <symbol id="g-sound-off" viewBox="0 0 24 24"><path d="M3 9 H6.5 L11.5 4.5 V19.5 L6.5 15 H3 Z M14.4 9.2 L15.9 7.7 L18.4 10.2 L20.9 7.7 L22.4 9.2 L19.9 11.7 L22.4 14.2 L20.9 15.7 L18.4 13.2 L15.9 15.7 L14.4 14.2 L16.9 11.7 Z"/></symbol>
+  <symbol id="g-music" viewBox="0 0 24 24"><path d="M9 18.5 A2.75 2.75 0 1 1 9 18.51 Z M11.5 18.5 V5.5 L20 3 V16 A2.75 2.75 0 1 1 17.25 13.5 C18 13.5 18.6 13.7 19 14 V6 L13.5 7.6 V18.5 Z"/></symbol>
+  <symbol id="g-help" viewBox="0 0 24 24"><path d="M12 2 A10 10 0 1 0 12 22 A10 10 0 0 0 12 2 Z M12 4.2 A7.8 7.8 0 1 1 12 19.8 A7.8 7.8 0 0 1 12 4.2 Z M11 16.2 H13 V18.2 H11 Z M12 6 C9.9 6 8.5 7.4 8.4 9.4 H10.4 C10.5 8.5 11 8 12 8 C12.9 8 13.5 8.5 13.5 9.3 C13.5 10 13.1 10.5 12.3 11.1 C11.4 11.8 11 12.5 11 14.4 H13 C13 13.2 13.2 12.8 14 12.2 C15 11.4 15.6 10.6 15.6 9.2 C15.6 7.3 14.1 6 12 6 Z"/></symbol>
+  <symbol id="g-share" viewBox="0 0 24 24"><path d="M12 2.5 L17 7.5 H13.4 V15 H10.6 V7.5 H7 Z M4.5 13 H7 V19 H17 V13 H19.5 V21.5 H4.5 Z"/></symbol>
+  <symbol id="g-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></symbol>
+  <symbol id="g-book" viewBox="0 0 24 24"><path d="M3 3.5 H10 C11 3.5 11.7 4 12 4.7 C12.3 4 13 3.5 14 3.5 H21 V19 H14.4 C13.4 19 12.6 19.6 12 20.5 C11.4 19.6 10.6 19 9.6 19 H3 Z M5 5.5 V17 H9.6 C10.5 17 11.3 17.2 12 17.6 V6.6 C11.6 6 11 5.5 10 5.5 Z"/></symbol>
+</defs></svg>
 <div class="grid-bg"></div>
 <div class="glow a"></div><div class="glow b"></div>
 
@@ -21,21 +48,29 @@
   <header class="top">
     <div class="brand">
       <div class="mark">
-        <img src="logo.png" width="42" height="42" alt="Emberfall" />
+        <img src="logo.png" width="34" height="34" alt="Emberfall" />
       </div>
       <div>
         <div class="wordmark">EMBERFALL</div>
         <div class="net-flag">TESTNET</div>
       </div>
     </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="collection" class="tab active">Collection</button>
+      <button data-tab="farm" class="tab">Mining</button>
+      <button data-tab="arena" class="tab">Arena</button>
+      <button data-tab="market" class="tab">Market</button>
+      <button data-tab="learn" class="tab">Info</button>
+    </nav>
+    <div class="hdr-chips" id="statsRow"></div>
     <div class="wallet-area">
       <span class="hdr-tools">
-        <button class="mini-btn alt tour-btn" id="musicBtn" title="Music on">🎵</button>
-        <button class="mini-btn alt tour-btn" id="muteBtn" title="Sound on">🔊</button>
-        <button class="mini-btn alt tour-btn" id="tutorialBtn" title="How to play">?</button>
+        <button class="mini-btn alt tour-btn" id="musicBtn" title="Music on"><svg class="g"><use href="#g-music"/></svg></button>
+        <button class="mini-btn alt tour-btn" id="muteBtn" title="Sound on"><svg class="g"><use href="#g-sound-on"/></svg></button>
+        <button class="mini-btn alt tour-btn" id="tutorialBtn" title="How to play"><svg class="g"><use href="#g-help"/></svg></button>
       </span>
       <span class="wa-break"></span>
-      <button class="mini-btn header-session" id="headerSessionBtn" hidden>&#9889;
+      <button class="mini-btn header-session" id="headerSessionBtn" hidden>
         <span class="hs-l">QUICK PLAY</span><span class="hs-s">PLAY</span></button>
       <button class="wallet-chip as-btn" id="walletBtn">
         <span class="dot off" id="walletDot"></span>
@@ -46,7 +81,9 @@
     </div>
   </header>
 
-  <section class="machine-panel">
+  <!-- the pitch, for lords who have not summoned yet. It retires itself
+       for good once the first champion answers. -->
+  <section class="machine-panel" id="heroWrap">
     <div class="machine-col">
       <div class="machine showcase" id="machine">
         <img class="show-img" id="showA" alt="" />
@@ -64,31 +101,12 @@
       binds one that no other lord will ever own.</p>
       <div class="whisper"><span id="whisperText"></span></div>
       <div class="odds" id="odds"></div>
-      <button id="pullBtn" class="pull-btn" disabled>
-        <span class="pull-label">SUMMON</span>
-        <span class="pull-cost" id="pullCost"></span>
-      </button>
-      <div class="pull-note" id="pullNote"></div>
-      <div class="pull-note favor-note" id="favorNote" hidden></div>
-      <div class="pull-note trial-note" id="trialLine"></div>
+      <p class="hero-cue">The brazier stands ready in the margin, on every tab.</p>
     </div>
   </section>
 
-  <section class="stats-row" id="statsRow"></section>
-
-  <section class="feed-panel collapsed" id="feedPanel" hidden>
-    <button class="feed-title as-toggle" id="feedToggle" aria-expanded="false">WORLD FEED
-      <span class="feed-chev">&#9662;</span></button>
-    <div id="feedList" hidden></div>
-  </section>
-
-  <nav class="tabs" id="tabs">
-    <button data-tab="collection" class="tab active">Collection</button>
-    <button data-tab="farm" class="tab">Mining</button>
-    <button data-tab="arena" class="tab">Arena</button>
-    <button data-tab="market" class="tab">Market</button>
-    <button data-tab="learn" class="tab">Info</button>
-  </nav>
+  <div class="layout">
+   <div class="col-main">
 
   <section class="shelf tabpane" id="pane-collection">
     <div class="pane-head">
@@ -160,7 +178,7 @@
   <section class="shelf tabpane" id="pane-learn" hidden>
     <a class="codex-link" href="https://docs.emberfall.fun" target="_blank" rel="noopener"
        onclick="window.track&&track('guide_open',{})">
-      📖 The Emberfall Guide<span>every rule and rate of the game, in one book</span></a>
+      <svg class="g gl"><use href="#g-book"/></svg> The Emberfall Guide<span>every rule and rate of the game, in one book</span></a>
     <details class="codex-sec" data-sec="chronicle">
     <summary>The chronicle of Emberfall</summary>
     <div class="sec-body">
@@ -389,6 +407,37 @@
     </details>
   </section>
 
+   </div>
+
+   <!-- the rail: summoning, today's trial, and the realm talking. One click
+        from every tab, so no hero has to shout. -->
+   <aside class="rail rail-summon" id="railSummon">
+     <div class="brazier" id="brazier">
+       <div class="brazier-heat"></div>
+       <div class="brazier-lip">THE BRAZIER</div>
+       <button id="pullBtn" class="pull-btn" disabled>
+         <span class="pull-label">SUMMON</span>
+         <span class="pull-cost" id="pullCost"></span>
+       </button>
+       <div class="odds-mini" id="oddsMini"></div>
+       <div class="pull-note" id="pullNote"></div>
+       <div class="pull-note favor-note" id="favorNote" hidden></div>
+     </div>
+     <div class="rail-block trial-block">
+       <div class="rail-h">Daily trial</div>
+       <div class="pull-note trial-note" id="trialLine"></div>
+     </div>
+   </aside>
+
+   <aside class="rail rail-feed" id="railFeed">
+     <section class="feed-panel" id="feedPanel" hidden>
+       <button class="feed-title as-toggle" id="feedToggle" aria-expanded="true">WORLD FEED
+         <span class="feed-chev">&#9662;</span></button>
+       <div id="feedList"></div>
+     </section>
+   </aside>
+  </div>
+
   <footer class="site-foot">
     <span class="foot-label">Join the community:</span>
     <a href="https://x.com/emberfall_fun" target="_blank" rel="noopener"
@@ -423,9 +472,9 @@
       <div class="wait-title">The Rite of Tempering</div>
       <div class="wait-sub" id="temperInfo"></div>
       <div class="temper-opts">
-        <button class="mini-btn" data-aspectpick="0">⚔ ATTACK</button>
-        <button class="mini-btn" data-aspectpick="1">🛡 DEFENSE</button>
-        <button class="mini-btn" data-aspectpick="2">🗡 CUNNING</button>
+        <button class="mini-btn" data-aspectpick="0"><svg class="g"><use href="#g-attack"/></svg> ATTACK</button>
+        <button class="mini-btn" data-aspectpick="1"><svg class="g"><use href="#g-defense"/></svg> DEFENSE</button>
+        <button class="mini-btn" data-aspectpick="2"><svg class="g"><use href="#g-cunning"/></svg> CUNNING</button>
       </div>
       <button class="ghost-btn" id="temperCancel">not now</button>
     </div>
@@ -467,9 +516,7 @@
     </div>
     <div class="stage" id="stageCard" hidden>
       <div id="cardDetail"></div>
-      <div class="row-btns detail-btns">
-        <button class="mini-btn" id="cardShareBtn">SHARE</button>
-      </div>
+      <div class="ds-acts" id="cardDetailActs"></div>
       <div class="wait-sub" id="cardShareMsg"></div>
       <button class="ghost-btn" id="cardCloseBtn">close</button>
     </div>
@@ -505,9 +552,9 @@
         <div class="wait-sub" id="stanceHint"></div>
         <div class="row-btns">
           <button class="mini-btn alt stance-btn" id="stanceNone" data-stance="-1">NO STANCE</button>
-          <button class="mini-btn alt stance-btn" data-stance="0">⚔ ATTACK</button>
-          <button class="mini-btn alt stance-btn" data-stance="1">🛡 DEFENSE</button>
-          <button class="mini-btn alt stance-btn" data-stance="2">🗡 CUNNING</button>
+          <button class="mini-btn alt stance-btn" data-stance="0"><svg class="g"><use href="#g-attack"/></svg> ATTACK</button>
+          <button class="mini-btn alt stance-btn" data-stance="1"><svg class="g"><use href="#g-defense"/></svg> DEFENSE</button>
+          <button class="mini-btn alt stance-btn" data-stance="2"><svg class="g"><use href="#g-cunning"/></svg> CUNNING</button>
         </div>
       </div>
       <button class="ghost-btn" id="pickCloseBtn">cancel</button>
@@ -515,16 +562,16 @@
   </div>
 </div>
 
-<script>window.BUILD = 104;</script>
-<script src="analytics.js?b=104"></script>
-<script src="sha3.js?b=104"></script>
-<script src="config.js?b=104"></script>
-<script src="art.js?b=104"></script>
-<script src="catalog.js?b=104"></script>
-<script src="wallets.js?b=104"></script>
-<script src="app.js?b=104"></script>
-<script src="progress.js?b=104"></script>
-<script src="sounds.js?b=104"></script>
-<script src="tutorial.js?b=104"></script>
+<script>window.BUILD = 110;</script>
+<script src="analytics.js?b=110"></script>
+<script src="sha3.js?b=110"></script>
+<script src="config.js?b=110"></script>
+<script src="art.js?b=110"></script>
+<script src="catalog.js?b=110"></script>
+<script src="wallets.js?b=110"></script>
+<script src="app.js?b=110"></script>
+<script src="progress.js?b=110"></script>
+<script src="sounds.js?b=110"></script>
+<script src="tutorial.js?b=110"></script>
 </body>
 </html>
