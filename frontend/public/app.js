@@ -1303,8 +1303,7 @@ function render() {
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">base ${w.valor}·${w.bulwark}·${w.guile}
-          <small>· at least 45/80/115% of your champion</small></div></div>
+        <div class="duel-meta">at least 45/80/115% of the champion you send</div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');
