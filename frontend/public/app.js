@@ -1038,8 +1038,7 @@ function render() {
       return `<div class="writ-tier${done ? ' done' : ''}">${head}${spread}</div>`;
     }).join('');
     return `<div class="duel writ-row">
-      <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">base ${w.valor}·${w.bulwark}·${w.guile}</div></div>
+      <div class="duel-info"><b>${w.name}</b></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');
