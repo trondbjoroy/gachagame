@@ -1159,6 +1159,25 @@ body.land-flash::before {
 .past-fights > summary::-webkit-details-marker { display: none; }
 .past-fights > summary:hover { border-color: var(--line-hi); color: var(--ink-muted); }
 .past-fights[open] > summary { margin-bottom: 8px; }
+.past-fights > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.past-fights > summary .feed-chev { transition: transform .18s ease; }
+.past-fights[open] > summary .feed-chev { transform: rotate(180deg); }
+
+/* Bosses: three tiers, each with the spread it fights. Two columns on a wide
+   screen so a row stops stretching to 1200px with a dead middle. */
+#writList { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: 10px; }
+.writ-row { align-items: flex-start; gap: 14px; }
+.writ-row .duel-info { flex: 1 1 auto; min-width: 0; }
+.writ-tiers { display: grid; gap: 5px; flex: 0 0 auto; }
+.writ-tier {
+  display: grid; grid-template-columns: 74px auto; align-items: center; gap: 10px;
+}
+.writ-tier.done { opacity: .55; }
+.writ-tier .mini-btn { width: 100%; padding: 6px 4px; font-size: 11px; }
+.writ-spread { font-family: var(--data); font-size: 11.5px; color: var(--ink-muted); }
+.writ-spread .g { width: 11px; height: 11px; fill: var(--ink-faint); margin-left: 7px; }
+.writ-spread .g:first-child { margin-left: 0; }
+.writ-done, .writ-locked { font-size: 10.5px; letter-spacing: .1em; }
 /* the odds legend names each rank instead of relying on colour memory */
 .odds-mini span { display: inline-flex; align-items: center; gap: 5px; }
 .odds-mini b { font-weight: 600; color: var(--ink-muted); font-size: 10.5px; }
