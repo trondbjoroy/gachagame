@@ -237,13 +237,13 @@
     el.innerHTML = S.addr
       ? tile('Standing', standingLabel(done), `${done} of ${deeds.length} achievements`)
         + tile('Collection', `${ever.length}/${total}`, 'champions ever owned')
-        + tile('Season', rank >= 0 ? `#${rank + 1}` : '—',
+        + tile('Season rank', rank >= 0 ? `#${rank + 1}` : '—',
                sn ? `${rank >= 0 ? sn.standings[rank].seasonal + ' seasonal renown · ' : ''}${days} day${days === 1 ? '' : 's'} left`
                   : 'the first season is being prepared')
         + tile('Daily trial', trialDone() ? 'DONE' : 'OPEN', t.text.toLowerCase())
       : tile('Standing', '—', 'connect a wallet')
         + tile('Collection', `—/${total}`, 'champions ever owned')
-        + tile('Season', '—', 'connect a wallet to enter the standings')
+        + tile('Season rank', '—', 'connect a wallet to enter the standings')
         + tile('Daily trial', '—', t.text.toLowerCase());
   }
 
