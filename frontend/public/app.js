@@ -776,6 +776,8 @@ function updateCues() {
 }
 setInterval(updateCues, 30_000); // countdowns cross zero between refreshes
 
+const CONNECTING = 'Connecting your wallet, please wait…';
+
 function render() {
   updateCues();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
@@ -887,7 +889,7 @@ function render() {
   $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0;
   $('collectionEmpty').textContent = pendingNow.length
     ? 'Your first champion is waiting below. Claim them and they muster here.'
-    : (S.restoring ? 'Connecting your wallet, please wait…'
+    : (S.restoring ? CONNECTING
       : 'No champions yet. Summon your first.');
 
   const inSession = S.wallet?.mode === 'session';
@@ -954,6 +956,8 @@ function render() {
            `<button class="mini-btn alt" data-unstake="${c.uid}">RECALL</button>`])));
   }).join('');
   $('stakedEmpty').hidden = staked.length > 0;
+  $('stakedEmpty').textContent = S.restoring ? CONNECTING
+    : 'Nothing is mining. Send a champion from your collection.';
 
   // arena: spectators see only open challenges; settled history needs a sworn wallet
   $('newDuelBtn').disabled = !S.addr;
@@ -1027,6 +1031,7 @@ function render() {
   const det = $('duelList').querySelector('.past-fights');
   if (det) det.ontoggle = () => { S.pastOpen = det.open; };
   $('duelEmpty').hidden = duelsShown.length > 0;
+  $('duelEmpty').textContent = S.restoring ? CONNECTING : 'No open duels. Start one.';
 
   // the bosses of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
@@ -1093,7 +1098,7 @@ function render() {
           : '<span class="duel-done">sold</span>'}
       </div>`).join('');
     $('listingEmpty').hidden = listingsShown.length > 0;
-    $('listingEmpty').innerHTML = S.addr
+    $('listingEmpty').innerHTML = S.restoring ? CONNECTING : S.addr
       ? `Nothing for sale right now. Champions you list appear here, and the
          Crown takes a 5% tithe on a sale. <b>SELL</b> sits under any champion
          in your Collection.`
@@ -1120,6 +1125,8 @@ function render() {
       </div>`;
     }).join('');
     $('swapEmpty').hidden = swapsShown.length > 0;
+    $('swapEmpty').textContent = S.restoring ? CONNECTING
+      : 'No trades proposed. Offer one with TRADE on a champion you hold.';
     const mpend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && c.marketPending === S.addr);
     $('marketPendingWrap').hidden = mpend.length === 0;
     $('marketPendingCards').innerHTML = mpend.map(c =>
