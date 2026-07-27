@@ -1608,3 +1608,10 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .cards::-webkit-scrollbar { display: none; }
   .cards > * { flex: 0 0 min(240px, 72vw); scroll-snap-align: center; }
 }
+
+/* six tabs since Progress joined: compress the header nav on phones so the
+   whole row fits a 375px screen without scrolling */
+@media (max-width: 640px) {
+  header.top .tabs { gap: 0; }
+  header.top .tab { padding: 8px 3px; font-size: 11px; letter-spacing: .01em; }
+}
