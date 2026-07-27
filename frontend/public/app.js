@@ -887,7 +887,8 @@ function render() {
   $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0;
   $('collectionEmpty').textContent = pendingNow.length
     ? 'Your first champion is waiting below. Claim them and they muster here.'
-    : 'No champions yet. Summon your first.';
+    : (S.restoring ? 'Connecting your wallet, please wait…'
+      : 'No champions yet. Summon your first.');
 
   const inSession = S.wallet?.mode === 'session';
   const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
