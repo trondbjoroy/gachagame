@@ -365,7 +365,9 @@ function feedLine(ev) {
       return `${name}'s delve found only dust`;
     }
     case 'temper': return `${name} tempered a champion`;
-    case 'banner': return `<b>${ev.name}</b> joined the game`;
+    case 'banner': return ev.prev
+      ? `<b>${ev.prev}</b> changed name to <b>${ev.name}</b>`
+      : `<b>${ev.name}</b> joined the game`;
     default: return null;
   }
 }
