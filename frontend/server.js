@@ -906,6 +906,7 @@ async function handleNameClaim(res, body) {
     return deny(res, 507, 'name registry full, try later');
   }
   const ownPast = names[wanted]?.past; // renames keep their chain
+  const prevName = names[wanted]?.name;
   names[wanted] = {
     name, tx: txId, ts: Math.floor(Date.now() / 1000),
     ...(inheritedPast || ownPast
@@ -914,7 +915,8 @@ async function handleNameClaim(res, body) {
     ...(reclaimHash ? { reclaimHash } : {}),
   };
   saveNames();
-  feedPush({ ts: Math.floor(Date.now() / 1000), kind: 'banner', who: wanted, name });
+  feedPush({ ts: Math.floor(Date.now() / 1000), kind: 'banner', who: wanted, name,
+    ...(prevName && prevName !== name ? { prev: prevName } : {}) });
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ success: true, address: wanted, name }));
 }
