@@ -201,12 +201,12 @@
     }
     const days = Math.max(0, Math.ceil((sn.ends * 1000 - Date.now()) / 86400000));
     const rows = (sn.standings || []).slice(0, 10).map((s, i) => {
-      const me = S.addr && s.addr === S.addr;
+      const me = isMine(s.addr);
       return `<div class="s-row${me ? ' me' : ''}"><span class="s-rank mono">${i + 1}</span>
         <span class="mono">${who(s.addr)}${me ? ' · you' : ''}</span>
         <span class="s-pts mono">${s.seasonal}</span></div>`;
     }).join('');
-    const mine = S.addr ? (sn.standings || []).findIndex(s => s.addr === S.addr) : -1;
+    const mine = S.addr ? (sn.standings || []).findIndex(s => isMine(s.addr)) : -1;
     const mineLine = S.addr
       ? (mine >= 0
         ? `Your rank: <b>#${mine + 1}</b> with <b>${sn.standings[mine].seasonal}</b> seasonal renown.`
@@ -231,7 +231,7 @@
     const t = todaysTrial();
     const sn = S.season;
     const days = sn ? Math.max(0, Math.ceil((sn.ends * 1000 - Date.now()) / 86400000)) : 0;
-    const rank = S.addr && sn ? (sn.standings || []).findIndex(x => x.addr === S.addr) : -1;
+    const rank = S.addr && sn ? (sn.standings || []).findIndex(x => isMine(x.addr)) : -1;
     const tile = (k, v, small) => `<div class="stat"><div class="k">${k}</div>
       <div class="v">${v} <small>${small}</small></div></div>`;
     el.innerHTML = S.addr
