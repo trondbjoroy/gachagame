@@ -219,9 +219,37 @@
       <div class="s-table">${rows || '<div class="lore"><p>No renown earned yet this season.</p></div>'}</div>`;
   }
 
+  /* ---------------- the progress tiles ---------------- */
+  function renderTiles() {
+    const el = $('progTiles');
+    if (!el) return;
+    const deeds = computeDeeds();
+    const done = deeds.filter(d => d.done).length;
+    let ever = [];
+    try { ever = JSON.parse(localStorage.getItem(mKey())) || []; } catch { /* fresh roll */ }
+    const total = Object.keys(CATALOG).length;
+    const t = todaysTrial();
+    const sn = S.season;
+    const days = sn ? Math.max(0, Math.ceil((sn.ends * 1000 - Date.now()) / 86400000)) : 0;
+    const rank = S.addr && sn ? (sn.standings || []).findIndex(x => x.addr === S.addr) : -1;
+    const tile = (k, v, small) => `<div class="stat"><div class="k">${k}</div>
+      <div class="v">${v} <small>${small}</small></div></div>`;
+    el.innerHTML = S.addr
+      ? tile('Standing', standingLabel(done), `${done} of ${deeds.length} achievements`)
+        + tile('Collection', `${ever.length}/${total}`, 'champions ever owned')
+        + tile('Season', rank >= 0 ? `#${rank + 1}` : '—',
+               sn ? `${rank >= 0 ? sn.standings[rank].seasonal + ' seasonal renown · ' : ''}${days} day${days === 1 ? '' : 's'} left`
+                  : 'the first season is being prepared')
+        + tile('Daily trial', trialDone() ? 'DONE' : 'OPEN', t.text.toLowerCase())
+      : tile('Standing', '—', 'connect a wallet')
+        + tile('Collection', `—/${total}`, 'champions ever owned')
+        + tile('Season', '—', 'connect a wallet to enter the standings')
+        + tile('Daily trial', '—', t.text.toLowerCase());
+  }
+
   /* ---------------- wiring ---------------- */
   function renderProgress() {
-    try { renderTrial(); renderMuster(); renderSeason(); }
+    try { renderTrial(); renderMuster(); renderSeason(); renderTiles(); }
     catch { /* progression must never break the game */ }
   }
   const appRender = render;

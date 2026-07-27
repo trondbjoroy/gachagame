@@ -43,9 +43,14 @@ const TOUR = [
     body: 'Sell champions for coin at your asking price, or offer a trade for one specific champion you want. Purchases settle through escrow: claim your side from "In escrow" after the deal closes.',
   },
   {
+    target: '#pane-progress', tab: 'progress',
+    title: 'Progress',
+    body: 'Your standing at a glance: eighteen achievements (Wanderer to Sovereign’s Hand), the collection tracker for every champion you have ever owned, the season standings, and the daily trial. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
+  },
+  {
     target: '#pane-learn', tab: 'learn',
     title: 'Info',
-    body: 'The lore of the realm, the how-to-play guide, your achievements (eighteen of them, Wanderer to Sovereign’s Hand), the collection tracker for every champion you have ever owned, and the season standings. The Weaver’s weekly favor is drawn here too; every point of renown you earn this week is a ticket.',
+    body: 'The lore of the realm, the how-to-play guide, and answers to common questions.',
   },
   {
     target: '#headerSessionBtn', tab: 'collection',

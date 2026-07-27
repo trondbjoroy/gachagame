@@ -3025,7 +3025,7 @@ document.querySelectorAll('.codex-sec').forEach(d => {
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   track('tab_view', { tab: el.dataset.tab });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
-  for (const p of ['collection', 'farm', 'arena', 'market', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
+  for (const p of ['collection', 'farm', 'arena', 'market', 'progress', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
 document.addEventListener('click', async e => {
   if (e.target.id === 'wdFundsBtn') {
