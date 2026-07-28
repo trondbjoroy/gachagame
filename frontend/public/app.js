@@ -1636,7 +1636,17 @@ async function fuse() {
   }
 }
 
+let writBusy = false;
 async function fightWrit(uid, writ, tier) {
+  if (writBusy) {
+    $('errTitle').textContent = 'A fight is underway';
+    $('errMsg').textContent = 'A boss fight is already confirming. Await that verdict first.';
+    showStage('stageError');
+    $('overlay').hidden = false;
+    return;
+  }
+  writBusy = true;
+  try {
   const c = S.cards.get(uid);
   const entry = Math.max(1, Math.floor(fuseFeeFor(c?.tier ?? 0) / 5));
   if (S.ember < entry) {
@@ -1658,6 +1668,9 @@ async function fightWrit(uid, writ, tier) {
     : `<div class="duel-banner lose">THE WRIT STANDS</div>
        <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`,
     S.cards.get(uid)?.aspects, [w.valor * mult, w.bulwark * mult, w.guile * mult], won);
+  } finally {
+    writBusy = false;
+  }
 }
 
 /* ---------------- sealed stances & side bets ---------------- */
