@@ -1710,3 +1710,6 @@ body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip 
 
 /* a session key the current realm never bound: loud, on every width */
 .stale-note:not([hidden]) { display: block; border-color: var(--acid); color: var(--ink); }
+
+/* spectator's card detail: just the share glyph, no sticky band */
+.ds-acts.ds-acts-min { position: static; background: none; justify-content: center; }

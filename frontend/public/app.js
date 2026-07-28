@@ -2479,11 +2479,13 @@ function openCard(uid) {
   const acts = $('cardDetailActs');
   if (acts) {
     const mineNow = c.mine, staked = isMine(c.staker);
+    // a spectator gets no bar furniture: the absent buttons say it already
+    acts.classList.toggle('ds-acts-min', !mineNow && !staked);
     acts.innerHTML = (mineNow
       ? `<button class="cf-primary" data-dstake="${uid}">SEND TO MINES</button>`
       : staked
         ? `<button class="cf-primary" data-dunstake="${uid}">RECALL FROM MINES</button>`
-        : '<span class="duel-done">not yours to command</span>')
+        : '')
       + `<button class="ds-icon" id="cardShareBtn" title="${matchMedia('(pointer: coarse)').matches
         ? 'Share this champion' : 'Share on X'}">${glyph('share', 'gl')}</button>`
       + (mineNow ? `<button class="ds-icon" data-dduel="${uid}" title="Challenge in the Arena">${glyph('attack', 'gl')}</button>` : '')
