@@ -19,8 +19,17 @@ app.emberfall.fun {
 	# (some phones refuse direct connections to the node's host); this
 	# also carries the wallet's websocket
 	handle_path /hnode/* {
-		reverse_proxy https://node-partners.testnet.hathor.network {
+		# partner node first; the public node catches the traffic while the
+		# partner is marked unhealthy (it 503s in bursts). GET reads retry
+		# onto the healthy upstream within the same request.
+		reverse_proxy https://node-partners.testnet.hathor.network https://node1.testnet.hathor.network {
 			header_up Host {upstream_hostport}
+			lb_policy first
+			lb_retries 2
+			lb_try_duration 6s
+			fail_duration 45s
+			max_fails 2
+			unhealthy_status 5xx
 		}
 	}
 	handle {
