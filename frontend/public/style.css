@@ -1218,6 +1218,8 @@ body.land-flash::before {
 }
 .trial-streak { color: var(--ink-muted); font-style: normal; font-family: var(--body); font-size: 11.5px; }
 .trial-block .rail-h { display: flex; align-items: center; justify-content: space-between; }
+/* tracker rows cap their reach so the counts don't ride the pane edge */
+#musterRoll { max-width: 780px; }
 .m-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .m-label { width: 110px; font-size: 13px; color: var(--ink-muted); }
 .m-bar {
@@ -1666,6 +1668,14 @@ body.theme-light .cf-ovf[open] > summary { background: #e6d3a2; }
 /* gold chips with baked-in dark text keep the night golds */
 body.theme-light .trial-done, body.theme-light .cf-primary {
   background: linear-gradient(180deg, #e8be55, #c79430);
+}
+/* on parchment the done-tint disappears: earned deeds get a solid card
+   and a bronze spine, unearned ones ghost harder */
+body.theme-light .deed { background: rgba(255, 252, 240, .28); opacity: .48; }
+body.theme-light .deed.done {
+  opacity: 1; border-color: rgba(124, 83, 18, .5);
+  background: rgba(255, 252, 240, .62);
+  box-shadow: inset 3px 0 0 var(--acid);
 }
 body.theme-light .toast {
   background: #f3e6c0;
