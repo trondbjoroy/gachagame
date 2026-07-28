@@ -67,15 +67,24 @@ def active_last_week():
 
 
 def ensure_wallet():
-    """Start the operator wallet in wallet-headless if it isn't running."""
+    """Start the operator wallet and wait until it is Ready."""
     try:
         req = urllib.request.Request(WALLET + "/start",
             data=json.dumps({"wallet-id": WALLET_ID, "seedKey": WALLET_ID}).encode(),
             headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=60).read()
-        time.sleep(8)
     except Exception:
-        pass  # already running or the execute below will report
+        pass  # already running
+    for _ in range(40):
+        try:
+            req = urllib.request.Request(WALLET + "/wallet/status",
+                headers={"x-wallet-id": WALLET_ID})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                if json.loads(r.read()).get("statusMessage") == "Ready":
+                    return
+        except Exception:
+            pass
+        time.sleep(5)
 
 
 def main():
