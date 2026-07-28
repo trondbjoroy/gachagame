@@ -1615,3 +1615,14 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   header.top .tabs { gap: 0; }
   header.top .tab { padding: 8px 3px; font-size: 11px; letter-spacing: .01em; }
 }
+
+/* once today's trial is done it stops being a call to action: on the
+   one-column layout it steps down to just below the world feed. The aside
+   dissolves (display: contents) so the brazier and the trial block order
+   themselves as grid items; desktop keeps them stacked in the rail. */
+@media (max-width: 1290px) {
+  .rail-summon { display: contents; }
+  .rail-summon .brazier { order: 1; }
+  .rail-summon .trial-block { order: 1; }
+  body.trial-done .rail-summon .trial-block { order: 4; }
+}

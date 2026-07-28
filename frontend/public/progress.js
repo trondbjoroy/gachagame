@@ -79,6 +79,7 @@
     } catch { /* progression must never break the game */ }
     const t = todaysTrial();
     const done = S.addr && trialDone();
+    document.body.classList.toggle('trial-done', !!done);
     const line = $('trialLine');
     if (line) {
       const st = tState();
