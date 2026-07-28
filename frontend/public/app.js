@@ -153,6 +153,18 @@ async function loadContract(touch) {
   }
 
   if (S.addr) {
+    // binding is chain truth, re-read every refresh: a session whose bind tx
+    // never landed (a node hiccup mid-setup is enough) would otherwise read
+    // as its main while the contract credits the session key, and the player
+    // plays a whole evening as a nameless fragment
+    if (S.wallet?.mode === 'session') {
+      try {
+        const dc = `get_delegate("${S.addr}")`;
+        const bound = (await batchCalls([dc]))[dc];
+        S.wallet.unbound = !bound;
+        if (bound) S.wallet.mainAddr = bound;
+      } catch { /* transient read: keep what we knew */ }
+    }
     // v4 delegation: one identity, one read — a session's renown, Ember,
     // wins and streak all live on the main address the contract resolves to
     const me = identity();
@@ -940,7 +952,7 @@ function render() {
   updateCues();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('connectingNote').hidden = !S.restoring;
-  $('staleNote').hidden = !(S.wallet?.mode === 'session' && S.wallet.unbound && S.wallet.mainAddr);
+  $('staleNote').hidden = !(S.wallet?.mode === 'session' && S.wallet.unbound);
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   // a banner name stands alone in the chip (the hint span names the wallet
   // kind already); otherwise wallet kind + shortened address
