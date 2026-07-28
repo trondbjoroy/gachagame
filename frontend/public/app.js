@@ -163,11 +163,25 @@ async function loadContract(touch) {
       'get_ranked_waiting(0)', 'get_ranked_waiting(1)', 'get_ranked_waiting(2)',
       `is_ranked_queued(0, "${me}")`, `is_ranked_queued(1, "${me}")`,
       `is_ranked_queued(2, "${me}")`]);
+    const prevRanked = S.ranked;
     S.ranked = {
       rating: my[`get_rating("${me}")`] || 1000,
       waiting: [0, 1, 2].map(t => my[`get_ranked_waiting(${t})`] || 0),
       queued: [0, 1, 2].map(t => my[`is_ranked_queued(${t}, "${me}")`] === true),
     };
+    // a queued rated fight settles through the OTHER player's join tx, so
+    // this client only sees it in state: the slot vanished without a leave
+    // and the rating moved. Voluntary leaves move nothing (transfers are
+    // never zero), so a zero delta stays silent.
+    if (prevRanked && !S.silentSync) {
+      const d = S.ranked.rating - prevRanked.rating;
+      if (d && [0, 1, 2].some(t => prevRanked.queued[t] && !S.ranked.queued[t])) {
+        ribbon(d > 0
+          ? `Ranked: victory! <b>+${d} rating</b> · now ${S.ranked.rating}`
+          : `Ranked: defeat · <b>${d} rating</b> · now ${S.ranked.rating}`,
+          d > 0 ? 'level' : '', d > 0 ? 'win' : 'lose');
+      }
+    }
     S.shards = my[`get_shards("${me}")`] || 0;
     S.cleared = my[`get_gauntlet_cleared("${me}")`] || 0;
     S.trialDoneChain = my[`get_trial_done("${me}", ${now})`] === true;
@@ -923,6 +937,7 @@ function render() {
   updateCues();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('connectingNote').hidden = !S.restoring;
+  $('staleNote').hidden = !(S.wallet?.mode === 'session' && S.wallet.unbound && S.wallet.mainAddr);
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   // a banner name stands alone in the chip (the hint span names the wallet
   // kind already); otherwise wallet kind + shortened address

@@ -1706,3 +1706,6 @@ body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip 
   background: var(--panel); margin-bottom: 14px;
 }
 @media (max-width: 1290px) { .connecting-note:not([hidden]) { display: block; } }
+
+/* a session key the current realm never bound: loud, on every width */
+.stale-note:not([hidden]) { display: block; border-color: var(--acid); color: var(--ink); }
