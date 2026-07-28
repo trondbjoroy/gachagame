@@ -20,7 +20,7 @@ const TOUR = [
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The game keeps count: your Ember, duels won, renown with your daily streak, and your level. Below the numbers, WORLD FEED shows what other players are doing right now, duel verdicts and delve hauls included; it starts folded, so click its title to open it. Everything here is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
+    body: 'The header keeps your count: Ember always, with renown and level beside it when the width allows — the full picture (standing, achievements, collection tracker, season rank, today’s trial) lives under PROGRESS. WORLD FEED, further down, shows what other players are doing right now, duel verdicts and delve hauls included; it starts folded, so click its title to open it. Everything is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',
