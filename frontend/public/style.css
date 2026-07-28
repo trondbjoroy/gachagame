@@ -1637,9 +1637,9 @@ body.theme-light {
   --line: rgba(63, 46, 14, .22);
   --line-hi: #96762f;
   --ink: #251a07;
-  --ink-muted: #54421c;
-  --ink-dim: #6f5926;
-  --ink-faint: #8a7338;
+  --ink-muted: #46370f;
+  --ink-dim: #59481a;
+  --ink-faint: #6f5c28;
   --acid: #7c5312;
   --acid-hot: #5f3e0b;
   --acid-lo: #966b1c;
@@ -1654,3 +1654,12 @@ body.theme-light .hdr-chips .stat { background: rgba(255, 250, 235, .45); }
 body.theme-light .mini-btn.alt { color: var(--ink); }
 body.theme-light header.top { background: rgba(240, 220, 158, .92); }
 body.theme-light .brand .mark { filter: drop-shadow(0 4px 12px rgba(95, 62, 11, .35)); }
+/* text that sits on the always-dark art keeps night ink */
+body.theme-light .cf-med b { color: #f4efe6; }
+body.theme-light .ds-name { color: #f4efe6; }
+body.theme-light .ds-type { color: rgba(244, 239, 230, .78); }
+body.theme-light .cf-menu {
+  background: #f0e2ba; border-color: var(--line-hi);
+  box-shadow: 0 18px 40px -12px rgba(63, 46, 14, .5);
+}
+body.theme-light .cf-ovf[open] > summary { background: #e6d3a2; }
