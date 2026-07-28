@@ -1713,3 +1713,11 @@ body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip 
 
 /* spectator's card detail: just the share glyph, no sticky band */
 .ds-acts.ds-acts-min { position: static; background: none; justify-content: center; }
+
+/* the wallet lives on the same device here, so there is nothing to scan:
+   the QR and its instruction give way to the copy-paste line */
+.wc-hint-copy { display: none; }
+@media (pointer: coarse) {
+  #wcQr, .wc-hint-scan { display: none; }
+  .wc-hint-copy { display: block; }
+}
