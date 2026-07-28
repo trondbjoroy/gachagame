@@ -885,6 +885,9 @@ function fitHeaderChips() {
   if (!sr) return;
   const chips = [...sr.children];
   chips.forEach(c => { c.hidden = false; });
+  // start from the roomy layout every time, so widening the window (or
+  // shortening a banner name) gives the chips back
+  document.body.classList.remove('hdr-compact');
   // measure real geometry, not summed widths plus a guessed gap: the row is
   // right-aligned, so the leftmost visible chip is the one that overflows,
   // and a one-pixel arithmetic error used to drop a chip that did fit
@@ -893,6 +896,8 @@ function fitHeaderChips() {
     if (!vis.length) return true;
     return vis[0].getBoundingClientRect().left >= sr.getBoundingClientRect().left - 0.5;
   };
+  // squeeze the furniture around the chips before sacrificing a chip
+  if (!room()) document.body.classList.add('hdr-compact');
   for (let i = chips.length - 1; i >= 0 && !room(); i--) chips[i].hidden = true;
 }
 let fitTimer = null;

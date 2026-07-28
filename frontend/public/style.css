@@ -1730,10 +1730,17 @@ body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip 
   .wc-hint-copy { display: block; }
 }
 
-/* six tabs and four tools crowd the chip row: tighten the chips before
-   fitHeaderChips starts dropping renown and level off the end */
-@media (min-width: 1291px) and (max-width: 1560px) {
-  .hdr-chips { gap: 3px; }
-  .hdr-chips .stat { padding: 4px 6px; gap: 4px; }
-  .hdr-chips .v { font-size: 12px; }
-}
+/* Brand, six tabs, chips, four tools, quick play and the wallet chip all
+   want the same row, and the chip row was what gave — renown and level fell
+   off it. Everything AROUND the chips gives way first now: fitHeaderChips
+   adds .hdr-compact when they do not fit, which tightens the chips, narrows
+   the tool buttons and swaps QUICK PLAY for PLAY (~100px, more than the
+   three chips need). Only if that is still short does a chip drop. Measured
+   rather than guessed at a breakpoint, so a long banner name or a fifth
+   tool cannot silently cost a chip again. */
+body.hdr-compact .hdr-chips { gap: 3px; }
+body.hdr-compact .hdr-chips .stat { padding: 4px 6px; gap: 4px; }
+body.hdr-compact .hdr-chips .v { font-size: 12px; }
+body.hdr-compact header.top .hdr-tools > .mini-btn { padding: 8px 9px; }
+body.hdr-compact .header-session .hs-l { display: none; }
+body.hdr-compact .header-session .hs-s { display: inline; }
