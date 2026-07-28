@@ -1689,6 +1689,7 @@ body.theme-light .toast {
 /* always-dark islands (the brazier, every overlay dialog) get the night
    tokens back wholesale, so their contents need no per-element fixes */
 body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip {
+  --bg: #0b0a08;
   --ink: #f4efe6; --ink-muted: #b5ab99; --ink-dim: #a89d89; --ink-faint: #8a8172;
   --acid: #d4a843; --acid-hot: #e8be55; --acid-lo: #c79430;
   --panel: rgba(255, 250, 240, .035); --panel-solid: #15130f; --raised: #1e1a14;
