@@ -1624,5 +1624,5 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .rail-summon { display: contents; }
   .rail-summon .brazier { order: 1; }
   .rail-summon .trial-block { order: 1; }
-  body.trial-done .rail-summon .trial-block { order: 4; }
+  body.trial-cleared .rail-summon .trial-block { order: 4; }
 }
