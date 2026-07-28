@@ -2661,7 +2661,8 @@ function openPick(kind, ref) {
   pickCtx = { kind, ref };
   if (kind === 'writ') {
     const marchers = [...S.cards.values()].filter(c =>
-      isMine(c.staker) && !(c.delveSince > 0) && (c.writFights || 0) < 3);
+      isMine(c.staker) && !(c.delveSince > 0) && (c.writFights || 0) < 3)
+      .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
     if (!marchers.length) {
       $('errTitle').textContent = 'No champion available';
       $('errMsg').textContent = 'Writs are fought by staked champions. Stake one in '
