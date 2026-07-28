@@ -1621,3 +1621,31 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .rail-summon .trial-block { order: 1; }
   body.trial-cleared .rail-summon .trial-block { order: 4; }
 }
+
+/* LIGHT MODE: not white — the realm by day, gold parchment under dark ink.
+   Token-level override; dark stays the default for new players. */
+body.theme-light {
+  --bg: #e4c165;
+  --panel: rgba(255, 252, 240, .38);
+  --panel-solid: #eeddb4;
+  --raised: #e9d5a6;
+  --line: rgba(63, 46, 14, .22);
+  --line-hi: #96762f;
+  --ink: #251a07;
+  --ink-muted: #54421c;
+  --ink-dim: #6f5926;
+  --ink-faint: #8a7338;
+  --acid: #7c5312;
+  --acid-hot: #5f3e0b;
+  --acid-lo: #966b1c;
+  background: linear-gradient(180deg, #f2dc9e, #e6c268 46%, #d4a843);
+  background-attachment: fixed;
+}
+body.theme-light .grid-bg::after { opacity: .35; }
+body.theme-light .glow { opacity: .35; }
+body.theme-light::after { opacity: .04; }
+/* chips and buttons that hard-code the night palette */
+body.theme-light .hdr-chips .stat { background: rgba(255, 250, 235, .45); }
+body.theme-light .mini-btn.alt { color: var(--ink); }
+body.theme-light header.top { background: rgba(240, 220, 158, .92); }
+body.theme-light .brand .mark { filter: drop-shadow(0 4px 12px rgba(95, 62, 11, .35)); }
