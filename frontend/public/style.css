@@ -889,7 +889,7 @@ body::after {
   transition: left .3s ease, top .3s ease;
 }
 .tour-title { font-family: var(--display); font-size: 17px; letter-spacing: .06em; color: var(--acid); margin-bottom: 8px; padding-right: 24px; }
-.tour-body { font-size: 13.5px; line-height: 1.65; color: var(--ink-muted); }
+.tour-body { font-size: 13.5px; line-height: 1.65; color: var(--ink); }
 .tour-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; gap: 10px; }
 .tour-nav .mini-btn { margin-left: 8px; }
 .tour-count { font-family: var(--data); font-size: 11px; color: var(--ink-dim); }
@@ -1678,7 +1678,7 @@ body.theme-light .toast {
 }
 /* always-dark islands (the brazier, every overlay dialog) get the night
    tokens back wholesale, so their contents need no per-element fixes */
-body.theme-light .brazier, body.theme-light .overlay {
+body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip {
   --ink: #f4efe6; --ink-muted: #b5ab99; --ink-dim: #a89d89; --ink-faint: #8a8172;
   --acid: #d4a843; --acid-hot: #e8be55; --acid-lo: #c79430;
   --panel: rgba(255, 250, 240, .035); --panel-solid: #15130f; --raised: #1e1a14;
