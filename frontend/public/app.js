@@ -886,7 +886,12 @@ function render() {
   // account for it: telling a new player they own nothing while their first
   // champion waits above is the worst possible moment for that message
   const pendingNow = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
-  $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0;
+  // champions parked in the main wallet while a session runs: visible,
+  // counted for standing, but the session key cannot sign for them
+  const mainHeld = [...S.cards.values()].filter(c =>
+    c.tier >= 0 && !c.mine && c.heldByMain && !c.pending && !c.staker && !c.marketPending)
+    .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
+  $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0 || mainHeld.length > 0;
   $('collectionEmpty').textContent = pendingNow.length
     ? 'Your first champion is waiting below. Claim them and they muster here.'
     : (S.restoring ? CONNECTING
@@ -899,6 +904,9 @@ function render() {
       ? '<div class="cf-state">coming home…</div>'
       : cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, []))).join('');
   $('pendingWrap').hidden = pend.length === 0;
+  $('mainHeldWrap').hidden = mainHeld.length === 0;
+  $('mainHeldCards').innerHTML = mainHeld.map(c =>
+    cardBox(c, `<div class="cf-state">${glyph('seal')}held by your main wallet</div>`)).join('');
 
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=141" />
+<link rel="stylesheet" href="style.css?b=142" />
 </head>
 <body>
 <svg width="0" height="0" class="glyph-defs" aria-hidden="true" focusable="false"><defs>
@@ -125,6 +125,13 @@
     <div id="pendingWrap" hidden>
       <h2 class="mt">New champions</h2>
       <div class="cards" id="pendingCards"></div>
+    </div>
+    <div id="mainHeldWrap" hidden>
+      <h2 class="mt">In your main wallet</h2>
+      <div class="lore"><p>These champions sit in your connected wallet, safe but out of
+        the session's reach: a session key cannot sign for them. They still count toward
+        your standing. End the session to command them from your main wallet.</p></div>
+      <div class="cards" id="mainHeldCards"></div>
     </div>
   </section>
 
@@ -334,7 +341,9 @@
         returns all champions and coin to your main wallet in one transaction,
         and sessions survive page reloads. Staked and delving champions are held
         by the contract under your main identity, so ending a session never
-        strands them. One caution: the session key lives in this browser's
+        strands them. Champions sitting loose in your main wallet appear under
+        <b>In your main wallet</b> while a session runs; the session cannot spend
+        them until you end it. One caution: the session key lives in this browser's
         storage, so end the session before clearing site data.</p></div>
       <div class="qa"><h4>What are stances and duel bets?</h4>
         <p>When you issue a challenge you may seal a hidden <b>stance</b>: Attack,
@@ -546,16 +555,16 @@
   </div>
 </div>
 
-<script>window.BUILD = 141;</script>
-<script src="analytics.js?b=141"></script>
-<script src="sha3.js?b=141"></script>
-<script src="config.js?b=141"></script>
-<script src="art.js?b=141"></script>
-<script src="catalog.js?b=141"></script>
-<script src="wallets.js?b=141"></script>
-<script src="app.js?b=141"></script>
-<script src="progress.js?b=141"></script>
-<script src="sounds.js?b=141"></script>
-<script src="tutorial.js?b=141"></script>
+<script>window.BUILD = 142;</script>
+<script src="analytics.js?b=142"></script>
+<script src="sha3.js?b=142"></script>
+<script src="config.js?b=142"></script>
+<script src="art.js?b=142"></script>
+<script src="catalog.js?b=142"></script>
+<script src="wallets.js?b=142"></script>
+<script src="app.js?b=142"></script>
+<script src="progress.js?b=142"></script>
+<script src="sounds.js?b=142"></script>
+<script src="tutorial.js?b=142"></script>
 </body>
 </html>
