@@ -67,14 +67,35 @@ function rpcActions(actions, changeAddress) {
 // the shared address instead of htr_getBalance (which opens a MetaMask
 // confirmation for every call). Cached briefly to avoid hammering the node.
 let balCache = { addr: null, at: 0, data: null };
-async function addrBalance(address, token) {
-  const now = Date.now();
-  if (balCache.addr !== address || now - balCache.at > 5000) {
-    const r = await fetch(`/node/thin_wallet/address_balance?address=${address}`);
-    const d = await r.json();
-    balCache = { addr: address, at: now, data: d.tokens_data || {} };
+const balInflight = new Map();   // address -> promise, so a burst asks once
+
+// One address_balance read serves every token. A collection sweep asks for
+// sixty cards at once, and each used to issue its own request: sixty
+// identical calls raced an empty cache, tripped the proxy's read limit, and
+// the 429 bodies (no tokens_data) cached as "you own nothing" for the next
+// five seconds — which is what emptied collections on reload. A bad response
+// now throws instead of poisoning the cache, and callers treat a throw as
+// unknown rather than zero.
+async function addrBalanceMap(address) {
+  if (balCache.addr === address && Date.now() - balCache.at <= 5000) return balCache.data;
+  if (!balInflight.has(address)) {
+    balInflight.set(address, (async () => {
+      const r = await fetch(`/node/thin_wallet/address_balance?address=${address}`);
+      if (!r.ok) throw new Error(`address_balance ${r.status}`);
+      const d = await r.json();
+      if (!d || typeof d.tokens_data !== 'object' || d.tokens_data === null) {
+        throw new Error('address_balance: no tokens_data');
+      }
+      balCache = { addr: address, at: Date.now(), data: d.tokens_data };
+      return balCache.data;
+    })().finally(() => balInflight.delete(address)));
   }
-  const t = balCache.data[token];
+  return balInflight.get(address);
+}
+
+async function addrBalance(address, token) {
+  const data = await addrBalanceMap(address);
+  const t = data[token];
   return t ? Math.max(0, (t.received || 0) - (t.spent || 0)) : 0;
 }
 

@@ -691,6 +691,9 @@ body.theme-light .card.selected {
 }
 body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65); }
 .fuse-bar { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-muted); }
+/* its own display:flex outranks the UA [hidden] rule, so PICK TWO / FUSE
+   kept offering a rite that needs two champions to a player holding one */
+.fuse-bar[hidden] { display: none; }
 .pending-gems { margin-top: 10px; font-family: var(--data); font-size: 12px; color: var(--acid); }
 
 .farm-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 26px; }
