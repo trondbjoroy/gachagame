@@ -22,7 +22,7 @@ NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/
 # v3 arena; renown was migrated 1:1 via adopt_player, so existing baselines
 # stay valid. Player discovery still scans the retired v2.2 realm's history
 # because migration transactions carry only the operator's address.
-ARENA = os.environ.get("ARENA_NC", "00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd")
+ARENA = os.environ.get("ARENA_NC", "0061589e138059dcc670e392442c55bd6a55487adaa0b519ad41cf09bb0129b4")
 STATE = os.environ.get("SEASON_STATE", "/opt/gacha/season-state.json")
 OUT = os.environ.get("SEASON_OUT", "/opt/gacha/frontend/public/season.json")
 

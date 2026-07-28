@@ -1122,6 +1122,11 @@ body.land-flash::before {
 .dress-row b { width: 68px; font-size: 12px; letter-spacing: .1em; color: var(--ink-muted); flex: none; }
 .dress-btn.active { border-color: var(--acid); color: var(--acid-hot); background: rgba(212, 168, 67, .08); }
 .stance-btn.active { border-color: var(--acid); color: var(--acid-hot); background: rgba(212, 168, 67, .08); }
+/* v5 keyword ability on the card face */
+.ac-ability {
+  font-family: 'Cinzel', serif; font-size: 10.5px; letter-spacing: .12em;
+  color: var(--acid-hot); margin: 1px 0;
+}
 .tint-btn { padding: 4px; line-height: 0; }
 .tint-thumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; display: block; position: static; }
 @media (max-width: 640px) {

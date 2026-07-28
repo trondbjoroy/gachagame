@@ -43,14 +43,23 @@ A second duel type alongside 1v1; same wager/pot/rake/bets machinery.
   1/2/3) is sealed in the commitment: sha3("perm:salt") where perm is a
   permutation like "201". Reuses the stance commit-reveal machinery and the
   browser salt store.
-- `accept_squad_duel(duel_id, l1, l2, l3)` deposits three cards and assigns
-  them to lanes openly (the acceptor sees which champions wait, not where).
+- `accept_squad_duel(duel_id)` deposits three cards; the DEPOSIT ORDER is
+  the lane assignment (first deposited card fights lane 1, and so on) — no
+  lane args needed. The acceptor sees which champions wait, not where.
 - `reveal_squad(duel_id, perm, salt)` unseals lanes and resolves: each lane
   is a full aspect fight (with abilities); the squad taking 2+ lanes wins
   the pot. Same 6h reveal window and claim_forfeit.
 - Per-lane veterancy XP; battle-hardened applies per lane under the existing
   wager/power conditions; the win counts once per duelist.
 - Stances: none in 3v3 (the sealed lane assignment IS the mind game).
+- Abilities apply per lane. Economic squad-level effects stay 1v1-only:
+  the Plunderer waives the pot rake only in single duels (in a squad,
+  "the winning card" is ambiguous); Scholar XP still doubles per lane.
+- Implemented (phase 2): shares the 1v1 duel-id space and bet/cancel/
+  forfeit machinery; `duel_kind` view marks squads; `get_squad_cards`
+  lists a side's trio. The bettor-cannot-accept guard covers squads.
+  The challenger's UI seals a RANDOM permutation (blind lane assignment
+  makes any fixed order strategically equal, so no picker is needed).
 
 ## 3. Rated ladder (Arena rating + matchmaking)
 
@@ -71,6 +80,17 @@ skill ladder; the season stays the activity sprint).
 - Unrated 1v1/3v3 challenges stay exactly as today.
 - UI: rating on the wallet chip area and standings; ranked panel in Arena
   with queue status; ladder page ranks by rating (season page unchanged).
+- Implemented (phase 3): `_elo_transfer` rounds the standard K=32
+  expected-score formula in 25-point buckets: transfer = 16 -/+
+  min(|gap|//25, 8), which matches the exact formula to the point inside
+  the 200-rating band. Zero-sum with a 100 ladder floor (the loser stops
+  at 100 and the winner takes only what moved). Queue slots are
+  tombstoned and reused (`ranked_active`), one entry per identity per
+  tier, ratings read fresh at match time. Rated fights use
+  `_fight_rounds`/`_after_fight` (abilities apply; Plunderer waives the
+  rake as in 1v1; no stances, no side bets). `adopt_rating(who, r)`
+  (owner, 100..10000) migrates ladders. Views: `get_rating`,
+  `get_ranked_waiting(tier)`, `is_ranked_queued(tier, addr)`.
 
 ## 4. Guilds and the world boss
 
@@ -92,6 +112,49 @@ skill ladder; the season stays the activity sprint).
   next week.
 - Feed: guild creations, joins, world-boss posts, big hits, the kill, and
   bounty claims (all via self.log + state-diff).
+- Implemented (phase 4): guild names unique case-insensitively, 500 Ember
+  burned outright; the +25% bounty bonus follows the banner an identity
+  FOUGHT under (recorded on their first hit of the week), so hopping into
+  the top guild after the kill earns nothing. The bounty pool accrues in
+  EMBER (pull_price // 10 per summon into the current unix-week, boss
+  posted or not) — no HTR reserve needed in the closed-points economy;
+  the +25% mints on top of the pool like other bounties. Boss fights
+  mirror writs (staked, 3/day per card via wb_attempts, fusion-fee//5
+  entry, abilities 1-7 apply). scripts/world_boss.py posts weekly
+  (dry-run default, WB_APPLY=1, no default ARENA_NC).
+
+## 5. Tournaments (scheduled brackets)
+
+Calendar events with entry fees and a Crown-seeded prize pool; the World
+feed's scheduled peak moments. Decisions (2026-07-25): one round per DAY
+(anyone may call advance once the round is due — a 16-bracket is a 4-day
+arc), split 60% champion / 25% runner-up / 7.5% each semifinalist, and
+the Crown's seed is passed at creation, debited from its own Ember
+ledger (its rake income — the tithe made visible).
+
+- `create_tournament(name, fee, size, start_ts, round_secs, seed)`:
+  owner-only (the cron schedules them). size in 4/8/16/32; round_secs is
+  the gap between rounds (86400 live; short in tests). The seed debits
+  the Crown at creation and is refunded only on cancellation.
+- `enter_tournament(t)` deposits ONE champion + debits the fee. One
+  entry per identity; `leave_tournament(t)` refunds fully before start.
+- At start, fewer than 4 entrants cancels (first advance call performs
+  it): fees, cards and seed all return.
+- `advance_tournament(t)`: anyone, once the round is due. Fights the
+  current round's pairs (entry order; odd counts give the tail a bye)
+  with the ability engine, no stances. Losers' cards go to pending at
+  once; hardening/XP apply with the fee as the wager.
+- Payouts are automatic, no claim txs: semifinalists (eliminated when
+  3-4 remain) get pool*75//1000 each, the runner-up pool*250//1000, and
+  the champion takes the remainder (rounding dust and any unpaid semi
+  share in odd brackets included). Champion: +25 renown and a win;
+  runner-up +10 renown.
+- Pool = fee x entrants + seed, all Ember (closed points; conserved
+  exactly, unlike minted bounties).
+- Views: get_tournament(t) ("name|state|fee|seed|size|n|start|round|
+  next_ts|pool|champion"), get_tour_entrant(t, i), get_tournament_count.
+- scripts/tournament.py (cron) schedules the weekly bracket and sizes
+  the seed from the Crown's ledger.
 
 ## Migration to v5
 

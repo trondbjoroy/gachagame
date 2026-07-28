@@ -123,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
                 job["tx"] = mine(body["tx"], body.get("add_parents", True))
                 job["status"] = "done"
             except Exception as exc:  # noqa: BLE001
-                print(f"mining failed: {exc}")
+                print(f"mining failed: {exc} (tx head: {str(body.get('tx'))[:24]})")
                 job["status"] = "failed"
                 job["message"] = str(exc)
             job["total_time"] = time.time() - start

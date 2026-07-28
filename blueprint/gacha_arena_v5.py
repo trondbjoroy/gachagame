@@ -9,84 +9,20 @@ from hathor import (
 
 @export
 class EmberfallArena(Blueprint):
-    """v5 phase 1 (abilities) on top of v4.1:
-    - every champion TYPE carries a keyword ability, stamped on the card
-      at mint from its template: 0 none, 1 Vanguard (+20% Attack round),
-      2 Warden (+20% Defense), 3 Trickster (+20% Cunning), 4 Momentum
-      (+10% in R2/R3 after winning R1), 5 Closer (+25% in a 1-1 decider),
-      6 Underdog (+15% all rounds when total power is lower),
-      7 Stancebreaker (the foe's stance edge is void), 8 Plunderer (a
-      winning Plunderer carries off the Crown's rake too), 9 Scholar
-      (double veterancy XP). 1-7 apply against bosses as well.
+    """Emberfall: the full game in one contract. Design + phase notes in
+    docs/v5-design.md.
 
-v4.1 additions (2026-07-24, pending publish):
-    - accept_duel refuses a caller with a bet riding on that duel
-      (closes bet-then-accept: place_bet already refused participants,
-      but a bettor on an open duel could become the acceptor)
-    - get_bet(duel_id, address) view: an address's live stakes
-    - self.log outcome entries (duel rounds/winner side, forfeits,
-      delve hauls) so the logs API can replace state-diff inference
-
-Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
-    against the Gauntlet, delve, grow veterans, and dress cards.
-
-    Core (v2.2/v3, unchanged):
-    - pull(): pay HTR, a fresh 1-of-1 card token is minted from the
-      template catalog of an RNG-rolled rarity tier (0..3) with an
-      RNG-rolled power split into three aspects (valor/bulwark/guile).
-    - stake()/unstake()/claim_ember(): staked cards accrue Ember
-      (a contract-created reward token) per minute by tier.
-    - temper(): pay ember to raise one aspect of a staked card (half
-      burned, half Crown), capped per station.
-    - the Gauntlet (add_writ/fight_writ), delves, veterancy, cosmetics,
-      the daily trial, renown w/ vigil multiplier, deed bounties, the
-      Weaver's favor pool. All rewards funded from proceeds, never
-      printed.
-
-    v4 — session delegation:
-    - offer_session()/accept_session()/revoke_session(): a main wallet
-      offers a session address delegation, escrowing the session's HTR
-      float in the same tx (one prompt); the session key accepts in its
-      first promptless tx and withdraws the escrow. From then on every
-      game method resolves the session caller to the main address, so
-      ember, cards, renown, deeds, streaks and custody all accrue to one
-      identity across session and non-session play. Registration
-      requires both keys to sign (one tx each), so nobody can bind an
-      address they do not control. revoke_session() reclaims an
-      unaccepted offer's escrow and cuts a session loose.
-
-    v4 — fusion parks, never melts:
-    - fuse() keeps both parent cards in contract custody forever
-      (parked) instead of melting them. Works for any card the contract
-      did not mint (adopted realms) and matches the 1-unit NFT spec.
-
-    v4 — card_unit:
-    - initialize takes card_unit (1 or 100): the number of base units a
-      card token is minted with and moved by. Mainnet uses 1 per the
-      Hathor NFT spec; realms adopting 100-unit cards keep 100.
-      adopt_card must only register cards whose unit matches.
-
-    v4 — duel stances (commit-reveal):
-    - create_duel() takes a 32-byte commitment: sha3-256 of
-      "{stance}:{salt}" (empty bytes = classic instant duel, no
-      stances). The acceptor states their stance openly in
-      accept_duel(); the challenger then calls reveal_duel(stance,
-      salt) to settle. Stances are rock-paper-scissors (0 beats 1,
-      1 beats 2, 2 beats 0); the stance winner's aspects are boosted
-      20% in every round. If the challenger does not reveal within the
-      reveal window, anyone may call claim_forfeit() and the acceptor
-      takes the pot.
-
-    v4 — spectator side-bets:
-    - place_bet(): while a duel is open (or awaiting reveal) any
-      non-participant may back a side with ember, up to 50 bets per
-      duel. Winners split the losing pool pro-rata (5% of it raked to
-      the Crown); if a duel is cancelled or nobody backed the winning
-      side, every bet is refunded. Bets never earn renown.
-
-    v4 — honest trials:
-    - unwagered duels (wager 0) settle cards and experience as before
-      but grant no renown and no daily-trial credit.
+    v5 = v4 (session delegation, sealed-stance duels, side-bets,
+    park-not-melt fusion, 1-unit NFT cards, closed Ember points) plus:
+    keyword abilities stamped at mint (template "Name|a", ids 1-9);
+    3v3 squad duels (sealed lane order, deposit order = lanes, 2+ lanes
+    take the pot, shared duel-id space); a rated Elo ladder (K=32 in
+    25-point buckets, queue-on-join within a 200 band, zero-sum, floor
+    100); guilds (500 Ember, unique names) and a weekly world boss
+    (staked champions, damage pro-rata bounty from a tenth of summons,
+    +25% for the top guild as fought); and scheduled tournaments
+    (Crown-seeded pools, one round per interval, 60/25/7.5+7.5 split,
+    cancel-and-refund below four seats). Logging via self.log.info.
     """
 
     owner: Address
@@ -106,6 +42,50 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
     stake_since: dict[TokenUid, int]
     ember_ledger: dict[Address, Amount]      # closed in-game points, never a token
     duel_card: dict[int, TokenUid]
+    duel_kind: dict[int, int]                # 0 single (default), 1 squad
+    rating: dict[Address, int]               # rated ladder, absent = 1000
+    ranked_n: dict[int, int]                 # tier -> queue slots ever used
+    ranked_addr: dict[int, Address]          # tier*4096+slot
+    ranked_card: dict[int, TokenUid]
+    ranked_active: dict[int, bool]
+    guild_count: int
+    guild_name: dict[int, str]
+    guild_taken: dict[str, bool]        # lowercase name -> raised
+    guild_members: dict[int, int]
+    member_guild: dict[Address, int]
+    wb_week: int                        # latest posted boss week (0 = none)
+    wb_name: dict[int, str]
+    wb_hp: dict[int, int]               # remaining
+    wb_hp0: dict[int, int]
+    wb_valor: dict[int, int]
+    wb_bulwark: dict[int, int]
+    wb_guile: dict[int, int]
+    wb_pool: dict[int, Amount]          # Ember bounty accrued per week
+    wb_total: dict[int, int]            # damage dealt in total
+    wb_damage: dict[str, int]           # "week|addr" -> damage
+    wb_fought_guild: dict[str, int]     # "week|addr" -> guild at first hit
+    wb_guild_damage: dict[str, int]     # "week|guild" -> damage
+    wb_top_guild: dict[int, int]
+    wb_claimed: dict[str, bool]
+    wb_attempts: dict[TokenUid, int]    # day*10+fights, like writ_attempts
+    next_tourney_id: int
+    tour_name: dict[int, str]
+    tour_state: dict[int, int]          # 0 open, 1 running, 2 done, 3 cancelled
+    tour_fee: dict[int, Amount]
+    tour_seed: dict[int, Amount]
+    tour_size: dict[int, int]           # bracket cap: 4/8/16/32
+    tour_start: dict[int, int]          # registration closes, fights may begin
+    tour_round_secs: dict[int, int]
+    tour_round: dict[int, int]
+    tour_next_ts: dict[int, int]        # earliest next advance
+    tour_n: dict[int, int]              # entrants
+    tour_entrant: dict[int, Address]    # t*64 + i
+    tour_card: dict[int, TokenUid]      # t*64 + i
+    tour_alive: dict[int, bool]         # t*64 + i
+    tour_paid: dict[int, Amount]        # semis + runner-up already credited
+    tour_champion: dict[int, Address]
+    squad_card: dict[int, TokenUid]          # duel_id*4+slot, challenger
+    squad_acceptor_card: dict[int, TokenUid] # duel_id*4+lane, acceptor
     duel_wager: dict[int, Amount]
     duel_challenger: dict[int, Address]
     duel_open: dict[int, bool]
@@ -194,6 +174,50 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.stake_since = {}
         self.ember_ledger = {}
         self.duel_card = {}
+        self.duel_kind = {}
+        self.rating = {}
+        self.ranked_n = {}
+        self.ranked_addr = {}
+        self.ranked_card = {}
+        self.ranked_active = {}
+        self.guild_count = 0
+        self.guild_name = {}
+        self.guild_taken = {}
+        self.guild_members = {}
+        self.member_guild = {}
+        self.wb_week = 0
+        self.wb_name = {}
+        self.wb_hp = {}
+        self.wb_hp0 = {}
+        self.wb_valor = {}
+        self.wb_bulwark = {}
+        self.wb_guile = {}
+        self.wb_pool = {}
+        self.wb_total = {}
+        self.wb_damage = {}
+        self.wb_fought_guild = {}
+        self.wb_guild_damage = {}
+        self.wb_top_guild = {}
+        self.wb_claimed = {}
+        self.wb_attempts = {}
+        self.next_tourney_id = 0
+        self.tour_name = {}
+        self.tour_state = {}
+        self.tour_fee = {}
+        self.tour_seed = {}
+        self.tour_size = {}
+        self.tour_start = {}
+        self.tour_round_secs = {}
+        self.tour_round = {}
+        self.tour_next_ts = {}
+        self.tour_n = {}
+        self.tour_entrant = {}
+        self.tour_card = {}
+        self.tour_alive = {}
+        self.tour_paid = {}
+        self.tour_champion = {}
+        self.squad_card = {}
+        self.squad_acceptor_card = {}
         self.duel_wager = {}
         self.duel_challenger = {}
         self.duel_open = {}
@@ -676,6 +700,13 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             self.card_wins[uid] = card_wins
 
     @public
+    def adopt_rating(self, ctx: Context, who: Address, rating_pts: int) -> None:
+        self._check_owner(ctx)
+        if rating_pts < 100 or rating_pts > 10_000:
+            raise NCFail("rating out of range")
+        self.rating[who] = rating_pts
+
+    @public
     def adopt_player(self, ctx: Context, who: Address, ember: Amount,
                      renown_pts: int, deeds: int, wins_n: int, pulls: int) -> None:
         self._check_owner(ctx)
@@ -716,6 +747,10 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             share = self.proceeds
         self.proceeds -= share
         self.favor_pool += share
+        # the world boss eats too: a tenth of every summon, in Ember,
+        # into the CURRENT week's bounty pool (posted boss or not)
+        week = ctx.block.timestamp // 604_800
+        self.wb_pool[week] = self.wb_pool.get(week, 0) + self.pull_price // 10
         self._earn_renown(who, 10, ctx.block.timestamp)
         self._grant_deed(who, 0)
         self._trial_hit(who, 0, ctx.block.timestamp)
@@ -905,6 +940,49 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.writ_guile.append(guile)
 
     @public
+    def set_writ(self, ctx: Context, writ: int, valor: int, bulwark: int,
+                 guile: int) -> None:
+        """Retune a posted boss. Balance is a moving target and a realm
+        should not need a new contract to answer it."""
+        self._check_owner(ctx)
+        if writ < 0 or writ >= len(self.writ_name):
+            raise NCFail("no such writ")
+        if valor < 1 or bulwark < 1 or guile < 1:
+            raise NCFail("aspects must be positive")
+        if valor + bulwark + guile > 4_000:
+            raise NCFail("writ too mighty")
+        self.writ_valor[writ] = valor
+        self.writ_bulwark[writ] = bulwark
+        self.writ_guile[writ] = guile
+        self.log.info('writ_retuned', writ=writ)
+
+    def _writ_spread(self, writ: int, tier: int, power: int) -> list[int]:
+        """The aspects a champion of this power actually faces. Tiers step
+        x1/x3/x9, then the spread is floored at 45/80/115% of the champion's
+        power, keeping its shape: a posting of 6/5/5 was no gate at all for a
+        Highlord, let alone a Sovereign."""
+        mult = [1, 3, 9][tier]
+        bv = self.writ_valor[writ] * mult
+        bb = self.writ_bulwark[writ] * mult
+        bg = self.writ_guile[writ] * mult
+        total = bv + bb + bg
+        floor = power * [45, 80, 115][tier] // 100
+        if 0 < total < floor:
+            bv = bv * floor // total
+            bb = bb * floor // total
+            bg = bg * floor // total
+        return [bv, bb, bg]
+
+    @view
+    def get_writ_spread(self, writ: int, tier: int, power: int) -> str:
+        """What a fight will face, "v|b|g", from the same code the fight
+        runs: the UI never has to guess or duplicate the maths."""
+        if writ < 0 or writ >= len(self.writ_name) or tier < 0 or tier > 2:
+            return ""
+        sp = self._writ_spread(writ, tier, power)
+        return f"{sp[0]}|{sp[1]}|{sp[2]}"
+
+    @public
     def fight_writ(self, ctx: Context, card: TokenUid, writ: int, tier: int) -> int:
         """Best-of-three against a posted writ, tier Grim(0)/Dire(1)/Black(2)
         scaling its aspects 1x/2x/4x. Entry: a fifth of the champion's
@@ -942,10 +1020,7 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         # half to the Crown; the other half simply ceases to exist
         self._credit_ember(self.owner, entry // 2)
 
-        mult = [1, 2, 4][tier]
-        boss = [self.writ_valor[writ] * mult,
-                self.writ_bulwark[writ] * mult,
-                self.writ_guile[writ] * mult]
+        boss = self._writ_spread(writ, tier, self.card_power[card])
         attrs = self.card_attrs[card]
         ab = self.card_ability.get(card, 0)
         weaker = 1 if self.card_power[card] < boss[0] + boss[1] + boss[2] else 0
@@ -994,6 +1069,401 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             f'"valor":{r0},"bulwark":{r1},"guile":{r2}}}'.encode()
         )
         return victory
+
+    # ------------------------------------------------------------------
+    # Guilds and the world boss
+    # ------------------------------------------------------------------
+
+    def _wb_key(self, week: int, who: Address) -> str:
+        return f"{week}|{who.hex()}"
+
+    @public
+    def create_guild(self, ctx: Context, name: str) -> int:
+        """Raise a banner for 500 Ember (burned). One guild per identity;
+        names are unique, case-insensitively."""
+        who = self._player(ctx)
+        if who in self.member_guild:
+            raise NCFail("you already ride under a banner")
+        if len(name) < 3 or len(name) > 16:
+            raise NCFail("guild name must be 3-16 chars")
+        key = name.lower()
+        if self.guild_taken.get(key, False):
+            raise NCFail("that banner is already raised")
+        balance = self.ember_ledger.get(who, 0)
+        if balance < 500:
+            raise NCFail("raising a banner costs 500 Ember")
+        self._debit_ember(who, 500)
+        gid = self.guild_count
+        self.guild_count = gid + 1
+        self.guild_name[gid] = name
+        self.guild_taken[key] = True
+        self.guild_members[gid] = 1
+        self.member_guild[who] = gid
+        self.log.info('guild_created', guild_id=gid)
+        self.syscall.emit_event(
+            f'{{"event":"guild_created","id":{gid}}}'.encode()
+        )
+        return gid
+
+    @public
+    def join_guild(self, ctx: Context, guild_id: int) -> None:
+        who = self._player(ctx)
+        if who in self.member_guild:
+            raise NCFail("you already ride under a banner")
+        if guild_id < 0 or guild_id >= self.guild_count:
+            raise NCFail("no such guild")
+        self.member_guild[who] = guild_id
+        self.guild_members[guild_id] = self.guild_members.get(guild_id, 0) + 1
+        self.log.info('guild_joined', guild_id=guild_id)
+
+    @public
+    def leave_guild(self, ctx: Context) -> None:
+        who = self._player(ctx)
+        if who not in self.member_guild:
+            raise NCFail("you ride under no banner")
+        gid = self.member_guild[who]
+        del self.member_guild[who]
+        self.guild_members[gid] = self.guild_members.get(gid, 1) - 1
+        self.log.info('guild_left', guild_id=gid)
+
+    @public
+    def post_world_boss(self, ctx: Context, name: str, hp: int,
+                        valor: int, bulwark: int, guile: int) -> int:
+        """The Crown posts the week's boss (a cron scales hp to the realm).
+        An unslain previous boss rolls its bounty pool forward."""
+        self._check_owner(ctx)
+        if len(name) < 1 or len(name) > 30:
+            raise NCFail("name must be 1-30 chars")
+        if hp < 100 or hp > 1_000_000:
+            raise NCFail("hp out of range")
+        if valor < 1 or bulwark < 1 or guile < 1:
+            raise NCFail("aspects must be positive")
+        if valor + bulwark + guile > 10_000:
+            raise NCFail("boss too mighty")
+        week = ctx.block.timestamp // 604_800
+        if week in self.wb_name:
+            raise NCFail("this week's boss already stands")
+        prev = self.wb_week
+        if prev > 0 and prev != week and self.wb_hp.get(prev, 0) > 0:
+            self.wb_pool[week] = self.wb_pool.get(week, 0) + self.wb_pool.get(prev, 0)
+            self.wb_pool[prev] = 0
+        self.wb_week = week
+        self.wb_name[week] = name
+        self.wb_hp[week] = hp
+        self.wb_hp0[week] = hp
+        self.wb_valor[week] = valor
+        self.wb_bulwark[week] = bulwark
+        self.wb_guile[week] = guile
+        self.log.info('world_boss_posted', week=week, hp=hp)
+        self.syscall.emit_event(
+            f'{{"event":"world_boss","week":{week},"hp":{hp}}}'.encode()
+        )
+        return week
+
+    @public
+    def fight_world_boss(self, ctx: Context, card: TokenUid) -> int:
+        """A staked champion strikes the week's boss. Entry: a fifth of the
+        champion's fusion fee (half burned, half Crown), three fights per
+        champion per day. Damage = rounds won x power. Returns the damage."""
+        who = self._player(ctx)
+        now = ctx.block.timestamp
+        week = now // 604_800
+        if week not in self.wb_name:
+            raise NCFail("no world boss stands this week")
+        if self.wb_hp.get(week, 0) <= 0:
+            raise NCFail("the boss has already fallen")
+        if self.staked.get(card) != who:
+            raise NCFail("champions march on the boss from the Mines")
+        self._check_not_delving(card)
+        day = now // 86400
+        packed = self.wb_attempts.get(card, 0)
+        used = packed % 10 if packed // 10 == day else 0
+        if used >= 3:
+            raise NCFail("this champion has fought enough for one day")
+        self.wb_attempts[card] = day * 10 + used + 1
+        entry = self._fusion_fee(self.card_tier[card]) // 5
+        if entry < 1:
+            entry = 1
+        balance = self.ember_ledger.get(who, 0)
+        if balance < entry:
+            raise NCFail(f"the boss demands an entry of {entry} Ember")
+        self._debit_ember(who, entry)
+        self._credit_ember(self.owner, entry // 2)
+
+        boss = [self.wb_valor[week], self.wb_bulwark[week], self.wb_guile[week]]
+        attrs = self.card_attrs[card]
+        ab = self.card_ability.get(card, 0)
+        weaker = 1 if self.card_power[card] < boss[0] + boss[1] + boss[2] else 0
+        rounds = 0
+        r0 = 0
+        r1 = 0
+        for aspect in range(3):
+            pc = self._attr_at(attrs, aspect)
+            pb = boss[aspect]
+            split = 1 if aspect == 2 and r0 + r1 == 1 else 0
+            pc = self._ability_boost(ab, aspect, r0, split, weaker, pc)
+            won = 1 if self.syscall.rng.randbelow(pc + pb) < pc else 0
+            rounds += won
+            if aspect == 0:
+                r0 = won
+            elif aspect == 1:
+                r1 = won
+        damage = rounds * self.card_power[card]
+        slain = 0
+        if damage > 0:
+            hp = self.wb_hp[week] - damage
+            if hp <= 0:
+                hp = 0
+                slain = 1
+            self.wb_hp[week] = hp
+            dkey = self._wb_key(week, who)
+            if dkey not in self.wb_damage:
+                # the bounty bonus follows the banner you FOUGHT under
+                self.wb_fought_guild[dkey] = self.member_guild.get(who, -1)
+            self.wb_damage[dkey] = self.wb_damage.get(dkey, 0) + damage
+            self.wb_total[week] = self.wb_total.get(week, 0) + damage
+            gid = self.wb_fought_guild.get(dkey, -1)
+            if gid >= 0:
+                gkey = f"{week}|{gid}"
+                gdmg = self.wb_guild_damage.get(gkey, 0) + damage
+                self.wb_guild_damage[gkey] = gdmg
+                top = self.wb_top_guild.get(week, -1)
+                if top < 0 or gid == top:
+                    self.wb_top_guild[week] = gid
+                elif gdmg > self.wb_guild_damage.get(f"{week}|{top}", 0):
+                    self.wb_top_guild[week] = gid
+        self._earn_renown(who, 3, now)
+        self._grant_xp(card, 2 if rounds > 0 else 1)
+        if slain == 1:
+            self.renown[who] = self.renown.get(who, 0) + 6
+            self.log.info('world_boss_slain', week=week)
+        self.log.info('world_boss_hit', week=week, damage=damage)
+        self.syscall.emit_event(
+            f'{{"event":"wb_hit","week":{week},"damage":{damage},"slain":{slain}}}'.encode()
+        )
+        return damage
+
+    @public
+    def claim_world_bounty(self, ctx: Context, week: int) -> Amount:
+        """After the boss falls, every contributor claims the pool pro-rata
+        by damage; the top-damage guild's fighters take +25%."""
+        who = self._player(ctx)
+        if week not in self.wb_name:
+            raise NCFail("no boss stood that week")
+        if self.wb_hp.get(week, 1) > 0:
+            raise NCFail("the boss still stands")
+        ckey = self._wb_key(week, who)
+        if self.wb_claimed.get(ckey, False):
+            raise NCFail("already claimed")
+        dmg = self.wb_damage.get(ckey, 0)
+        if dmg <= 0:
+            raise NCFail("you dealt no damage that week")
+        total = self.wb_total.get(week, 0)
+        pool = self.wb_pool.get(week, 0)
+        share = pool * dmg // total if total > 0 else 0
+        top = self.wb_top_guild.get(week, -1)
+        if top >= 0 and self.wb_fought_guild.get(ckey, -1) == top:
+            share += share // 4
+        self.wb_claimed[ckey] = True
+        if share > 0:
+            self._credit_ember(who, share)
+        self.log.info('world_bounty_claimed', week=week, share=share)
+        return share
+
+    # ------------------------------------------------------------------
+    # Tournaments: scheduled brackets, Crown-seeded prize pools
+    # ------------------------------------------------------------------
+
+    @public
+    def create_tournament(self, ctx: Context, name: str, fee: Amount,
+                          size: int, start_ts: int, round_secs: int,
+                          seed: Amount) -> int:
+        """The Crown schedules a bracket. The seed comes out of its own
+        Ember ledger now and returns only if the bracket cancels."""
+        self._check_owner(ctx)
+        if len(name) < 1 or len(name) > 30:
+            raise NCFail("name must be 1-30 chars")
+        if fee < 0 or seed < 0:
+            raise NCFail("fee and seed cannot be negative")
+        if size != 4 and size != 8 and size != 16 and size != 32:
+            raise NCFail("bracket size must be 4, 8, 16 or 32")
+        if start_ts <= ctx.block.timestamp:
+            raise NCFail("the start must lie ahead")
+        if round_secs < 30 or round_secs > 7 * 86400:
+            raise NCFail("round interval out of range")
+        who = self._player(ctx)
+        if seed > 0:
+            if self.ember_ledger.get(who, 0) < seed:
+                raise NCFail("the Crown's ledger cannot cover that seed")
+            self._debit_ember(who, seed)
+        t = self.next_tourney_id
+        self.next_tourney_id = t + 1
+        self.tour_name[t] = name
+        self.tour_state[t] = 0
+        self.tour_fee[t] = fee
+        self.tour_seed[t] = seed
+        self.tour_size[t] = size
+        self.tour_start[t] = start_ts
+        self.tour_round_secs[t] = round_secs
+        self.tour_round[t] = 0
+        self.tour_next_ts[t] = start_ts
+        self.tour_n[t] = 0
+        self.tour_paid[t] = 0
+        self.log.info('tournament_posted', tournament=t, start=start_ts)
+        self.syscall.emit_event(
+            f'{{"event":"tournament","id":{t},"start":{start_ts}}}'.encode()
+        )
+        return t
+
+    @public(allow_deposit=True)
+    def enter_tournament(self, ctx: Context, t: int) -> int:
+        """One champion and the entry fee buy a bracket seat. One seat
+        per identity; leave_tournament refunds fully before the start."""
+        who = self._player(ctx)
+        if self.tour_state.get(t, -1) != 0:
+            raise NCFail("that tournament is not open")
+        if ctx.block.timestamp >= self.tour_start[t]:
+            raise NCFail("registration has closed")
+        n = self.tour_n[t]
+        if n >= self.tour_size[t]:
+            raise NCFail("the bracket is full")
+        i = 0
+        while i < n:
+            if self.tour_entrant[t * 64 + i] == who:
+                raise NCFail("you already hold a seat")
+            i += 1
+        action = self._single_card_deposit(ctx)
+        fee = self.tour_fee[t]
+        if self.ember_ledger.get(who, 0) < fee:
+            raise NCFail("not enough Ember for the entry fee")
+        self._debit_ember(who, fee)
+        key = t * 64 + n
+        self.tour_entrant[key] = who
+        self.tour_card[key] = action.token_uid
+        self.tour_alive[key] = True
+        self.tour_n[t] = n + 1
+        self.log.info('tournament_entered', tournament=t, seat=n)
+        return n
+
+    @public
+    def leave_tournament(self, ctx: Context, t: int) -> None:
+        """Give up the seat before the start: fee and champion return."""
+        who = self._player(ctx)
+        if self.tour_state.get(t, -1) != 0:
+            raise NCFail("that tournament is not open")
+        if ctx.block.timestamp >= self.tour_start[t]:
+            raise NCFail("the bracket is set; seats are held to the end")
+        n = self.tour_n[t]
+        i = 0
+        while i < n:
+            if self.tour_entrant[t * 64 + i] == who:
+                self._credit_ember(who, self.tour_fee[t])
+                self.pending[self.tour_card[t * 64 + i]] = who
+                last = t * 64 + (n - 1)
+                self.tour_entrant[t * 64 + i] = self.tour_entrant[last]
+                self.tour_card[t * 64 + i] = self.tour_card[last]
+                self.tour_n[t] = n - 1
+                self.log.info('tournament_left', tournament=t)
+                return
+            i += 1
+        raise NCFail("you hold no seat in that tournament")
+
+    @public
+    def advance_tournament(self, ctx: Context, t: int) -> int:
+        """Anyone may push the bracket once a round is due. Below four
+        entrants at start the bracket cancels with full refunds. Returns
+        the number of entrants still standing (0 on cancellation)."""
+        now = ctx.block.timestamp
+        state = self.tour_state.get(t, -1)
+        if state != 0 and state != 1:
+            raise NCFail("that tournament is over")
+        if now < self.tour_next_ts[t]:
+            raise NCFail("the next round is not due yet")
+        n = self.tour_n[t]
+        if state == 0:
+            if n < 4:
+                i = 0
+                while i < n:
+                    key = t * 64 + i
+                    self._credit_ember(self.tour_entrant[key], self.tour_fee[t])
+                    self.pending[self.tour_card[key]] = self.tour_entrant[key]
+                    i += 1
+                if self.tour_seed[t] > 0:
+                    self._credit_ember(self.owner, self.tour_seed[t])
+                self.tour_state[t] = 3
+                self.log.info('tournament_cancelled', tournament=t)
+                self.syscall.emit_event(
+                    f'{{"event":"tour_cancel","id":{t}}}'.encode()
+                )
+                return 0
+            self.tour_state[t] = 1
+        pool = self.tour_fee[t] * n + self.tour_seed[t]
+        alive: list[int] = []
+        i = 0
+        while i < n:
+            if self.tour_alive.get(t * 64 + i, False):
+                alive.append(i)
+            i += 1
+        m = len(alive)
+        if m < 2:
+            raise NCFail("the bracket is already decided")
+        fee = self.tour_fee[t]
+        k = 0
+        while k + 1 < m:
+            key_a = t * 64 + alive[k]
+            key_b = t * 64 + alive[k + 1]
+            card_a = self.tour_card[key_a]
+            card_b = self.tour_card[key_b]
+            packed = self._fight_rounds(card_a, card_b, -1, -1)
+            a_won = packed // 1000 >= 2
+            lose_key = key_b if a_won else key_a
+            win_card = card_a if a_won else card_b
+            lose_card = card_b if a_won else card_a
+            loser = self.tour_entrant[lose_key]
+            self._after_fight(win_card, lose_card, fee)
+            self.tour_alive[lose_key] = False
+            self.pending[lose_card] = loser
+            if 2 < m <= 4:
+                # falling in the semifinals still pays: 7.5% of the pool
+                # (the final's loser is the runner-up, paid below instead)
+                share = pool * 75 // 1000
+                if share > 0:
+                    self._credit_ember(loser, share)
+                self.tour_paid[t] = self.tour_paid.get(t, 0) + share
+            k += 2
+        # an odd tail walks through on a bye
+        self.tour_round[t] = self.tour_round.get(t, 0) + 1
+        self.tour_next_ts[t] = now + self.tour_round_secs[t]
+        survivors = m - m // 2
+        if m == 2:
+            # that was the final
+            win_i = alive[0] if self.tour_alive.get(t * 64 + alive[0], False) else alive[1]
+            lose_i = alive[1] if win_i == alive[0] else alive[0]
+            champion = self.tour_entrant[t * 64 + win_i]
+            runner = self.tour_entrant[t * 64 + lose_i]
+            runner_share = pool * 250 // 1000
+            if runner_share > 0:
+                self._credit_ember(runner, runner_share)
+            paid = self.tour_paid.get(t, 0) + runner_share
+            champ_share = pool - paid
+            self._credit_ember(champion, champ_share)
+            self.pending[self.tour_card[t * 64 + win_i]] = champion
+            self.tour_champion[t] = champion
+            self.tour_state[t] = 2
+            self.wins[champion] = self.wins.get(champion, 0) + 1
+            self._earn_renown(champion, 25, now)
+            self._earn_renown(runner, 10, now)
+            self.log.info('tournament_won', tournament=t, prize=champ_share)
+            self.syscall.emit_event(
+                f'{{"event":"tour_won","id":{t},"prize":{champ_share}}}'.encode()
+            )
+            return 1
+        self.log.info('tournament_round', tournament=t,
+                      round_no=self.tour_round[t], standing=survivors)
+        self.syscall.emit_event(
+            f'{{"event":"tour_round","id":{t},"standing":{survivors}}}'.encode()
+        )
+        return survivors
 
     # ------------------------------------------------------------------
     # Cosmetics: bought identity that travels with the card, never power
@@ -1119,6 +1589,292 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             self.duel_commit[duel_id] = commitment
         return duel_id
 
+    def _three_card_deposits(self, ctx: Context) -> list[TokenUid]:
+        if len(ctx.actions_list) != 3:
+            raise NCFail("deposit exactly three cards")
+        cards: list[TokenUid] = []
+        for act in ctx.actions_list:
+            if not isinstance(act, NCDepositAction) or act.amount != self.card_unit:
+                raise NCFail("each action must deposit one full card")
+            if act.token_uid not in self.card_tier:
+                raise NCFail("unknown card")
+            if self.parked.get(act.token_uid, False):
+                raise NCFail("that champion rests in the vault")
+            if act.token_uid in cards:
+                raise NCFail("three distinct cards required")
+            cards.append(act.token_uid)
+        return cards
+
+    @public(allow_deposit=True)
+    def create_squad_duel(self, ctx: Context, wager: Amount, commitment: bytes) -> int:
+        """Post a 3v3 challenge. The squad is public; the lane order is
+        sealed: commitment = sha3("perm:salt") with perm a permutation
+        of the digits 012 (lane i is fought by your card perm[i], in
+        deposit order)."""
+        who = self._player(ctx)
+        if wager < 0:
+            raise NCFail("wager cannot be negative")
+        if len(commitment) != 32:
+            raise NCFail("squads always seal the lane order (32 bytes)")
+        cards = self._three_card_deposits(ctx)
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        duel_id = self.next_duel_id
+        self.next_duel_id = duel_id + 1
+        self.duel_kind[duel_id] = 1
+        self.duel_card[duel_id] = cards[0]
+        i = 0
+        while i < 3:
+            self.squad_card[duel_id * 4 + i] = cards[i]
+            i += 1
+        self.duel_wager[duel_id] = wager
+        self.duel_challenger[duel_id] = who
+        self.duel_open[duel_id] = True
+        self.duel_commit[duel_id] = commitment
+        return duel_id
+
+    @public(allow_deposit=True)
+    def accept_squad_duel(self, ctx: Context, duel_id: int) -> int:
+        """Answer a 3v3: deposit three cards; the deposit order IS your
+        lane assignment. Settles at the challenger's reveal."""
+        who = self._player(ctx)
+        if not self.duel_open.get(duel_id, False):
+            raise NCFail("duel is not open")
+        if self.duel_kind.get(duel_id, 0) != 1:
+            raise NCFail("this is not a squad duel")
+        challenger = self.duel_challenger[duel_id]
+        if challenger == who:
+            raise NCFail("cannot duel yourself")
+        bet_n = self.bet_count.get(duel_id, 0)
+        i = 0
+        while i < bet_n:
+            if self.bet_addr[duel_id * 64 + i] == who:
+                raise NCFail("you have a bet riding on this duel")
+            i += 1
+        cards = self._three_card_deposits(ctx)
+        wager = self.duel_wager[duel_id]
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        self.duel_open[duel_id] = False
+        self.duel_acceptor[duel_id] = who
+        self.duel_acceptor_card[duel_id] = cards[0]
+        i = 0
+        while i < 3:
+            self.squad_acceptor_card[duel_id * 4 + i] = cards[i]
+            i += 1
+        self.duel_accept_ts[duel_id] = ctx.block.timestamp
+        self.duel_reveal_pending[duel_id] = True
+        self.log.info('squad_accepted', duel_id=duel_id)
+        self.syscall.emit_event(
+            f'{{"event":"squad_accepted","id":{duel_id}}}'.encode()
+        )
+        return 2
+
+    @public
+    def reveal_squad(self, ctx: Context, duel_id: int, perm: str, salt: str) -> int:
+        """The challenger unseals the lane order and the three lane fights
+        settle. Two lanes take the pot. Returns 0 (challenger) or 1."""
+        who = self._player(ctx)
+        if not self.duel_reveal_pending.get(duel_id, False):
+            raise NCFail("this duel awaits no reveal")
+        if self.duel_kind.get(duel_id, 0) != 1:
+            raise NCFail("this is not a squad duel")
+        if self.duel_challenger[duel_id] != who:
+            raise NCFail("only the challenger may reveal")
+        if len(perm) != 3 or "0" not in perm or "1" not in perm or "2" not in perm:
+            raise NCFail("perm must arrange the digits 012")
+        if sha3(f"{perm}:{salt}".encode()) != self.duel_commit[duel_id]:
+            raise NCFail("that is not the sealed lane order")
+        self.duel_reveal_pending[duel_id] = False
+        challenger = self.duel_challenger[duel_id]
+        acceptor = self.duel_acceptor[duel_id]
+        wager = self.duel_wager[duel_id]
+        lanes_c = 0
+        lane = 0
+        digits = "012"
+        results = [0, 0, 0]
+        while lane < 3:
+            c_card = self.squad_card[duel_id * 4 + digits.find(perm[lane])]
+            a_card = self.squad_acceptor_card[duel_id * 4 + lane]
+            packed = self._fight_rounds(c_card, a_card, -1, -1)
+            c_won = 1 if packed // 1000 >= 2 else 0
+            lanes_c += c_won
+            results[lane] = c_won
+            if c_won == 1:
+                self._after_fight(c_card, a_card, wager)
+            else:
+                self._after_fight(a_card, c_card, wager)
+            lane += 1
+        winner = challenger if lanes_c >= 2 else acceptor
+        pot = 2 * wager
+        rake = pot * self._rake_bps() // 10_000
+        self._credit_ember(winner, pot - rake)
+        self._credit_ember(self.owner, rake)
+        self.wins[winner] = self.wins.get(winner, 0) + 1
+        if wager > 0:
+            self._earn_renown(challenger, 5, ctx.block.timestamp)
+            self._earn_renown(acceptor, 5, ctx.block.timestamp)
+            self.renown[winner] = self.renown.get(winner, 0) + 10
+            self._trial_hit(winner, 2, ctx.block.timestamp)
+        self._grant_deed(winner, 4)
+        if self.wins[winner] >= 10:
+            self._grant_deed(winner, 5)
+        i = 0
+        while i < 3:
+            self.pending[self.squad_card[duel_id * 4 + i]] = challenger
+            self.pending[self.squad_acceptor_card[duel_id * 4 + i]] = acceptor
+            i += 1
+        winning_side = 0 if winner == challenger else 1
+        self._settle_bets(duel_id, winning_side)
+        self.log.info('squad_settled', duel_id=duel_id,
+                      winner_side=winning_side,
+                      l0=results[0], l1=results[1], l2=results[2])
+        self.syscall.emit_event(
+            f'{{"event":"squad","id":{duel_id},"lanes":"{results[0]}{results[1]}{results[2]}"}}'.encode()
+        )
+        return winning_side
+
+    def _rating_of(self, who: Address) -> int:
+        return self.rating.get(who, 1000)
+
+    def _ranked_wager(self, tier: int) -> Amount:
+        if tier == 0:
+            return 0
+        if tier == 1:
+            return 25
+        if tier == 2:
+            return 100
+        raise NCFail("unknown ranked tier")
+
+    def _elo_transfer(self, winner_r: int, loser_r: int) -> int:
+        """Standard Elo K=32 expected-score transfer, rounded to integers
+        in 25-point buckets (matches the exact formula to the point within
+        the 200-rating matchmaking band)."""
+        adv = winner_r - loser_r
+        if adv >= 0:
+            bucket = adv // 25
+            if bucket > 8:
+                bucket = 8
+            return 16 - bucket
+        bucket = (-adv) // 25
+        if bucket > 8:
+            bucket = 8
+        return 16 + bucket
+
+    @public(allow_deposit=True)
+    def join_ranked(self, ctx: Context, tier: int) -> int:
+        """Enter the rated queue with one card and the tier's fixed wager
+        (0/25/100 Ember). If a compatible opponent waits (rating within
+        200), this tx settles the fight at once: returns 1. Otherwise you
+        wait in the queue: returns 0."""
+        who = self._player(ctx)
+        wager = self._ranked_wager(tier)
+        action = self._single_card_deposit(ctx)
+        my_card = action.token_uid
+        balance = self.ember_ledger.get(who, 0)
+        if balance < wager:
+            raise NCFail("not enough Ember in your ledger for this wager")
+        self._debit_ember(who, wager)
+        my_r = self._rating_of(who)
+        n = self.ranked_n.get(tier, 0)
+        free = -1
+        match_i = -1
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if not self.ranked_active.get(key, False):
+                if free < 0:
+                    free = i
+                i += 1
+                continue
+            other = self.ranked_addr[key]
+            if other == who:
+                raise NCFail("you are already in this queue")
+            d = self._rating_of(other) - my_r
+            if match_i < 0 and -200 <= d <= 200:
+                match_i = i
+            i += 1
+        if match_i < 0:
+            slot = free if free >= 0 else n
+            key = tier * 4096 + slot
+            self.ranked_addr[key] = who
+            self.ranked_card[key] = my_card
+            self.ranked_active[key] = True
+            if slot == n:
+                self.ranked_n[tier] = n + 1
+            self.log.info('ranked_queued', tier=tier)
+            self.syscall.emit_event(
+                f'{{"event":"ranked_queued","tier":{tier}}}'.encode()
+            )
+            return 0
+        key = tier * 4096 + match_i
+        self.ranked_active[key] = False
+        opponent = self.ranked_addr[key]
+        opp_card = self.ranked_card[key]
+        packed = self._fight_rounds(opp_card, my_card, -1, -1)
+        opp_won = packed // 1000 >= 2
+        winner = opponent if opp_won else who
+        loser = who if opp_won else opponent
+        winner_card = opp_card if opp_won else my_card
+        loser_card = my_card if opp_won else opp_card
+        self._after_fight(winner_card, loser_card, wager)
+        pot = 2 * wager
+        rake = pot * self._rake_bps() // 10_000
+        if self.card_ability.get(winner_card, 0) == 8:
+            rake = 0                           # the Plunderer carries it all off
+        self._credit_ember(winner, pot - rake)
+        self._credit_ember(self.owner, rake)
+        self.wins[winner] = self.wins.get(winner, 0) + 1
+        if wager > 0:
+            self._earn_renown(who, 5, ctx.block.timestamp)
+            self._earn_renown(opponent, 5, ctx.block.timestamp)
+            self.renown[winner] = self.renown.get(winner, 0) + 10
+            self._trial_hit(winner, 2, ctx.block.timestamp)
+        self._grant_deed(winner, 4)
+        if self.wins[winner] >= 10:
+            self._grant_deed(winner, 5)
+        w_r = self._rating_of(winner)
+        l_r = self._rating_of(loser)
+        move = self._elo_transfer(w_r, l_r)
+        if l_r - move < 100:
+            # ladder floor: the loser never drops below 100; the winner
+            # takes only what actually moved (stays zero-sum)
+            move = l_r - 100
+            if move < 0:
+                move = 0
+        self.rating[winner] = w_r + move
+        self.rating[loser] = l_r - move
+        self.pending[my_card] = who
+        self.pending[opp_card] = opponent
+        self.log.info('ranked_settled', tier=tier,
+                      joiner_won=0 if opp_won else 1, move=move)
+        self.syscall.emit_event(
+            f'{{"event":"ranked","tier":{tier},"move":{move}}}'.encode()
+        )
+        return 1
+
+    @public
+    def leave_ranked(self, ctx: Context, tier: int) -> None:
+        """Step out of the rated queue: the wager returns to your ledger
+        and your champion goes to pending for claiming."""
+        who = self._player(ctx)
+        n = self.ranked_n.get(tier, 0)
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if self.ranked_active.get(key, False) and self.ranked_addr[key] == who:
+                self.ranked_active[key] = False
+                self._credit_ember(who, self._ranked_wager(tier))
+                self.pending[self.ranked_card[key]] = who
+                self.log.info('ranked_left', tier=tier)
+                return
+            i += 1
+        raise NCFail("you are not in this queue")
+
     @public(allow_deposit=True)
     def accept_duel(self, ctx: Context, duel_id: int, stance: int) -> int:
         """Answer a challenge. Classic duels (no commitment) demand
@@ -1128,6 +1884,8 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         who = self._player(ctx)
         if not self.duel_open.get(duel_id, False):
             raise NCFail("duel is not open")
+        if self.duel_kind.get(duel_id, 0) != 0:
+            raise NCFail("this is a squad duel: answer with three cards")
         challenger = self.duel_challenger[duel_id]
         if challenger == who:
             raise NCFail("cannot duel yourself")
@@ -1169,6 +1927,8 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         who = self._player(ctx)
         if not self.duel_reveal_pending.get(duel_id, False):
             raise NCFail("this duel awaits no reveal")
+        if self.duel_kind.get(duel_id, 0) != 0:
+            raise NCFail("this is a squad duel: reveal the lane order")
         if self.duel_challenger[duel_id] != who:
             raise NCFail("only the challenger may reveal")
         if stance < 0 or stance > 2:
@@ -1200,8 +1960,15 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         self.wins[acceptor] = self.wins.get(acceptor, 0) + 1
         if wager > 0:
             self.renown[acceptor] = self.renown.get(acceptor, 0) + 10
-        self.pending[self.duel_card[duel_id]] = challenger
-        self.pending[self.duel_acceptor_card[duel_id]] = acceptor
+        if self.duel_kind.get(duel_id, 0) == 1:
+            i = 0
+            while i < 3:
+                self.pending[self.squad_card[duel_id * 4 + i]] = challenger
+                self.pending[self.squad_acceptor_card[duel_id * 4 + i]] = acceptor
+                i += 1
+        else:
+            self.pending[self.duel_card[duel_id]] = challenger
+            self.pending[self.duel_acceptor_card[duel_id]] = acceptor
         self._settle_bets(duel_id, 1)
         self.log.info('duel_forfeited', duel_id=duel_id, winner_side=1)
         self.syscall.emit_event(
@@ -1218,25 +1985,22 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             return 0
         return 1
 
-    def _resolve_duel(self, ctx: Context, duel_id: int,
+    def _fight_rounds(self, card_a: TokenUid, card_b: TokenUid,
                       c_stance: int, a_stance: int) -> int:
-        challenger = self.duel_challenger[duel_id]
-        acceptor = self.duel_acceptor[duel_id]
-        wager = self.duel_wager[duel_id]
-        their_card = self.duel_card[duel_id]
-        my_card = self.duel_acceptor_card[duel_id]
-        attrs_a = self.card_attrs[their_card]
-        attrs_b = self.card_attrs[my_card]
-        ab_a = self.card_ability.get(their_card, 0)
-        ab_b = self.card_ability.get(my_card, 0)
+        """One full aspect fight between two cards with abilities and an
+        optional stance edge. Returns rounds_a*1000 + r0*100 + r1*10 + r2."""
+        attrs_a = self.card_attrs[card_a]
+        attrs_b = self.card_attrs[card_b]
+        ab_a = self.card_ability.get(card_a, 0)
+        ab_b = self.card_ability.get(card_b, 0)
         edge = self._stance_edge(c_stance, a_stance)
         # a Stancebreaker voids the FOE'S edge, never its own
         if edge == 0 and ab_b == 7:
             edge = -1
         if edge == 1 and ab_a == 7:
             edge = -1
-        weaker_a = 1 if self.card_power[their_card] < self.card_power[my_card] else 0
-        weaker_b = 1 if self.card_power[my_card] < self.card_power[their_card] else 0
+        weaker_a = 1 if self.card_power[card_a] < self.card_power[card_b] else 0
+        weaker_b = 1 if self.card_power[card_b] < self.card_power[card_a] else 0
         rounds_a = 0
         r0 = 0
         r1 = 0
@@ -1261,17 +2025,18 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
                 r1 = won
             else:
                 r2 = won
-        winner = challenger if rounds_a >= 2 else acceptor
-        winner_card = their_card if winner == challenger else my_card
-        loser_card = my_card if winner == challenger else their_card
+        return rounds_a * 1000 + r0 * 100 + r1 * 10 + r2
+
+    def _after_fight(self, winner_card: TokenUid, loser_card: TokenUid,
+                     wager: Amount) -> None:
+        """Per-fight card rewards: the win mark, battle-hardening under the
+        usual conditions, veterancy XP (Scholars double)."""
         self.card_wins[winner_card] = self.card_wins.get(winner_card, 0) + 1
-        hardened_gain = 0
         w_attrs = self.card_attrs[winner_card]
         w_tier = self.card_tier[winner_card]
         if (wager >= self._fusion_fee(w_tier)
                 and self.card_power[loser_card] >= self.card_power[winner_card]
                 and self._attr_hardened(w_attrs) < self._harden_cap(w_tier)):
-            hardened_gain = 1
             which = self.syscall.rng.randbelow(3)
             valor = self._attr_at(w_attrs, 0)
             bulwark = self._attr_at(w_attrs, 1)
@@ -1287,13 +2052,29 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
                 self._attr_hardened(w_attrs) + 1,
                 self._attr_xp(w_attrs), self._attr_vet(w_attrs))
             self.card_power[winner_card] = self.card_power[winner_card] + 1
-
-        # veterancy: mileage for both fighters (after hardening so the
-        # level-up reads the freshest aspects)
         xp_w = 8 if self.card_ability.get(winner_card, 0) == 9 else 4
         xp_l = 4 if self.card_ability.get(loser_card, 0) == 9 else 2
         self._grant_xp(winner_card, xp_w)
         self._grant_xp(loser_card, xp_l)
+
+    def _resolve_duel(self, ctx: Context, duel_id: int,
+                      c_stance: int, a_stance: int) -> int:
+        challenger = self.duel_challenger[duel_id]
+        acceptor = self.duel_acceptor[duel_id]
+        wager = self.duel_wager[duel_id]
+        their_card = self.duel_card[duel_id]
+        my_card = self.duel_acceptor_card[duel_id]
+        packed = self._fight_rounds(their_card, my_card, c_stance, a_stance)
+        rounds_a = packed // 1000
+        r0 = (packed // 100) % 10
+        r1 = (packed // 10) % 10
+        r2 = packed % 10
+        winner = challenger if rounds_a >= 2 else acceptor
+        winner_card = their_card if winner == challenger else my_card
+        loser_card = my_card if winner == challenger else their_card
+        power_before = self.card_power[winner_card]
+        self._after_fight(winner_card, loser_card, wager)
+        hardened_gain = self.card_power[winner_card] - power_before
 
         pot = 2 * wager
         rake = pot * self._rake_bps() // 10_000
@@ -1333,7 +2114,13 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
         if self.duel_challenger[duel_id] != who:
             raise NCFail("not your duel")
         self._credit_ember(who, self.duel_wager[duel_id])
-        self.pending[self.duel_card[duel_id]] = who
+        if self.duel_kind.get(duel_id, 0) == 1:
+            i = 0
+            while i < 3:
+                self.pending[self.squad_card[duel_id * 4 + i]] = who
+                i += 1
+        else:
+            self.pending[self.duel_card[duel_id]] = who
         self.duel_open[duel_id] = False
         self._settle_bets(duel_id, -1)
 
@@ -1516,6 +2303,119 @@ Onchain gacha game: pull cards, earn Ember, fuse, duel, campaign
             status = "closed"
         card = self.duel_card[duel_id]
         return f"{status}|{card.hex()}|{self.duel_wager[duel_id]}"
+
+    @view
+    def get_tournament_count(self) -> int:
+        return self.next_tourney_id
+
+    @view
+    def get_tournament(self, t: int) -> str:
+        """"name|state|fee|seed|size|n|start|round|next_ts|pool|champion";
+        empty when absent, champion empty until decided."""
+        if t < 0 or t >= self.next_tourney_id:
+            return ""
+        champ = self.tour_champion.get(t)
+        pool = self.tour_fee[t] * self.tour_n[t] + self.tour_seed[t]
+        return (f"{self.tour_name[t]}|{self.tour_state[t]}|{self.tour_fee[t]}"
+                f"|{self.tour_seed[t]}|{self.tour_size[t]}|{self.tour_n[t]}"
+                f"|{self.tour_start[t]}|{self.tour_round.get(t, 0)}"
+                f"|{self.tour_next_ts[t]}|{pool}"
+                f"|{champ.hex() if champ is not None else ''}")
+
+    @view
+    def get_tour_entrant(self, t: int, i: int) -> str:
+        """"addr_hex|card_hex|alive(0/1)", empty when absent."""
+        if i < 0 or i >= self.tour_n.get(t, 0):
+            return ""
+        key = t * 64 + i
+        return (f"{self.tour_entrant[key].hex()}|{self.tour_card[key].hex()}"
+                f"|{1 if self.tour_alive.get(key, False) else 0}")
+
+    @view
+    def get_guild_count(self) -> int:
+        return self.guild_count
+
+    @view
+    def get_guild(self, guild_id: int) -> str:
+        """"name|members", empty when absent."""
+        if guild_id < 0 or guild_id >= self.guild_count:
+            return ""
+        return f"{self.guild_name[guild_id]}|{self.guild_members.get(guild_id, 0)}"
+
+    @view
+    def get_member_guild(self, who: Address) -> int:
+        return self.member_guild.get(who, -1)
+
+    @view
+    def get_wb_week(self) -> int:
+        return self.wb_week
+
+    @view
+    def get_world_boss(self, week: int) -> str:
+        """"name|hp|hp0|valor|bulwark|guile|pool|total|topguild", empty
+        when that week has no boss."""
+        if week not in self.wb_name:
+            return ""
+        return (f"{self.wb_name[week]}|{self.wb_hp.get(week, 0)}"
+                f"|{self.wb_hp0.get(week, 0)}|{self.wb_valor.get(week, 0)}"
+                f"|{self.wb_bulwark.get(week, 0)}|{self.wb_guile.get(week, 0)}"
+                f"|{self.wb_pool.get(week, 0)}|{self.wb_total.get(week, 0)}"
+                f"|{self.wb_top_guild.get(week, -1)}")
+
+    @view
+    def get_wb_damage(self, week: int, who: Address) -> int:
+        return self.wb_damage.get(f"{week}|{who.hex()}", 0)
+
+    @view
+    def get_wb_claimed(self, week: int, who: Address) -> bool:
+        return self.wb_claimed.get(f"{week}|{who.hex()}", False)
+
+    @view
+    def get_rating(self, who: Address) -> int:
+        return self.rating.get(who, 1000)
+
+    @view
+    def get_ranked_waiting(self, tier: int) -> int:
+        n = self.ranked_n.get(tier, 0)
+        count = 0
+        i = 0
+        while i < n:
+            if self.ranked_active.get(tier * 4096 + i, False):
+                count += 1
+            i += 1
+        return count
+
+    @view
+    def is_ranked_queued(self, tier: int, who: Address) -> bool:
+        n = self.ranked_n.get(tier, 0)
+        i = 0
+        while i < n:
+            key = tier * 4096 + i
+            if self.ranked_active.get(key, False) and self.ranked_addr[key] == who:
+                return True
+            i += 1
+        return False
+
+    @view
+    def get_duel_kind(self, duel_id: int) -> int:
+        return self.duel_kind.get(duel_id, 0)
+
+    @view
+    def get_squad_cards(self, duel_id: int, side: int) -> str:
+        """The three card uids of a squad side (0 challenger, 1 acceptor),
+        pipe-joined in deposit order; empty when absent."""
+        store = self.squad_card if side == 0 else self.squad_acceptor_card
+        out = ""
+        i = 0
+        while i < 3:
+            if duel_id * 4 + i not in store:
+                return out
+            card = store[duel_id * 4 + i]
+            if i > 0:
+                out += "|"
+            out += card.hex()
+            i += 1
+        return out
 
     @view
     def get_duel_challenger(self, duel_id: int) -> Optional[Address]:

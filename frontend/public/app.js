@@ -20,7 +20,7 @@ const fmtEmber = n => n + ' Ember';
 const short = u => u.slice(0, 10) + '…';
 // banner name if the address claimed one, else the shortened address
 const who = a => (a && S.names[a]) || short(a || '?');
-// on-chain text the contract only length-checks (champion names, guild names)
+// on-chain text the contract only length-checks (champion and guild names)
 // is escaped before it reaches innerHTML
 const esc = s => String(s ?? '').replace(/[&<>"']/g, ch =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -75,7 +75,7 @@ function mergeCards(payload) {
     // [attack, defense, cunning, tempers, hardened, xp, level, vet]
     c.aspects = d.aspects ? d.aspects.split('|').map(Number) : null;
     c.level = c.aspects?.[6] || 0;
-    c.wins = d.wins; c.cosmetics = d.cosmetics;
+    c.wins = d.wins; c.cosmetics = d.cosmetics; c.ability = d.ability || 0;
     c.pending = d.pending; c.staker = d.staker;
     c.delveSince = d.delveSince; c.temperCost = d.temperCost;
     S.cards.set(u, c);
@@ -159,7 +159,15 @@ async function loadContract(touch) {
     const my = await batchCalls([`get_ember_balance("${me}")`, `get_wins("${me}")`,
       `get_renown("${me}")`, `get_vigil_streak("${me}")`, `get_favor_owed("${me}")`,
       'get_favor_pool()', `get_shards("${me}")`, `get_gauntlet_cleared("${me}")`,
-      `get_trial_done("${me}", ${now})`]);
+      `get_trial_done("${me}", ${now})`, `get_rating("${me}")`,
+      'get_ranked_waiting(0)', 'get_ranked_waiting(1)', 'get_ranked_waiting(2)',
+      `is_ranked_queued(0, "${me}")`, `is_ranked_queued(1, "${me}")`,
+      `is_ranked_queued(2, "${me}")`]);
+    S.ranked = {
+      rating: my[`get_rating("${me}")`] || 1000,
+      waiting: [0, 1, 2].map(t => my[`get_ranked_waiting(${t})`] || 0),
+      queued: [0, 1, 2].map(t => my[`is_ranked_queued(${t}, "${me}")`] === true),
+    };
     S.shards = my[`get_shards("${me}")`] || 0;
     S.cleared = my[`get_gauntlet_cleared("${me}")`] || 0;
     S.trialDoneChain = my[`get_trial_done("${me}", ${now})`] === true;
@@ -198,10 +206,16 @@ async function loadContract(touch) {
       const xq = await batchCalls(['get_reveal_window()', ...live.flatMap(d => [
         `get_duel_has_stances(${d.id})`, `get_duel_acceptor(${d.id})`,
         `get_duel_acceptor_card(${d.id})`, `get_duel_accept_ts(${d.id})`,
+        `get_duel_kind(${d.id})`, `get_squad_cards(${d.id}, 0)`,
         `get_bet_pool(${d.id}, 0)`, `get_bet_pool(${d.id}, 1)`])]);
       S.revealWindow = xq['get_reveal_window()'] || 21600;
       for (const d of live) {
-        d.stances = xq[`get_duel_has_stances(${d.id})`] === true;
+        d.squad = xq[`get_duel_kind(${d.id})`] === 1;
+        d.squadCards = d.squad
+          ? (xq[`get_squad_cards(${d.id}, 0)`] || '').split('|').filter(Boolean)
+          : null;
+        // a squad's sealed lane order also lives in duel_commit; it is not a stance
+        d.stances = !d.squad && xq[`get_duel_has_stances(${d.id})`] === true;
         d.acceptor = xq[`get_duel_acceptor(${d.id})`] || null;
         d.acceptorCard = xq[`get_duel_acceptor_card(${d.id})`] || null;
         d.acceptTs = xq[`get_duel_accept_ts(${d.id})`] || 0;
@@ -210,6 +224,72 @@ async function loadContract(touch) {
     }
     S.duels.reverse();
   } else S.duels = [];
+
+  // tournaments: the newest three cover the calendar (older ones are history)
+  try {
+    const tc = (await batchCalls(['get_tournament_count()']))['get_tournament_count()'] || 0;
+    const ids = [];
+    for (let i = Math.max(0, tc - 3); i < tc; i++) ids.push(i);
+    const tq = ids.length
+      ? await batchCalls(ids.map(i => `get_tournament(${i})`)) : {};
+    S.tournaments = [];
+    for (const i of ids) {
+      const p = (tq[`get_tournament(${i})`] || '').split('|');
+      if (p.length < 10) continue;
+      S.tournaments.push({
+        id: i, name: p[0], state: +p[1], fee: +p[2], seed: +p[3],
+        size: +p[4], n: +p[5], start: +p[6], round: +p[7],
+        nextTs: +p[8], pool: +p[9], champion: p[10] || '',
+      });
+    }
+    S.tournaments.reverse();
+    // seats in decided or cancelled brackets are history: prune the record
+    const over = new Set(S.tournaments.filter(t => t.state >= 2).map(t => t.id));
+    if (over.size) {
+      localStorage.setItem(TOURS_LS, JSON.stringify(
+        loadMyTournaments().filter(m => !over.has(m.t))));
+    }
+    // standing count for the running bracket (bounded by its size)
+    const running = S.tournaments.find(t => t.state === 1);
+    if (running && running.n > 0) {
+      const eq = await batchCalls([...Array(running.n).keys()]
+        .map(i => `get_tour_entrant(${running.id}, ${i})`));
+      running.standing = [...Array(running.n).keys()].filter(i =>
+        ((eq[`get_tour_entrant(${running.id}, ${i})`] || '').split('|')[2]) === '1').length;
+    }
+  } catch { S.tournaments = []; }
+
+  // world boss + guild hall (public state; membership needs an identity)
+  try {
+    const gb = await batchCalls(['get_wb_week()', 'get_guild_count()']);
+    const wbWeek = gb['get_wb_week()'] || 0;
+    const gCount = Math.min(gb['get_guild_count()'] || 0, 30);
+    const me = S.addr ? identity() : null;
+    const calls = [];
+    if (wbWeek > 0) calls.push(`get_world_boss(${wbWeek})`);
+    for (let i = 0; i < gCount; i++) calls.push(`get_guild(${i})`);
+    if (me) {
+      calls.push(`get_member_guild("${me}")`);
+      if (wbWeek > 0) calls.push(`get_wb_damage(${wbWeek}, "${me}")`,
+        `get_wb_claimed(${wbWeek}, "${me}")`);
+    }
+    const d2 = calls.length ? await batchCalls(calls) : {};
+    const raw = wbWeek > 0 ? (d2[`get_world_boss(${wbWeek})`] || '') : '';
+    const bp = raw.split('|');
+    S.worldBoss = raw ? {
+      week: wbWeek, name: bp[0], hp: +bp[1], hp0: +bp[2],
+      valor: +bp[3], bulwark: +bp[4], guile: +bp[5],
+      pool: +bp[6], total: +bp[7], topGuild: +bp[8],
+      myDamage: me ? d2[`get_wb_damage(${wbWeek}, "${me}")`] || 0 : 0,
+      claimed: me ? d2[`get_wb_claimed(${wbWeek}, "${me}")`] === true : false,
+    } : null;
+    S.guilds = [];
+    for (let i = 0; i < gCount; i++) {
+      const [n, m] = (d2[`get_guild(${i})`] || '').split('|');
+      if (n) S.guilds.push({ id: i, name: n, members: Number(m) || 0 });
+    }
+    S.myGuild = me ? (d2[`get_member_guild("${me}")`] ?? -1) : -1;
+  } catch { S.worldBoss = null; S.guilds = []; S.myGuild = -1; }
 }
 
 async function loadMarket() {
@@ -322,23 +402,66 @@ function feedLine(ev) {
       ? `${name} fused two champions into <b>${ev.card}</b>`
       : `${name} fused two champions`;
     case 'writ': return `${name} fought boss <b>${ev.writ}</b> (${WRIT_TIER_NAMES[ev.tier] || 'Grim'})`;
-    case 'challenge': return ev.wager > 0
-      ? `${name} posted a duel · ${fmtEmber(ev.wager)} wager`
-      : `${name} posted a free duel`;
-    case 'answer': return ev.verdict
-      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)}`
-      : ev.sealed
-        ? `${name} answered sealed duel #${ev.id} · awaiting the reveal`
-        : `${name} answered duel #${ev.id}`;
-    case 'reveal': return ev.verdict
-      ? `<b>${who(ev.verdict.winner)}</b> won duel #${ev.id} against ${who(ev.verdict.loser)} at the reveal`
-      : `${name} revealed their stance in duel #${ev.id}`;
+    case 'challenge': {
+      const what = ev.squad ? '3v3 squad challenge' : 'duel';
+      return ev.wager > 0
+        ? `${name} posted a ${what} · ${fmtEmber(ev.wager)} wager`
+        : `${name} posted a free ${ev.squad ? '3v3 squad challenge' : 'duel'}`;
+    }
+    case 'answer': {
+      const what = ev.squad ? 'squad duel' : 'duel';
+      return ev.verdict
+        ? `<b>${who(ev.verdict.winner)}</b> won ${what} #${ev.id} against ${who(ev.verdict.loser)}`
+        : ev.sealed
+          ? `${name} answered sealed ${what} #${ev.id} · awaiting the reveal`
+          : `${name} answered ${what} #${ev.id}`;
+    }
+    case 'reveal': {
+      const what = ev.squad ? 'squad duel' : 'duel';
+      return ev.verdict
+        ? `<b>${who(ev.verdict.winner)}</b> won ${what} #${ev.id} against ${who(ev.verdict.loser)} at the reveal`
+        : `${name} revealed ${ev.squad ? 'their lane order' : 'their stance'} in ${what} #${ev.id}`;
+    }
     case 'forfeit': return ev.winner
       ? `duel #${ev.id} forfeited · <b>${who(ev.winner)}</b> takes the pot`
       : `duel #${ev.id} went unrevealed and was forfeited`;
     case 'duel_cancel': return `${name} withdrew challenge #${ev.id}`;
     case 'bet': return `${name} backed the ${ev.side === 1 ? 'defender' : 'challenger'} in duel #${ev.id}`
       + (ev.amount ? ` · ${fmtEmber(ev.amount)}` : '');
+    case 'ranked': {
+      const tier = ev.tier === 2 ? '100-Ember' : ev.tier === 1 ? '25-Ember' : 'free';
+      if (ev.result === 'won') return `<b>${name}</b> won a ${tier} ranked match and climbed the ladder`;
+      if (ev.result === 'lost') return `${name} lost a ${tier} ranked match`;
+      if (ev.result === 'queued') return `${name} entered the ${tier} ranked queue`;
+      return `${name} fought on the ranked ladder`;
+    }
+    case 'ranked_leave': return `${name} stepped out of the ranked queue`;
+    case 'guild_new': return `${name} raised the banner of <b>${esc(ev.name)}</b>`;
+    case 'guild_join': return ev.name
+      ? `${name} now rides under <b>${esc(ev.name)}</b>`
+      : `${name} joined a guild`;
+    case 'guild_leave': return `${name} left their guild`;
+    case 'wb_fight': {
+      const target = ev.boss ? `<b>${esc(ev.boss)}</b>` : 'the world boss';
+      if (ev.slain) return `${name} felled ${target} — the bounty is open!`;
+      return `${name} struck ${target}${ev.damage ? ` for ${ev.damage}` : ''}`;
+    }
+    case 'wb_claim': return `${name} claimed their world-boss bounty`;
+    case 'tour_new': return `The Crown has scheduled <b>${esc(ev.name)}</b> · ${fmtEmber(ev.fee)} entry`;
+    case 'tour_enter': return ev.name
+      ? `${name} took a seat in <b>${esc(ev.name)}</b>`
+      : `${name} entered a tournament`;
+    case 'tour_leave': return ev.name
+      ? `${name} gave up their seat in <b>${esc(ev.name)}</b>`
+      : `${name} left a tournament`;
+    case 'tour_round': {
+      const tn = ev.name ? `<b>${esc(ev.name)}</b>` : 'the tournament';
+      if (ev.done) return ev.champion
+        ? `<b>${who(ev.champion)}</b> won ${tn} and the lion's share of ${fmtEmber(ev.pool || 0)}`
+        : `${tn} is decided: the champion takes the pool`;
+      if (ev.cancelled) return `${tn} was called off · too few entrants, all refunded`;
+      return `a round of ${tn} is fought · the bracket narrows`;
+    }
     case 'listed': return ev.card
       ? `${name} put <b>${esc(ev.card)}</b> up for ${fmtHtr(ev.price)}`
       : `${name} listed a champion for ${fmtHtr(ev.price)}`;
@@ -599,7 +722,7 @@ const MINE_RATES = [1, 3, 10, 40];
 const WRIT_TIERS = ['Grim', 'Dire', 'Black'];
 // what each tier multiplies a boss's aspects by, mirroring fight_writ in the
 // contract this build talks to. Change here and in the blueprint together.
-const WRIT_MULTS = [1, 2, 4];
+const WRIT_MULTS = [1, 3, 9];   // v5: see _writ_spread in the blueprint
 
 function cosmeticsOf(c) {
   const cos = c.cosmetics || 0;
@@ -657,6 +780,23 @@ function stationLine(c, t, meta) {
     + `${c.level > 0 ? ` · Lv ${c.level}` : ''}${c.wins > 0 ? ` · ${c.wins} won` : ''}`;
 }
 
+/* v5 keyword abilities, one per champion type (ids match the contract) */
+const ABILITIES = [null,
+  { n: 'Vanguard', d: '+20% in the Attack round' },
+  { n: 'Warden', d: '+20% in the Defense round' },
+  { n: 'Trickster', d: '+20% in the Cunning round' },
+  { n: 'Momentum', d: 'winning round 1 grants +10% after' },
+  { n: 'Closer', d: '+25% in a 1-1 decider' },
+  { n: 'Underdog', d: '+15% in all rounds when weaker' },
+  { n: 'Stancebreaker', d: "the foe's stance edge is void" },
+  { n: 'Plunderer', d: 'a win carries off the house cut too' },
+  { n: 'Scholar', d: 'earns double experience' },
+];
+function abilityLine(c) {
+  const a = ABILITIES[c.ability || 0];
+  return a ? `<div class="ac-ability" title="${a.d}">✦ ${a.n}</div>` : '';
+}
+
 function cardBox(c, buttonsHtml, selectable) {
   const t = TIERS[c.tier] || TIERS[0];
   const sel = S.selected.has(c.uid) ? ' selected' : '';
@@ -680,6 +820,7 @@ function cardBox(c, buttonsHtml, selectable) {
       <div class="cf-name">${c.name}</div>
       ${typeBits.length ? `<div class="cf-type">${typeBits.join(' · ')}</div>` : ''}
       ${aspectRail(c)}
+      ${abilityLine(c)}
       ${meta?.flavor ? `<div class="cf-flavor">${meta.flavor}</div>` : ''}
       ${pedigree(c)}
       ${buttonsHtml || ''}
@@ -971,6 +1112,7 @@ function render() {
   $('newDuelBtn').disabled = !S.addr;
   $('newDuelBtn').title = S.addr ? '' : 'Connect a wallet to issue a challenge';
   assignSeals();
+  assignSquadSeals();
   // live fights always show; settled ones age out (newest 5, plus your own
   // challenges from the fetched window) so the Arena is not a graveyard
   let settledSeen = 0;
@@ -988,9 +1130,10 @@ function render() {
     const c = S.cards.get(d.card);
     const t = TIERS[c?.tier ?? 0] || TIERS[0];
     const mineD = isMine(d.challenger);
-    const sealed = d.stances ? ` · ${glyph('seal')} sealed stance` : '';
-    // backing a fight and then fighting it is a conflict of interest: the
-    // contract refuses it from v5 on, and until then this does
+    const sealed = d.stances ? ` · ${glyph('seal')} sealed stance`
+      : d.squad ? ` · ${glyph('attack')} 3v3 squad` : '';
+    // backing a fight and then fighting it is a conflict of interest: this
+    // realm's contract refuses it too, but the button should not offer it
     const iBackedIt = !!S.addr && loadMyBets().some(b => b.id === d.id);
     let act;
     if (d.status === 'open') {
@@ -999,17 +1142,23 @@ function render() {
         : iBackedIt
           ? `<span class="duel-done" title="You have Ember riding on this fight, so you cannot also fight it">your bet is in</span>`
           : (S.addr
-            ? `<button class="mini-btn" data-acceptduel="${d.id}">FIGHT</button>`
+            ? `<button class="mini-btn" data-${d.squad ? 'acceptsquad' : 'acceptduel'}="${d.id}">FIGHT</button>`
             : '<span class="duel-done">awaiting a challenger</span>');
     } else if (d.status === 'reveal') {
       const dueAt = ((d.acceptTs || 0) + (S.revealWindow || 21600)) * 1000;
       const minsLeft = Math.max(0, Math.ceil((dueAt - Date.now()) / 60000));
       act = mineD
-        ? `<button class="mini-btn" data-revealduel="${d.id}">REVEAL</button>`
+        ? `<button class="mini-btn" data-${d.squad ? 'revealsquad' : 'revealduel'}="${d.id}">REVEAL</button>`
         : Date.now() >= dueAt && S.addr
           ? `<button class="mini-btn alt" data-forfeitduel="${d.id}">CLAIM FORFEIT</button>`
           : `<span class="duel-done">awaiting reveal · ${Math.floor(minsLeft / 60)}h ${minsLeft % 60}m left</span>`;
     } else act = '<span class="duel-done">settled</span>';
+    // the squad SET is public; which of the three fights which lane stays
+    // sealed until the challenger's reveal
+    const trio = d.squad && d.squadCards?.length
+      ? `<div class="duel-meta">squad: ${d.squadCards.map(u =>
+          `<b>${S.cards.get(u)?.name ?? u.slice(0, 8)}</b>`).join(' · ')} — lane order sealed</div>`
+      : '';
     // spectators can back either side while the duel is undecided
     const canBet = S.addr && !mineD && !isMine(d.acceptor)
       && (d.status === 'open' || d.status === 'reveal');
@@ -1024,6 +1173,7 @@ function render() {
       <div class="duel-info">
         <b>${c?.name ?? '?'}</b> <span class="pw-inline" style="color:${t.color}">${glyph('power')}${c?.power ?? '?'}</span>
         <div class="duel-meta">#${d.id} · wager ${fmtEmber(d.wager)} · by ${mineD ? 'you' : who(d.challenger)}${sealed}</div>
+        ${trio}
         ${pools}
       </div>
       ${act}
@@ -1040,6 +1190,117 @@ function render() {
   if (det) det.ontoggle = () => { S.pastOpen = det.open; };
   $('duelEmpty').hidden = duelsShown.length > 0;
   $('duelEmpty').textContent = S.restoring ? CONNECTING : 'No open duels. Start one.';
+
+  // the rated ladder: queue-on-join matchmaking within 200 rating
+  const rk = S.ranked;
+  $('rankedIntro').innerHTML = S.addr && rk
+    ? `Rated 1v1: one champion, a fixed wager, no stances and no picking
+       opponents. The ladder matches you against a rival within 200 rating;
+       the second joiner's move settles the fight on the spot. Win to climb,
+       lose to fall. Your rating: <b>${rk.rating}</b>.`
+    : 'Connect a wallet to fight rated matches.';
+  const RANKED_TIERS = ['Free spar', '25 Ember', '100 Ember'];
+  $('rankedBox').innerHTML = (S.addr && rk) ? [0, 1, 2].map(t => `
+    <div class="duel open">
+      <span class="duel-emoji">${glyph('ladder', 'gl')}</span>
+      <div class="duel-info"><b>${RANKED_TIERS[t]}</b>
+        <div class="duel-meta">${rk.waiting[t]} waiting${rk.queued[t]
+          ? ' · your champion holds the line' : ''}</div>
+      </div>
+      ${rk.queued[t]
+        ? `<button class="mini-btn alt" data-rankedleave="${t}">LEAVE</button>`
+        : `<button class="mini-btn" data-rankedjoin="${t}">JOIN</button>`}
+    </div>`).join('') : '';
+
+  // tournaments: the calendar's scheduled peak moments
+  const myTours = loadMyTournaments();
+  $('tourIntro').textContent = 'Scheduled brackets with Ember entry fees; the '
+    + "Crown seeds the prize pool from its tithe. One round fights each day: "
+    + 'semifinalists take 7.5% of the pool each, the runner-up a quarter, the '
+    + 'champion the rest.';
+  $('tourBox').innerHTML = (S.tournaments || []).map(t => {
+    const mine = myTours.find(m => m.t === t.id);
+    const mins = Math.max(0, Math.ceil((t.start * 1000 - Date.now()) / 60000));
+    const dueMins = Math.max(0, Math.ceil((t.nextTs * 1000 - Date.now()) / 60000));
+    let meta, act = '';
+    if (t.state === 0) {
+      meta = `${t.n}/${t.size} seats · ${fmtEmber(t.fee)} entry · pool ${fmtEmber(t.pool)}`
+        + ` · starts in ${Math.floor(mins / 60)}h ${mins % 60}m`;
+      act = !S.addr ? '<span class="duel-done">connect to enter</span>'
+        : mine ? `<button class="mini-btn alt" data-tourleave="${t.id}">WITHDRAW</button>`
+        : t.n < t.size ? `<button class="mini-btn" data-tourenter="${t.id}">ENTER</button>`
+        : '<span class="duel-done">bracket full</span>';
+    } else if (t.state === 1) {
+      meta = `round ${t.round} fought · ${t.standing ?? '?'} still standing · pool ${fmtEmber(t.pool)}`;
+      act = Date.now() >= t.nextTs * 1000 && S.addr
+        ? `<button class="mini-btn" data-touradvance="${t.id}">FIGHT THE ROUND</button>`
+        : `<span class="duel-done">next round in ${Math.floor(dueMins / 60)}h ${dueMins % 60}m</span>`;
+    } else if (t.state === 2) {
+      meta = `the crown is claimed · pool ${fmtEmber(t.pool)}`;
+      act = '<span class="duel-done">decided</span>';
+    } else {
+      meta = 'called off: too few entrants, everyone refunded';
+      act = '<span class="duel-done">cancelled</span>';
+    }
+    return `<div class="duel ${t.state <= 1 ? 'open' : 'closed'}">
+      <span class="duel-emoji">${glyph('bracket', 'gl')}</span>
+      <div class="duel-info"><b>${esc(t.name)}</b>
+        <div class="duel-meta">#${t.id} · ${meta}${mine ? ' · you hold a seat' : ''}</div>
+      </div>
+      ${act}
+    </div>`;
+  }).join('');
+  $('tourEmpty').hidden = (S.tournaments || []).length > 0;
+
+  // the world boss: one shared colossus a week, felled together
+  const wb = S.worldBoss;
+  $('wbIntro').textContent = wb
+    ? 'Once a week the Crown looses a colossus on the realm. Staked champions '
+      + 'strike it from the Mines (writ entry fee, three strikes each per day); '
+      + 'damage is rounds won times power. When it falls, a tenth of the '
+      + "week's summons pays out pro-rata by damage, and the top-damage "
+      + "guild's fighters take a quarter more."
+    : 'No world boss stands this week. The Crown looses one weekly.';
+  const hpPct = wb && wb.hp0 > 0 ? Math.round(100 * wb.hp / wb.hp0) : 0;
+  $('wbBox').innerHTML = wb ? `
+    <div class="duel ${wb.hp > 0 ? 'open' : ''}">
+      <span class="duel-emoji">${glyph('boss', 'gl')}</span>
+      <div class="duel-info"><b>${esc(wb.name)}</b>
+        <div class="duel-meta">⚔ ${wb.valor} · 🛡 ${wb.bulwark} · 🗡 ${wb.guile} · bounty ${fmtEmber(wb.pool)}</div>
+        <div class="duel-meta">HP ${wb.hp} / ${wb.hp0} (${hpPct}%)${wb.myDamage
+          ? ` · your damage ${wb.myDamage}` : ''}</div>
+      </div>
+      ${wb.hp > 0
+        ? (S.addr ? '<button class="mini-btn" data-wbfight="1">STRIKE</button>'
+                  : '<span class="duel-done">connect to fight</span>')
+        : wb.myDamage > 0 && !wb.claimed && S.addr
+          ? `<button class="mini-btn" data-wbclaim="${wb.week}">CLAIM BOUNTY</button>`
+          : '<span class="duel-done">felled</span>'}
+    </div>` : '';
+
+  // the guild hall
+  $('guildIntro').textContent = S.addr
+    ? 'Raise a banner for 500 Ember (burned) or ride under another. Guilds fight '
+      + 'as one on the world boss: the top-damage banner takes +25% bounty.'
+    : 'Connect a wallet to join a guild.';
+  const gRows = (S.guilds || []).map(g => `
+    <div class="duel open">
+      <span class="duel-emoji">${glyph('banner', 'gl')}</span>
+      <div class="duel-info"><b>${esc(g.name)}</b>
+        <div class="duel-meta">${g.members} member${g.members === 1 ? '' : 's'}${
+          S.myGuild === g.id ? ' · your banner' : ''}</div>
+      </div>
+      ${S.myGuild === g.id
+        ? '<button class="mini-btn alt" data-guildleave="1">LEAVE</button>'
+        : S.myGuild < 0 && S.addr
+          ? `<button class="mini-btn" data-guildjoin="${g.id}">JOIN</button>` : ''}
+    </div>`).join('');
+  $('guildBox').innerHTML = (S.addr && S.myGuild < 0
+    ? `<div class="duel"><span class="duel-emoji">${glyph('crown', 'gl')}</span><div class="duel-info">
+        <b>Raise a banner</b>
+        <div class="duel-meta">500 Ember, burned; the name is yours for as long as the realm stands</div></div>
+        <button class="mini-btn" data-guildcreate="1">CREATE</button></div>` : '')
+    + gRows;
 
   // the bosses of the Sundering, fought from the Mines
   const cleared = S.cleared || 0;
@@ -1071,7 +1332,8 @@ function render() {
       return `<div class="writ-tier${done ? ' done' : ''}">${head}${spread}</div>`;
     }).join('');
     return `<div class="duel writ-row">
-      <div class="duel-info"><b>${w.name}</b></div>
+      <div class="duel-info"><b>${w.name}</b>
+        <div class="duel-meta">at least 45/80/115% of the champion you send</div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');
@@ -1216,6 +1478,46 @@ function bindListActions() {
   });
   bind('[data-duel]', u => openPick('create', u));
   bind('[data-acceptduel]', id => openPick('accept', Number(id)));
+  bind('[data-acceptsquad]', id => openPick('squadAccept', Number(id)));
+  bind('[data-revealsquad]', id => revealSquad(Number(id)));
+  bind('[data-rankedjoin]', t => openPick('ranked', Number(t)));
+  bind('[data-wbfight]', () => openPick('wbfight', null));
+  bind('[data-tourenter]', id => openPick('tourEnter', Number(id)));
+  bind('[data-tourleave]', async id => {
+    const h = await doTx('Giving up the seat', 'leave_tournament', [Number(id)], []);
+    if (h) {
+      localStorage.setItem(TOURS_LS, JSON.stringify(
+        loadMyTournaments().filter(m => m.t !== Number(id))));
+      ribbon('Seat given up: fee returned, champion in Collection to claim', '', 'coin');
+    }
+  });
+  bind('[data-touradvance]', async id => {
+    const h = await doTx('Fighting the round', 'advance_tournament', [Number(id)], []);
+    if (!h) return;
+    const t = (S.tournaments || []).find(x => x.id === Number(id));
+    if (t?.state === 2) ribbon('The final is fought: the champion takes the pool — see the World Feed', 'level', 'win');
+    else if (t?.state === 3) ribbon('The bracket was called off: too few entrants, everyone refunded', '', 'coin');
+    else ribbon('The round is fought: fallen champions return to their lords', '', 'clash');
+  });
+  bind('[data-wbclaim]', async w => {
+    const e0 = S.ember;
+    const h = await doTx('Claiming the bounty', 'claim_world_bounty', [Number(w)], []);
+    if (h) ribbon(`The colossus paid out: +${fmtEmber(S.ember - e0)}`, 'level', 'coin');
+  });
+  bind('[data-guildjoin]', id => doTx('Joining the guild', 'join_guild', [Number(id)], []));
+  bind('[data-guildleave]', () => doTx('Leaving the guild', 'leave_guild', [], []));
+  bind('[data-guildcreate]', () => {
+    const name = prompt('Name your banner (3-16 chars: letters, numbers, spaces or _). Costs 500 Ember, burned:', '');
+    if (name === null) return;
+    const n = name.trim();
+    if (!/^[A-Za-z0-9_ ]{3,16}$/.test(n)) { alert('3-16 chars: letters, numbers, spaces or _.'); return; }
+    if (S.ember < 500) { alert(`Raising a banner costs 500 Ember; you hold ${fmtEmber(S.ember)}.`); return; }
+    doTx('Raising the banner', 'create_guild', [n], []);
+  });
+  bind('[data-rankedleave]', async t => {
+    const h = await doTx('Leaving the ranked queue', 'leave_ranked', [Number(t)], []);
+    if (h) ribbon('You stepped out of the queue: wager returned, champion in Collection to claim', '', 'coin');
+  });
   bind('[data-cancelduel]', id => doTx('Cancelling duel', 'cancel_duel', [Number(id)], []));
   bind('[data-revealduel]', id => revealDuel(Number(id)));
   bind('[data-forfeitduel]', id => doTx('Calling the forfeit', 'claim_forfeit', [Number(id)], []));
@@ -1744,6 +2046,62 @@ async function revealDuel(id) {
     d ? S.cards.get(d.acceptorCard)?.aspects : null, won);
 }
 
+/* seats we hold in tournaments, so the UI can offer WITHDRAW without a
+   per-player seat view: [{t, uid, ts}] */
+const TOURS_LS = 'emberfall_my_tournaments';
+function loadMyTournaments() {
+  try { return JSON.parse(localStorage.getItem(TOURS_LS)) || []; } catch { return []; }
+}
+
+/* squads seal a lane ORDER, not a stance: {pending:[{perm,salt,ts}],
+   byId:{duelId:{perm,salt}}} — same recovery rules as duel seals */
+const SQUAD_SEALS_LS = 'emberfall_squad_seals';
+function loadSquadSeals() {
+  try { return JSON.parse(localStorage.getItem(SQUAD_SEALS_LS)) || {}; } catch { return {}; }
+}
+function assignSquadSeals() {
+  const s = loadSquadSeals();
+  const pend = s.pending || [];
+  if (!pend.length) return;
+  s.byId = s.byId || {};
+  const mine = S.duels.filter(d => d.squad && isMine(d.challenger)
+    && (d.status === 'open' || d.status === 'reveal') && !s.byId[d.id])
+    .sort((a, b) => a.id - b.id);
+  for (const d of mine) {
+    const seal = pend.shift();
+    if (!seal) break;
+    s.byId[d.id] = { perm: seal.perm, salt: seal.salt };
+  }
+  s.pending = pend;
+  localStorage.setItem(SQUAD_SEALS_LS, JSON.stringify(s));
+}
+
+async function revealSquad(id) {
+  const seal = (loadSquadSeals().byId || {})[id];
+  if (!seal) {
+    $('errTitle').textContent = 'The sealed lane order is missing';
+    $('errMsg').textContent = 'This browser does not hold the salt for that squad duel '
+      + '(storage was cleared, or it was sealed on another device). When the '
+      + 'reveal window ends, the fight forfeits to the defender.';
+    showStage('stageError');
+    return;
+  }
+  const winsBefore = S.wins;
+  const hash = await doTx('Unsealing the lanes', 'reveal_squad',
+    [id, seal.perm, seal.salt], []);
+  if (!hash) return;
+  const won = S.wins > winsBefore;
+  const home = S.wallet?.mode === 'session'
+    ? 'Your champions are already on the way home.'
+    : 'Your champions return; claim them under Collection.';
+  $('duelResult').innerHTML = won
+    ? `<div class="duel-banner win">THE SQUAD PREVAILS</div><div class="wait-sub">The lanes are unsealed and your side took two or more. The pot is yours. ${home}</div>`
+    : `<div class="duel-banner lose">THE SQUAD FALLS</div><div class="wait-sub">The lanes are unsealed and the defenders took the day. The pot is lost, but your champions live. ${home}</div>`;
+  window.sfx?.('clash');
+  setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+  showStage('stageDuel');
+}
+
 async function placeBet(id, side) {
   const raw = prompt(`Back the ${side === 0 ? 'challenger' : 'defender'} with how much Ember? (you have ${S.ember})`, '10');
   if (raw === null) return;
@@ -2252,6 +2610,62 @@ async function shareCard(uid) {
 
 let pickCtx = null;
 let pickStance = null; // -1 open (classic), 0..2 sealed/answering stance
+let pickSquad = [];    // uids picked for a 3v3, in lane order
+
+function toggleSquadPick(el) {
+  const uid = el.dataset.pick;
+  const at = pickSquad.indexOf(uid);
+  if (at >= 0) pickSquad.splice(at, 1);
+  else pickSquad.push(uid);
+  // relabel every button with its lane slot so the order reads at a glance
+  document.querySelectorAll('[data-pick]').forEach(b => {
+    const i = pickSquad.indexOf(b.dataset.pick);
+    b.textContent = i >= 0 ? `LANE ${i + 1} ✓` : 'SELECT';
+    b.classList.toggle('alt', i >= 0);
+  });
+  if (pickSquad.length === 3) submitSquad();
+}
+
+async function submitSquad() {
+  const { kind, ref } = pickCtx;
+  const cards = pickSquad.slice();
+  pickSquad = [];
+  $('overlay').hidden = true;
+  if (kind === 'squadCreate') {
+    const raw = $('pickWager').value.trim();
+    if (raw === '') {
+      $('errTitle').textContent = 'Name your wager';
+      $('errMsg').textContent = 'Enter a wager in Ember, or 0 for a free squad duel '
+        + 'where no Ember changes hands.';
+      showStage('stageError');
+      return;
+    }
+    const wager = Math.max(0, Number(raw) || 0);
+    if (wager > S.ember) { $('errTitle').textContent = 'Wager too high'; $('errMsg').textContent = `You have ${fmtEmber(S.ember)}.`; showStage('stageError'); return; }
+    // a random sealed lane order is strategically as good as a chosen one
+    // (the defender assigns lanes blind either way) and needs no extra UI
+    const perm = ['012', '021', '102', '120', '201', '210'][crypto.getRandomValues(new Uint8Array(1))[0] % 6];
+    const salt = randSalt();
+    const commit = sha3_256(`${perm}:${salt}`);
+    const s = loadSquadSeals();
+    (s.pending = s.pending || []).push({ perm, salt, ts: Date.now() });
+    localStorage.setItem(SQUAD_SEALS_LS, JSON.stringify(s));
+    await doTx('Mustering the squad', 'create_squad_duel', [wager, commit],
+      cards.map(u => depAct(u, CARD_AMT)));
+    return;
+  }
+  const hash = await doTx('Answering the 3v3', 'accept_squad_duel', [ref],
+    cards.map(u => depAct(u, CARD_AMT)));
+  if (!hash) return;
+  const hours = Math.round((S.revealWindow || 21600) / 3600);
+  $('duelResult').innerHTML = `<div class="duel-banner">${glyph('seal', 'gl')} THE LANES ARE SET</div>
+    <div class="wait-sub">Your three champions hold their lanes. The challenger
+    now has ${hours}h to unseal their lane order and settle the three fights;
+    if they never do, you claim the pot by forfeit. Watch this duel in the Arena list.</div>`;
+  window.sfx?.('clash');
+  showStage('stageDuel');
+  $('overlay').hidden = false;
+}
 function syncStanceBtns() {
   document.querySelectorAll('.stance-btn').forEach(el =>
     el.classList.toggle('active', Number(el.dataset.stance) === pickStance));
@@ -2296,6 +2710,122 @@ function openPick(kind, ref) {
       cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">OFFER THE TRADE</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
+    return;
+  }
+  if (kind === 'squadCreate' || kind === 'squadAccept') {
+    const roster = [...S.cards.values()].filter(c => c.mine);
+    if (roster.length < 3) {
+      $('errTitle').textContent = 'A squad needs three champions';
+      $('errMsg').textContent = 'You hold ' + (roster.length === 1 ? 'one champion' : `${roster.length} champions`)
+        + '. Summon or claim until you hold three, then muster the squad.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    if (kind === 'squadAccept') {
+      const d = S.duels.find(x => x.id === ref);
+      if (d && d.wager > 0 && S.ember < d.wager) {
+        $('errTitle').textContent = 'Not enough Ember for the wager';
+        $('errMsg').textContent = `This squad duel wagers ${fmtEmber(d.wager)}.`;
+        showStage('stageError');
+        $('overlay').hidden = false;
+        return;
+      }
+    }
+    pickSquad = [];
+    const wagerNote = kind === 'squadAccept'
+      ? ` (wager ${fmtEmber(S.duels.find(x => x.id === ref)?.wager || 0)})`
+      : '';
+    $('pickTitle').textContent = kind === 'squadCreate'
+      ? 'Muster a 3v3 squad: pick three champions & a wager'
+      : `Answer squad challenge #${ref}${wagerNote}: pick three champions in lane order`;
+    $('pickWagerRow').hidden = kind !== 'squadCreate';
+    if (kind === 'squadCreate') $('pickWager').value = '';
+    const stanceRowS = $('pickStanceRow');
+    if (stanceRowS) stanceRowS.hidden = true;
+    $('stanceHint') && ($('stanceHint').textContent = '');
+    const hint = kind === 'squadCreate'
+      ? 'Your three champions are shown to any challenger, but which lane each fights in stays sealed in this browser until you reveal it after the duel is answered.'
+      : 'Pick in the order you want the lanes: first pick fights lane 1, second lane 2, third lane 3. The challenger’s lane order is sealed, so place your champions blind.';
+    $('pickCards').innerHTML = `<div class="wait-sub">${hint}</div>`
+      + roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => toggleSquadPick(el));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
+  if (kind === 'tourEnter') {
+    const t = (S.tournaments || []).find(x => x.id === ref);
+    if (t && t.fee > S.ember) {
+      $('errTitle').textContent = 'Not enough Ember for the entry fee';
+      $('errMsg').textContent = `This bracket asks ${fmtEmber(t.fee)}. You hold ${fmtEmber(S.ember)}.`;
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    const roster = [...S.cards.values()].filter(c => c.mine);
+    if (!roster.length) {
+      $('errTitle').textContent = 'No cards';
+      $('errMsg').textContent = 'You hold no champion. Summon or claim one first.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    $('pickTitle').textContent = `Enter ${t ? t.name : 'the bracket'} (${fmtEmber(t?.fee || 0)} entry): choose your champion`;
+    $('pickWagerRow').hidden = true;
+    $('pickStanceRow').hidden = true;
+    $('pickCards').innerHTML = roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
+  if (kind === 'wbfight') {
+    const marchers = [...S.cards.values()].filter(c =>
+      isMine(c.staker) && !(c.delveSince > 0));
+    if (!marchers.length) {
+      $('errTitle').textContent = 'No champion available';
+      $('errMsg').textContent = 'The world boss is struck by staked champions. '
+        + 'Stake one in The Mines (not delving) and try again.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    $('pickTitle').textContent = `Strike ${S.worldBoss?.name ?? 'the colossus'}: choose a mining champion`;
+    $('pickWagerRow').hidden = true;
+    $('pickStanceRow').hidden = true;
+    $('pickCards').innerHTML = marchers.map(c => cardBox(c,
+      `<button class="mini-btn" data-pick="${c.uid}">STRIKE</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
+    return;
+  }
+  if (kind === 'ranked') {
+    const wager = [0, 25, 100][ref] || 0;
+    if (wager > S.ember) {
+      $('errTitle').textContent = 'Not enough Ember for this tier';
+      $('errMsg').textContent = `This ranked tier wagers ${fmtEmber(wager)}. You have ${fmtEmber(S.ember)}.`;
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    const roster = [...S.cards.values()].filter(c => c.mine);
+    if (!roster.length) {
+      $('errTitle').textContent = 'No cards';
+      $('errMsg').textContent = 'You hold no champion. Summon or claim one first.';
+      showStage('stageError');
+      $('overlay').hidden = false;
+      return;
+    }
+    $('pickTitle').textContent = `Join the ranked queue (${wager ? fmtEmber(wager) + ' wager' : 'free spar'}): choose your champion`;
+    $('pickWagerRow').hidden = true;
+    const sr = $('pickStanceRow');
+    if (sr) sr.hidden = true;
+    $('pickCards').innerHTML = roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
+    showStage('stagePick');
+    $('overlay').hidden = false;
     return;
   }
   const mine = [...S.cards.values()].filter(c => c.mine);
@@ -2346,6 +2876,74 @@ function openPick(kind, ref) {
 async function submitPick(uid) {
   const { kind, ref } = pickCtx;
   $('overlay').hidden = true;
+  if (kind === 'tourEnter') {
+    const hash = await doTx('Taking your seat', 'enter_tournament', [ref],
+      [depAct(uid, CARD_AMT)]);
+    if (!hash) return;
+    const seats = loadMyTournaments();
+    seats.push({ t: ref, uid, ts: Date.now() });
+    localStorage.setItem(TOURS_LS, JSON.stringify(seats.slice(-10)));
+    const t = (S.tournaments || []).find(x => x.id === ref);
+    const mins = t ? Math.max(0, Math.ceil((t.start * 1000 - Date.now()) / 60000)) : 0;
+    $('duelResult').innerHTML = `<div class="duel-banner">${glyph('bracket', 'gl')} YOUR SEAT IS HELD</div>
+      <div class="wait-sub">Your champion stands in the bracket. The first round fights
+      ${t ? `in about ${Math.floor(mins / 60)}h ${mins % 60}m` : 'at the start'};
+      one round fights each day after. Withdraw any time before the start for a full refund.</div>`;
+    window.sfx?.('clash');
+    showStage('stageDuel');
+    $('overlay').hidden = false;
+    return;
+  }
+  if (kind === 'wbfight') {
+    const hpBefore = S.worldBoss?.hp ?? 0;
+    const hash = await doTx('Striking the colossus', 'fight_world_boss', [uid], []);
+    if (!hash) return;
+    const dmg = hpBefore - (S.worldBoss?.hp ?? hpBefore);
+    const slain = (S.worldBoss?.hp ?? 1) === 0;
+    $('duelResult').innerHTML = slain
+      ? `<div class="duel-banner win">THE COLOSSUS FALLS</div>
+         <div class="wait-sub">Your blow of ${dmg} damage ended it. Every fighter can now
+         claim their share of the bounty in the Arena.</div>`
+      : dmg > 0
+        ? `<div class="duel-banner win">A TELLING BLOW</div>
+           <div class="wait-sub">${dmg} damage. ${S.worldBoss?.hp ?? '?'} HP still stands;
+           strike again or let the realm finish it.</div>`
+        : `<div class="duel-banner lose">THE BLOW GLANCED OFF</div>
+           <div class="wait-sub">No round went your way. The entry is spent; your champion
+           learned from it.</div>`;
+    window.sfx?.('clash');
+    setTimeout(() => window.sfx?.(slain || dmg > 0 ? 'win' : 'lose'), 450);
+    showStage('stageDuel');
+    $('overlay').hidden = false;
+    return;
+  }
+  if (kind === 'ranked') {
+    const winsBefore = S.wins;
+    const hash = await doTx('Entering the ranked ladder', 'join_ranked', [ref], [depAct(uid, CARD_AMT)]);
+    if (!hash) return;
+    // doTx refreshed state: either we now wait in the queue, or a waiting
+    // rival was in band and the fight already settled
+    if (S.ranked?.queued?.[ref]) {
+      $('duelResult').innerHTML = `<div class="duel-banner">${glyph('ladder', 'gl')} IN THE QUEUE</div>
+        <div class="wait-sub">Your champion holds the line. When a rival within
+        200 rating joins this tier, their move settles the fight on the spot:
+        watch your rating and the World Feed. LEAVE in the Arena returns your
+        wager and champion.</div>`;
+    } else {
+      const won = S.wins > winsBefore;
+      const home = S.wallet?.mode === 'session'
+        ? 'Your champion is already on the way home.'
+        : 'Your champion returns; claim them under Collection.';
+      $('duelResult').innerHTML = (won
+        ? `<div class="duel-banner win">RATED VICTORY</div><div class="wait-sub">A rival was waiting and fell. Your rating stands at <b>${S.ranked?.rating ?? '?'}</b>. ${home}</div>`
+        : `<div class="duel-banner lose">RATED DEFEAT</div><div class="wait-sub">A rival was waiting and took the fight. Your rating stands at <b>${S.ranked?.rating ?? '?'}</b>. ${home}</div>`);
+      window.sfx?.('clash');
+      setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 450);
+    }
+    showStage('stageDuel');
+    $('overlay').hidden = false;
+    return;
+  }
   if (kind === 'writ') {
     await fightWrit(uid, ref.writ, ref.tier);
     return;
@@ -2494,6 +3092,7 @@ function showStage(id) {
 $('pullBtn').onclick = pull;
 $('fuseBtn').onclick = fuse;
 $('newDuelBtn').onclick = () => openPick('create', null);
+$('newSquadBtn').onclick = () => openPick('squadCreate', null);
 document.querySelectorAll('.stance-btn').forEach(el => el.onclick = () => {
   pickStance = Number(el.dataset.stance);
   syncStanceBtns();

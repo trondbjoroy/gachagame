@@ -1,0 +1,9 @@
+{
+ "nc": "0061589e138059dcc670e392442c55bd6a55487adaa0b519ad41cf09bb0129b4",
+ "market": "000000004c077094120091a3f333efcae1fc8cdc98f758bc07b519aeed788627",
+ "blueprint": "000a1fd471e575a4eb8919b56dd58df0abfc2091a8002bc89c114645157cb9d7",
+ "market_blueprint": "00356e32686ea741b1a9d027bdf00e3c1e3563553f0d7ae1c2921c91af816d81",
+ "card_unit": 1,
+ "fee_bps": 500,
+ "node": "https://node-partners.testnet.hathor.network/v1a"
+}

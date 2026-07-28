@@ -21,9 +21,13 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-// v4 ids on testnet-india (launched 2026-07-24; see scripts/v4_ids.json)
-const NC = process.env.NC || '00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd';
-const MKT_NC = process.env.MARKET_NC || '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb';
+// v5 ids on testnet-india (launched 2026-07-28; see scripts/v5_ids.json)
+const NC = process.env.NC || '0061589e138059dcc670e392442c55bd6a55487adaa0b519ad41cf09bb0129b4';
+const MKT_NC = process.env.MARKET_NC || '000000004c077094120091a3f333efcae1fc8cdc98f758bc07b519aeed788627';
+// the v4 realms still hold a balance entry for every card they minted;
+// adopted cards keep those uids, so legacy balances stay a discovery source
+const LEGACY_NCS = ['00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd',
+                    '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb'];
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
@@ -113,6 +117,14 @@ const isSmallInt = v => Number.isInteger(v) && v >= 0 && v <= MAX_EMBER;
 const isStance = v => Number.isInteger(v) && v >= -1 && v <= 2;
 const isCommit = v => v === '' || (typeof v === 'string' && HEX64.test(v));
 const isSalt = v => typeof v === 'string' && v.length <= 64;
+// v5 squads: a lane order is a permutation of the digits 012
+const isPerm = v => typeof v === 'string' && v.length === 3
+  && v.includes('0') && v.includes('1') && v.includes('2');
+// v5 ranked: wager tiers 0 (free) / 1 (25 Ember) / 2 (100 Ember)
+const isTier = v => v === 0 || v === 1 || v === 2;
+// v5 guilds: 3-16 chars, same shape the banner-name registry allows
+const isGuildName = v => typeof v === 'string' && /^[A-Za-z0-9_ ]{3,16}$/.test(v)
+  && v.trim() === v;
 const isSide = v => v === 0 || v === 1;
 
 const marketHtrDep = a => a.type === 'deposit' && a.token === '00'
@@ -138,6 +150,19 @@ const METHODS = {
   create_duel:   { actions: [cardDep],         args: [isSmallInt, isCommit] },
   accept_duel:   { actions: [cardDep],         args: [isSmallInt, isStance] },
   reveal_duel:   { actions: [],                args: [isSmallInt, isStance, isSalt] },
+  create_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt, isHex64] },
+  accept_squad_duel: { actions: [cardDep, cardDep, cardDep], args: [isSmallInt] },
+  reveal_squad:  { actions: [],                args: [isSmallInt, isPerm, isSalt] },
+  join_ranked:   { actions: [cardDep],         args: [isTier] },
+  leave_ranked:  { actions: [],                args: [isTier] },
+  create_guild:  { actions: [],                args: [isGuildName] },
+  join_guild:    { actions: [],                args: [isSmallInt] },
+  leave_guild:   { actions: [],                args: [] },
+  fight_world_boss:   { actions: [],           args: [isHex64] },
+  claim_world_bounty: { actions: [],           args: [isSmallInt] },
+  enter_tournament:   { actions: [cardDep],    args: [isSmallInt] },
+  leave_tournament:   { actions: [],           args: [isSmallInt] },
+  advance_tournament: { actions: [],           args: [isSmallInt] },
   claim_forfeit: { actions: [],                args: [isSmallInt] },
   place_bet:     { actions: [],                args: [isSmallInt, isSide, isSmallInt] },
   cancel_duel:   { actions: [],                args: [isSmallInt] },
@@ -206,6 +231,24 @@ async function delegateOf(addr) {
 // haul. Baselines are seeded on first sight (a first sighting stays silent);
 // only round-by-round rolls remain unknowable without the event queue.
 const winsCache = new Map();    // identity -> wins
+const wbHpCache = new Map();    // week -> world-boss hp last seen
+
+// contract views return raw addresses as hex (25 version-prefixed bytes);
+// the feed speaks base58check like everything else
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function addrFromHex(hex) {
+  if (!/^[0-9a-f]{50}$/.test(hex || '')) return null;
+  const payload = Buffer.from(hex, 'hex');
+  const chk = crypto.createHash('sha256')
+    .update(crypto.createHash('sha256').update(payload).digest())
+    .digest().subarray(0, 4);
+  const buf = Buffer.concat([payload, chk]);
+  let n = BigInt('0x' + buf.toString('hex'));
+  let out = '';
+  while (n > 0n) { out = B58[Number(n % 58n)] + out; n /= 58n; }
+  for (const b of buf) { if (b === 0) out = '1' + out; else break; }
+  return out;
+}
 const emberCache = new Map();   // identity -> Ember ledger
 const shardsCache = new Map();  // identity -> shards
 
@@ -290,6 +333,60 @@ async function enrichEvent(ev, tries) {
     ev.result = await delveVerdict(ev.who, ev.lone === true);
     return true;
   }
+  if (ev.kind === 'tour_enter' || ev.kind === 'tour_leave' || ev.kind === 'tour_round') {
+    const c = `get_tournament(${ev.id})`;
+    const parts = ((await feedViews([c]))[c] || '').split('|');
+    ev.name = parts[0] || null;
+    if (ev.kind === 'tour_round') {
+      if (parts[1] === '2') {
+        ev.done = true;
+        ev.champion = addrFromHex(parts[10] || '');
+        ev.pool = Number(parts[9]) || 0;
+      } else if (parts[1] === '3') {
+        ev.cancelled = true;
+      }
+    }
+    return true;
+  }
+  if (ev.kind === 'guild_join') {
+    const c = `get_guild(${ev.id})`;
+    ev.name = ((await feedViews([c]))[c] || '').split('|')[0] || null;
+    return true;
+  }
+  if (ev.kind === 'wb_fight') {
+    // boss name always; damage from the HP drawdown, only trusted when this
+    // was the identity's lone tx in the window (several fighters merge)
+    const cw = 'get_wb_week()';
+    const week = (await feedViews([cw]))[cw] || 0;
+    const cb = `get_world_boss(${week})`;
+    const boss = ((await feedViews([cb]))[cb] || '').split('|');
+    const hp = Number(boss[1] || 0);
+    const had = wbHpCache.has(week);
+    const dHp = (wbHpCache.get(week) ?? hp) - hp;
+    wbHpCache.set(week, hp);
+    ev.boss = boss[0] || null;
+    if (had && dHp > 0 && ev.lone === true) ev.damage = dHp;
+    if (boss[0] && hp === 0) ev.slain = true;
+    return true;
+  }
+  if (ev.kind === 'ranked') {
+    // still in the queue -> the join just queued; gone -> it settled (or was
+    // left, which arrives as its own event) and the wins diff names the result
+    const cq = `is_ranked_queued(${ev.tier}, "${ev.who}")`;
+    const cw = `get_wins("${ev.who}")`;
+    const v = await feedViews([cq, cw]);
+    if (v[cq] === true) {
+      ev.result = 'queued';
+      winsCache.set(ev.who, v[cw] || 0);
+      return true;
+    }
+    const had = winsCache.has(ev.who);
+    const now = v[cw] || 0;
+    const dW = now - (winsCache.get(ev.who) ?? now);
+    winsCache.set(ev.who, now);
+    ev.result = !had ? null : dW > 0 ? 'won' : 'lost';
+    return true;
+  }
   return true;
 }
 
@@ -347,6 +444,35 @@ function feedEventFor(tx) {
       return { ts, kind: 'answer', who, id: Number(args[0]) || 0 };
     case 'reveal_duel':
       return { ts, kind: 'reveal', who, id: Number(args[0]) || 0 };
+    case 'create_squad_duel':
+      return { ts, kind: 'challenge', who, squad: true, wager: Number(args[0]) || 0 };
+    case 'accept_squad_duel':
+      return { ts, kind: 'answer', who, squad: true, id: Number(args[0]) || 0 };
+    case 'reveal_squad':
+      return { ts, kind: 'reveal', who, squad: true, id: Number(args[0]) || 0 };
+    case 'join_ranked':
+      return { ts, kind: 'ranked', who, tier: Number(args[0]) || 0 };
+    case 'leave_ranked':
+      return { ts, kind: 'ranked_leave', who, tier: Number(args[0]) || 0 };
+    case 'create_guild':
+      return { ts, kind: 'guild_new', who, name: String(args[0] || '') };
+    case 'join_guild':
+      return { ts, kind: 'guild_join', who, id: Number(args[0]) || 0 };
+    case 'leave_guild':
+      return { ts, kind: 'guild_leave', who };
+    case 'fight_world_boss':
+      return { ts, kind: 'wb_fight', who };
+    case 'claim_world_bounty':
+      return { ts, kind: 'wb_claim', who, week: Number(args[0]) || 0 };
+    case 'create_tournament':
+      return { ts, kind: 'tour_new', who, name: String(args[0] || ''),
+               fee: Number(args[1]) || 0 };
+    case 'enter_tournament':
+      return { ts, kind: 'tour_enter', who, id: Number(args[0]) || 0 };
+    case 'leave_tournament':
+      return { ts, kind: 'tour_leave', who, id: Number(args[0]) || 0 };
+    case 'advance_tournament':
+      return { ts, kind: 'tour_round', who, id: Number(args[0]) || 0 };
     case 'claim_forfeit':
       return { ts, kind: 'forfeit', who, id: Number(args[0]) || 0 };
     case 'cancel_duel':
@@ -506,7 +632,8 @@ async function pollFeed() {
     }
     for (const ev of fresh) {
       try {
-        if (ev.kind === 'delve_done') ev.lone = perIdentity.get(ev.who) === 1;
+        if (ev.kind === 'delve_done' || ev.kind === 'wb_fight')
+          ev.lone = perIdentity.get(ev.who) === 1;
         // pre-boot events are history replay: their baselines were seeded
         // AFTER the settles they describe, so inference would misattribute —
         // they keep plain lines (challenges still seed future baselines)
@@ -568,7 +695,7 @@ const tokenMeta = new Map();                // uid -> token info (immutable)
    watch these counters instead of refetching the world on a timer. */
 const pulse = { at: 0, feed: 0, duels: 0, listings: 0, swaps: 0, cards: 0 };
 const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
-  'get_card_aspects', 'get_card_wins', 'get_card_cosmetics',
+  'get_card_aspects', 'get_card_wins', 'get_card_cosmetics', 'get_card_ability',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
 
 async function ncCalls(ncId, calls, concurrency = 8) {
@@ -597,7 +724,7 @@ async function refreshCards(uids) {
     cardCache.cards[u] = {
       name: g('get_card_name'), tier: g('get_card_tier'), power: g('get_card_power'),
       aspects: g('get_card_aspects') || null, wins: g('get_card_wins') || 0,
-      cosmetics: g('get_card_cosmetics') || 0,
+      cosmetics: g('get_card_cosmetics') || 0, ability: g('get_card_ability') || 0,
       pending: g('get_pending_owner') ?? null, staker: g('get_staker') ?? null,
       delveSince: g('get_delve_since') || 0, temperCost: g('get_temper_cost') || 0,
     };
@@ -610,11 +737,10 @@ async function sweepCards() {
   // still resolve its metadata, and refreshCards only caches uids the gacha
   // actually minted (get_card_tier != null), so counterfeit tokens deposited
   // into the market never enter the cache and the client can drop their listings
-  const [g, m] = await Promise.all([
-    fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`).then(r => r.json()),
-    fetch(`${NODE}/nano_contract/state?id=${MKT_NC}&balances[]=__all__`).then(r => r.json()).catch(() => ({})),
-  ]);
-  const uids = [...new Set([...Object.keys(g.balances || {}), ...Object.keys(m.balances || {})])]
+  const sources = await Promise.all([NC, MKT_NC, ...LEGACY_NCS].map(nc =>
+    fetch(`${NODE}/nano_contract/state?id=${nc}&balances[]=__all__`)
+      .then(r => r.json()).catch(() => ({}))));
+  const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
     .filter(u => HEX64.test(u));
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
