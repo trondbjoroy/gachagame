@@ -1675,3 +1675,5 @@ body.theme-light .brazier, body.theme-light .overlay {
   --line: rgba(255, 245, 230, .09); --line-hi: #3a3125;
   color: var(--ink);
 }
+
+.err-emoji .g { width: 34px; height: 34px; fill: var(--ember); }
