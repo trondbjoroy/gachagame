@@ -3649,6 +3649,8 @@ function syncThemeBtn() {
   const b = $('themeBtn');
   b.title = light ? 'Dark mode' : 'Light mode';
   b.innerHTML = `<svg class="g"><use href="#g-${light ? 'moon' : 'sun'}"/></svg>`;
+  document.querySelector('meta[name=theme-color]')
+    ?.setAttribute('content', light ? '#f0dc9e' : '#0b0a08');
 }
 $('themeBtn').onclick = () => {
   const light = document.body.classList.toggle('theme-light');
