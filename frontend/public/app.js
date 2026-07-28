@@ -3629,6 +3629,21 @@ document.querySelectorAll('.codex-sec').forEach(d => {
   });
 });
 
+const THEME_LS = 'emberfall_theme';
+function syncThemeBtn() {
+  const light = document.body.classList.contains('theme-light');
+  const b = $('themeBtn');
+  b.title = light ? 'Dark mode' : 'Light mode';
+  b.innerHTML = `<svg class="g"><use href="#g-${light ? 'moon' : 'sun'}"/></svg>`;
+}
+$('themeBtn').onclick = () => {
+  const light = document.body.classList.toggle('theme-light');
+  try { localStorage.setItem(THEME_LS, light ? 'light' : 'dark'); } catch { }
+  syncThemeBtn();
+  track('theme', { mode: light ? 'light' : 'dark' });
+};
+syncThemeBtn();
+
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   track('tab_view', { tab: el.dataset.tab });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
