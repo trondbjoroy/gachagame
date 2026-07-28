@@ -1677,11 +1677,18 @@ body.theme-light::after { opacity: .04; }
 /* chips and buttons that hard-code the night palette */
 body.theme-light .hdr-chips .stat { background: rgba(255, 250, 235, .45); }
 body.theme-light .mini-btn.alt { color: var(--ink); }
-/* the page is centered, so the sticky header ends at main's edge; solid
-   side shadows carry the band across the whole viewport */
-body.theme-light header.top {
+/* The page is centered, so the sticky header ends at main's edge and the
+   gutter showed the page gradient beside it. Side shadows were the wrong
+   tool: a shadow is the border box SHIFTED, so at -100vw a header narrower
+   than the viewport lands its right edge off-screen and the gutter stayed
+   bare. A band behind the header instead — absolute, inset horizontally by
+   a viewport each way, so it matches the header's height exactly however
+   the header wraps. */
+body.theme-light header.top { background: transparent; box-shadow: none; }
+body.theme-light header.top::before {
+  content: ''; position: absolute; inset: 0 -100vw; z-index: -1;
   background: #f0dc9e;
-  box-shadow: -100vw 0 0 #f0dc9e, 100vw 0 0 #f0dc9e;
+  border-bottom: 1px solid var(--line);
 }
 body.theme-light .brand .mark { filter: drop-shadow(0 4px 12px rgba(95, 62, 11, .35)); }
 /* text that sits on the always-dark art keeps night ink */

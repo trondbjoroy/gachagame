@@ -433,7 +433,10 @@ class SessionWallet {
     });
   }
 
-  async tokenBalance(uid) { return this.handle.balance(uid); }
+  // the node, not the lib's own index: a session wallet still catching up
+  // answers 0 for every token it has not indexed yet, which read as 'you
+  // own nothing' and emptied the collection on reload
+  async tokenBalance(uid) { return addrBalance(this.address, uid); }
   async htrBalance() { return this.handle.balance('00'); }
   async sendData(data) { return this.handle.sendData(data); }
   async sendHtr(to, amount) { return this.handle.sendHtr(to, amount); }

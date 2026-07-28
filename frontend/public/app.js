@@ -373,10 +373,12 @@ async function loadMine() {
   for (const c of S.cards.values()) if (!loose.includes(c)) c.mine = false;
   const [htr, ...held] = await Promise.all([
     S.wallet.htrBalance().catch(() => 0),
-    ...loose.map(c => S.wallet.tokenBalance(c.uid).catch(() => 0)),
+    // null means "could not read", which is NOT the same as "you do not own
+    // it": a node hiccup must never blank a champion out of the collection
+    ...loose.map(c => S.wallet.tokenBalance(c.uid).catch(() => null)),
   ]);
   S.htr = htr;
-  loose.forEach((c, i) => { c.mine = held[i] > 0; });
+  loose.forEach((c, i) => { if (held[i] !== null) c.mine = held[i] > 0; });
   // v4 parity: champions still sitting in the MAIN wallet keep counting for
   // achievements while a session runs (the session key cannot spend them,
   // so they are not "mine" for actions — only for standing)
