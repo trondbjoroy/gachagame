@@ -46,16 +46,50 @@ def call1(c):
     return (d.get("calls") or {}).get(c, {}).get("value")
 
 
+def ensure_wallet():
+    """Start the operator wallet in wallet-headless if it isn't running."""
+    try:
+        req = urllib.request.Request(WALLET + "/start",
+            data=json.dumps({"wallet-id": WALLET_ID, "seedKey": WALLET_ID}).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=60).read()
+        time.sleep(8)
+    except Exception:
+        pass  # already running or the execute below will report
+
+
 def main():
     if not NC:
         sys.exit("ARENA_NC not set; refusing to guess a realm")
     count = call1("get_tournament_count()") or 0
+    now0 = int(time.time())
     for t in range(max(0, count - 4), count):
         parts = (call1(f"get_tournament({t})") or "").split("|")
         if len(parts) > 1 and parts[1] in ("0", "1"):
-            print(f"tournament #{t} ({parts[0]}) is still {['open', 'running'][int(parts[1])]}; skipping")
+            # a due round must not wait for a player's click: push it here,
+            # otherwise a stalled bracket blocks every later week
+            if len(parts) > 8 and now0 >= int(parts[8] or 0):
+                print(f"tournament #{t} ({parts[0]}) has a round due; advancing")
+                if APPLY:
+                    ensure_wallet()
+                    req = urllib.request.Request(WALLET + "/wallet/address?index=0",
+                        headers={"x-wallet-id": WALLET_ID})
+                    with urllib.request.urlopen(req, timeout=30) as r:
+                        addr = json.loads(r.read())["address"]
+                    body = {"nc_id": NC, "method": "advance_tournament",
+                            "address": addr, "data": {"args": [t]}}
+                    req = urllib.request.Request(WALLET + "/wallet/nano-contracts/execute",
+                        data=json.dumps(body).encode(),
+                        headers={"Content-Type": "application/json", "x-wallet-id": WALLET_ID})
+                    with urllib.request.urlopen(req, timeout=180) as r:
+                        print("advanced:", json.loads(r.read()).get("hash"))
+                else:
+                    print("dry-run (set TOUR_APPLY=1 to advance)")
+            else:
+                print(f"tournament #{t} ({parts[0]}) is still {['open', 'running'][int(parts[1])]}; skipping")
             return
 
+    ensure_wallet()
     req = urllib.request.Request(WALLET + "/wallet/address?index=0",
         headers={"x-wallet-id": WALLET_ID})
     with urllib.request.urlopen(req, timeout=30) as r:

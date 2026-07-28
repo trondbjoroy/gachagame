@@ -66,6 +66,18 @@ def active_last_week():
     return len(seen)
 
 
+def ensure_wallet():
+    """Start the operator wallet in wallet-headless if it isn't running."""
+    try:
+        req = urllib.request.Request(WALLET + "/start",
+            data=json.dumps({"wallet-id": WALLET_ID, "seedKey": WALLET_ID}).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=60).read()
+        time.sleep(8)
+    except Exception:
+        pass  # already running or the execute below will report
+
+
 def main():
     if not NC:
         sys.exit("ARENA_NC not set; refusing to guess a realm")
@@ -82,6 +94,7 @@ def main():
     if not APPLY:
         print("dry-run (set WB_APPLY=1 to post)")
         return
+    ensure_wallet()
     req = urllib.request.Request(WALLET + "/wallet/address?index=0",
         headers={"x-wallet-id": WALLET_ID})
     with urllib.request.urlopen(req, timeout=30) as r:
