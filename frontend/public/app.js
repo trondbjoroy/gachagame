@@ -1485,7 +1485,8 @@ function bindListActions() {
   });
   bind('[data-claimember]', u => doTx('Claiming Ember', 'claim_ember', [u], []));
   bind('[data-temper]', u => openTemper(u));
-  bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u]));
+  bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u])
+    .then(h => { if (h) window.sfx?.('fuse', { rate: .85, volume: .5 }); }));
   bind('[data-claimdelve]', claimDelve);
   bind('[data-dress]', openDress);
   document.querySelectorAll('[data-writ]').forEach(el => el.onclick = () => {
@@ -1520,7 +1521,8 @@ function bindListActions() {
     const h = await doTx('Claiming the bounty', 'claim_world_bounty', [Number(w)], []);
     if (h) ribbon(`The colossus paid out: +${fmtEmber(S.ember - e0)}`, 'level', 'coin');
   });
-  bind('[data-guildjoin]', id => doTx('Joining the guild', 'join_guild', [Number(id)], []));
+  bind('[data-guildjoin]', id => doTx('Joining the guild', 'join_guild', [Number(id)], [])
+    .then(h => { if (h) window.sfx?.('deed', { volume: .6 }); }));
   bind('[data-guildleave]', () => doTx('Leaving the guild', 'leave_guild', [], []));
   bind('[data-guildcreate]', () => {
     const name = prompt('Name your banner (3-16 chars: letters, numbers, spaces or _). Costs 500 Ember, burned:', '');
@@ -1528,7 +1530,8 @@ function bindListActions() {
     const n = name.trim();
     if (!/^[A-Za-z0-9_ ]{3,16}$/.test(n)) { alert('3-16 chars: letters, numbers, spaces or _.'); return; }
     if (S.ember < 500) { alert(`Raising a banner costs 500 Ember; you hold ${fmtEmber(S.ember)}.`); return; }
-    doTx('Raising the banner', 'create_guild', [n], []);
+    doTx('Raising the banner', 'create_guild', [n], [])
+      .then(h => { if (h) window.sfx?.('deed'); });
   });
   bind('[data-rankedleave]', async t => {
     const h = await doTx('Leaving the ranked queue', 'leave_ranked', [Number(t)], []);
@@ -1546,7 +1549,8 @@ function bindListActions() {
     if (raw === null) return;
     const p = Math.floor(Number(raw));
     if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
-    doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT });
+    doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT })
+      .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
   });
   bind('[data-trade]', u => openPick('want', u));
   bind('[data-cancellisting]', id => doTx('Cancelling listing', 'cancel_listing', [Number(id)], [], { target: MKT }));
@@ -2499,7 +2503,8 @@ function openCard(uid) {
       const p = Math.floor(Number(raw));
       if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
       $('overlay').hidden = true;
-      doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT });
+      doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT })
+        .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
     });
     const sb = $('cardShareBtn');
     if (sb) sb.onclick = () => cardDetailUid && shareCard(cardDetailUid);
@@ -2896,6 +2901,7 @@ async function submitPick(uid) {
     const hash = await doTx('Taking your seat', 'enter_tournament', [ref],
       [depAct(uid, CARD_AMT)]);
     if (!hash) return;
+    window.sfx?.('clash', { rate: .9, volume: .45 });
     const seats = loadMyTournaments();
     seats.push({ t: ref, uid, ts: Date.now() });
     localStorage.setItem(TOURS_LS, JSON.stringify(seats.slice(-10)));
@@ -2936,6 +2942,7 @@ async function submitPick(uid) {
   if (kind === 'ranked') {
     const winsBefore = S.wins;
     const hash = await doTx('Entering the ranked ladder', 'join_ranked', [ref], [depAct(uid, CARD_AMT)]);
+    if (hash) window.sfx?.('clash', { rate: .9, volume: .45 });
     if (!hash) return;
     // doTx refreshed state: either we now wait in the queue, or a waiting
     // rival was in band and the fight already settled
@@ -2965,7 +2972,8 @@ async function submitPick(uid) {
     return;
   }
   if (kind === 'want') {
-    await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT });
+    const swapped = await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT });
+    if (swapped) window.sfx?.('coin', { volume: .45 });
     return;
   }
   if (kind === 'create') {
