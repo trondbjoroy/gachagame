@@ -14,6 +14,7 @@ Like the weekly favor, this is a transparent interim implementation:
 anyone can recompute the standings from public node data.
 """
 import json
+import time
 import os
 import urllib.parse
 import urllib.request
@@ -33,9 +34,22 @@ ENDS = 1788739200            # 2026-09-07T00:00:00Z (8 weeks)
 TOP = 50
 
 
+FALLBACK_NODE = "https://node1.testnet.hathor.network/v1a"
+
+
 def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.loads(r.read())
+    """The partner node 503s in bursts; a half-walked history silently
+    truncates the standings, so retry and then try the public node."""
+    last = None
+    for attempt in range(6):
+        target = url if attempt < 4 else url.replace(NODE, FALLBACK_NODE)
+        try:
+            with urllib.request.urlopen(target, timeout=30) as r:
+                return json.loads(r.read())
+        except Exception as e:
+            last = e
+            time.sleep(2 * (attempt + 1))
+    raise last
 
 
 def views(calls):

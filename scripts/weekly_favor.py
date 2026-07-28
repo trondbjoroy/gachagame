@@ -36,9 +36,22 @@ PRIZE_BPS = 500        # 5% of the week's summon revenue
 WEEK = 7 * 24 * 3600   # weeks tick at unix epoch boundaries (Thursday 00:00 UTC)
 
 
+FALLBACK_NODE = "https://node1.testnet.hathor.network/v1a"
+
+
 def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.loads(r.read())
+    """The partner node 503s in bursts; a half-walked history silently
+    truncates the standings, so retry and then try the public node."""
+    last = None
+    for attempt in range(6):
+        target = url if attempt < 4 else url.replace(NODE, FALLBACK_NODE)
+        try:
+            with urllib.request.urlopen(target, timeout=30) as r:
+                return json.loads(r.read())
+        except Exception as e:
+            last = e
+            time.sleep(2 * (attempt + 1))
+    raise last
 
 
 def views(calls):
@@ -66,6 +79,7 @@ def _identities(addrs, views_fn):
     for a in addrs:
         out.add(dv.get(f'get_delegate("{a}")') or a)
     return sorted(out)
+
 
 def discover_players():
     """Every address that ever called either arena, from public history."""
