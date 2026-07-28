@@ -674,7 +674,22 @@ footer a { color: var(--acid); text-decoration: none; }
 
 body.fuse-picking .card.cf[data-open] { cursor: copy; }
 body.fuse-picking .card.cf[data-open]:hover { border-color: var(--acid); }
-.card.selected { outline: 2px solid var(--acid); outline-offset: 2px; }
+/* Picked for fusion. The ring has to read against a dark card face AND
+   whatever the page is standing on, so it is drawn twice: an ink ring
+   against the gold ground, a gold halo against the art. */
+.card.selected {
+  outline: 3px solid var(--acid); outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(212, 168, 67, .22);
+}
+.card.selected::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  border: 2px solid rgba(11, 10, 8, .55); pointer-events: none;
+}
+body.theme-light .card.selected {
+  outline-color: #2a1e08;
+  box-shadow: 0 0 0 6px rgba(42, 30, 8, .18), 0 6px 18px rgba(63, 46, 14, .28);
+}
+body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65); }
 .fuse-bar { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink-muted); }
 .pending-gems { margin-top: 10px; font-family: var(--data); font-size: 12px; color: var(--acid); }
 
