@@ -40,6 +40,17 @@ async function nodeGet(pathAndQuery, tries = 4) {
   throw last;
 }
 const PUB = path.join(__dirname, 'public');
+/* FICTIONAL testnet company (scripts/demo-fixtures.json): eight seeded
+   banners and a few hours of feed lines, so a first tester is not alone in
+   the realm. Held in memory only — names.json and feed-state.json stay
+   truthful — so deleting the file removes every trace. These deeds are NOT
+   on chain and must not outlive the playtest. */
+let demo = { players: [], feed: [] };
+try {
+  demo = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'scripts', 'demo-fixtures.json'), 'utf8'));
+  console.log(`demo fixtures: ${demo.players.length} players, ${demo.feed.length} feed lines`);
+} catch { /* none seeded, or deliberately removed */ }
+const demoNames = Object.fromEntries((demo.players || []).map(p => [p.addr, p.name]));
 const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
@@ -1006,8 +1017,11 @@ async function handleApi(req, res, ip) {
 
   if (req.method === 'GET' && url.pathname === '/feed') {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    // real deeds sit above the seeded ones, both in time order
+    const merged = [...feed, ...(demo.feed || [])]
+      .sort((a, b) => b.ts - a.ts).slice(0, 60);
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
-    return res.end(JSON.stringify({ events: feed }));
+    return res.end(JSON.stringify({ events: merged }));
   }
 
   /* Token metadata in ONE call. wallet-lib asks the node for each token it
@@ -1125,7 +1139,7 @@ async function handleApi(req, res, ip) {
 
   if (req.method === 'GET' && url.pathname === '/names') {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
-    const flat = {};
+    const flat = { ...demoNames };   // fixtures first: a real claim wins
     for (const [a, n] of Object.entries(names)) flat[a] = n.name;
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify(flat));

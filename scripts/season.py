@@ -27,10 +27,10 @@ ARENA = os.environ.get("ARENA_NC", "0061589e138059dcc670e392442c55bd6a55487adaa0
 STATE = os.environ.get("SEASON_STATE", "/opt/gacha/season-state.json")
 OUT = os.environ.get("SEASON_OUT", "/opt/gacha/frontend/public/season.json")
 
-SEASON = 1
-NAME = "The First Muster"
-STARTS = 1783900800          # 2026-07-13T00:00:00Z
-ENDS = 1788739200            # 2026-09-07T00:00:00Z (8 weeks)
+SEASON = 2
+NAME = "The Ember Court"
+STARTS = 1785196800          # 2026-07-28T00:00:00Z
+ENDS = 1790035200            # 2026-09-22T00:00:00Z (8 weeks)
 TOP = 50
 
 
@@ -107,6 +107,12 @@ def main():
         with open(STATE) as f:
             state = json.load(f)
     first_run = "baseline" not in state
+    # a new season starts everyone at zero seasonal renown: without this the
+    # whole of the previous season carries straight into the new standings
+    if state.get("season") not in (None, SEASON):
+        print(f"season {state['season']} -> {SEASON}: rebaselining")
+        state.pop("baseline", None)
+        first_run = True
     baseline = state.get("baseline", {})
 
     players = discover_players()
@@ -119,10 +125,18 @@ def main():
             # earned everything in-season
             baseline[a] = r if first_run else 0
 
-    standings = sorted(
-        ({"addr": a, "seasonal": current[a] - baseline.get(a, 0), "lifetime": current[a]}
-         for a in players if current[a] - baseline.get(a, 0) > 0),
-        key=lambda s: -s["seasonal"])[:TOP]
+    rows = [{"addr": a, "seasonal": current[a] - baseline.get(a, 0), "lifetime": current[a]}
+            for a in players if current[a] - baseline.get(a, 0) > 0]
+    # FICTIONAL testnet company: seeded banners so the board is not empty for
+    # the first tester. Delete scripts/demo-fixtures.json to remove them.
+    try:
+        with open("scripts/demo-fixtures.json", encoding="utf-8") as f:
+            rows += [{"addr": p["addr"], "seasonal": p["seasonal"],
+                      "lifetime": p.get("lifetime", p["seasonal"])}
+                     for p in json.load(f).get("players", [])]
+    except FileNotFoundError:
+        pass
+    standings = sorted(rows, key=lambda s: -s["seasonal"])[:TOP]
 
     state["baseline"] = baseline
     state["season"] = SEASON
