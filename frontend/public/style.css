@@ -1697,3 +1697,12 @@ body.theme-light .brazier, body.theme-light .overlay, body.theme-light #tourTip 
 }
 
 .err-emoji .g { width: 34px; height: 34px; fill: var(--ember); }
+
+/* while the wallet restores, phones hear it at the top of the page — the
+   tab's own empty line sits below the brazier, out of the first screen */
+.connecting-note {
+  display: none; text-align: center; font-size: 13px; color: var(--ink-muted);
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--panel); margin-bottom: 14px;
+}
+@media (max-width: 1290px) { .connecting-note:not([hidden]) { display: block; } }

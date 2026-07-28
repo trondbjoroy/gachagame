@@ -922,6 +922,7 @@ const CONNECTING = 'Connecting your wallet, please wait…';
 function render() {
   updateCues();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
+  $('connectingNote').hidden = !S.restoring;
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   // a banner name stands alone in the chip (the hint span names the wallet
   // kind already); otherwise wallet kind + shortened address
