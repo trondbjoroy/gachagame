@@ -104,6 +104,43 @@ body { background: #000; }
 .strip .s { font-family: 'Cinzel', serif; font-weight: 600; font-size: 19.5px;
   letter-spacing: .2em; color: #d4a843; }
 .strip .sep { color: #78705f; font-size: 16px; }
+
+/* DAYLIGHT VARIANT (?light): the realm by day, on gold parchment. The card
+   fan keeps its night frames — the art is lit for the dark and reads best
+   against it, exactly as the app's light mode treats card faces. */
+.infographic.light { background: linear-gradient(170deg, #f6e4ad, #e9c86f 46%, #d9ad48); }
+.infographic.light .glow-a { background: radial-gradient(circle, rgba(255, 252, 240, .55), transparent 62%); }
+.infographic.light .glow-b { background: radial-gradient(circle, rgba(124, 83, 18, .10), transparent 60%); }
+.infographic.light .grid { opacity: .07;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 47px, #5b4211 47px 48px),
+    repeating-linear-gradient(90deg, transparent 0 47px, #5b4211 47px 48px); }
+.infographic.light .frame { border-color: rgba(63, 46, 14, .30); }
+.infographic.light .corner { border-color: #8a6218; }
+.infographic.light .wordmark {
+  background: linear-gradient(100deg, #6d470f 12%, #a4741f 40%, #6d470f 62%, #4a3008 90%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.infographic.light .brand img {
+  /* the gold mark washes out on gold: darken it to bronze so the
+     silhouette still carries at a glance */
+  filter: brightness(.58) saturate(1.35) drop-shadow(0 4px 14px rgba(95, 62, 11, .35));
+}
+.infographic.light .subline { color: #6f5926; }
+.infographic.light .rule { background: linear-gradient(90deg, #7c5312, transparent 78%); }
+.infographic.light .pt .d { color: #8a6218; }
+.infographic.light .pt .t { color: #2a1e08; }
+.infographic.light .pt .t b { color: #7c5312; }
+.infographic.light .cta .btn { border-color: #8a6218; color: #2a1e08;
+  background: linear-gradient(180deg, #f3d98f, #d9ab43); }
+.infographic.light .cta .url { color: #6d470f; }
+.infographic.light .meta { color: #6b5a33; }
+.infographic.light .meta b { color: #7c5312; }
+.infographic.light .fan-tag { color: #54421c; }
+.infographic.light .fan-tag b { color: #7c5312; }
+.infographic.light .strip { border-color: rgba(63, 46, 14, .35); background: rgba(255, 250, 235, .42); }
+.infographic.light .strip .s { color: #6d470f; }
+.infographic.light .strip .sep { color: #96762f; }
 </style>
 </head>
 <body>
@@ -155,5 +192,6 @@ body { background: #000; }
     <span class="s">TRADE</span>
   </div>
 </div>
+<script>if (location.search.includes("light")) document.querySelector(".infographic").classList.add("light");</script>
 </body>
 </html>

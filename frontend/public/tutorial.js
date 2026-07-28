@@ -7,7 +7,7 @@ const TOUR = [
     body: 'The throne is empty and a host must be raised. This short tour walks you through the realm, one feature at a time. Step back and forth as you like, or leave with the ✕ and return later from the ? button in the header.',
   },
   {
-    target: '.machine-panel', tab: 'collection',
+    target: '.machine-panel, #brazier', tab: 'collection',
     title: 'The Brazier',
     body: 'Every summoning binds a champion into soulstone: one of a kind, with a rarity (Footman to Sovereign), a power, and three aspects rolled at birth. The price in coin is shown on the button; the Blind Weaver answers within moments. Roughly 1 in 25 summonings, she returns your coin from the favor pool.',
   },
@@ -128,7 +128,12 @@ function showTourStep() {
   // let the tab switch settle before measuring
   setTimeout(() => {
     const { dim, spot, tip } = tourEls();
-    const el = s.target ? document.querySelector(s.target) : null;
+    // a comma-separated target is a preference list: take the first one
+    // actually on screen, since panels retire as the player progresses
+    const el = s.target
+      ? [...document.querySelectorAll(s.target)]
+          .find(e => e.offsetParent !== null && !e.hidden) || document.querySelector(s.target)
+      : null;
     const visible = el && el.offsetParent !== null && !el.hidden;
     // spotlight steps dim via the spot's giant shadow; centered steps dim here
     dim.style.background = visible ? 'transparent' : 'rgba(4, 3, 2, .62)';
