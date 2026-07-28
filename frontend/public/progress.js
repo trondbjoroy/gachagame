@@ -26,7 +26,10 @@
   };
   const dayNum = () => Math.floor(Date.now() / 86400000);
   const todaysTrial = () => TRIALS[(dayNum() * 5 + 2) % TRIALS.length];
-  const tKey = () => 'emberfall_trials_' + (S.addr || '');
+  // keyed to the identity, never the session key: a new session must not
+  // reset a streak or empty the muster roll
+  const who4 = () => (typeof identity === 'function' && identity()) || S.addr || '';
+  const tKey = () => 'emberfall_trials_' + who4();
   function tState() {
     try { return JSON.parse(localStorage.getItem(tKey())) || {}; } catch { return {}; }
   }
@@ -106,8 +109,8 @@
   }
 
   /* ---------------- the muster roll ---------------- */
-  const mKey = () => 'emberfall_muster_' + (S.addr || '');
-  const setsKey = () => 'emberfall_sets_' + (S.addr || '');
+  const mKey = () => 'emberfall_muster_' + who4();
+  const setsKey = () => 'emberfall_sets_' + who4();
 
   function ownedNow() {
     const names = new Set();

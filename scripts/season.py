@@ -48,6 +48,22 @@ def views(calls):
     return out
 
 
+def _identities(addrs, views_fn):
+    """Fold session keys into the identity they sign for, and include every
+    named identity. Delegation means a player's MAIN address may never send
+    a tx itself — all its deeds arrive through session keys — so history
+    alone would leave the identity out of the standings entirely."""
+    try:
+        with urllib.request.urlopen("https://app.emberfall.fun/api/names", timeout=20) as r:
+            addrs = set(addrs) | set(json.loads(r.read()))
+    except Exception:
+        addrs = set(addrs)
+    out = set()
+    dv = views_fn([f'get_delegate("{a}")' for a in sorted(addrs)])
+    for a in addrs:
+        out.add(dv.get(f'get_delegate("{a}")') or a)
+    return sorted(out)
+
 def discover_players():
     addrs = set()
     for nc in (ARENA,):
@@ -67,7 +83,7 @@ def discover_players():
             after = hist[-1].get("hash")
             if len(hist) < 50:
                 break
-    return sorted(addrs)
+    return _identities(addrs, views)
 
 
 def main():
