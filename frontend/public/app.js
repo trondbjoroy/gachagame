@@ -481,7 +481,7 @@ function feedLine(ev) {
       : `${name} listed a champion for ${fmtHtr(ev.price)}`;
     case 'bought': {
       const what = ev.card ? `<b>${esc(ev.card)}</b>` : 'a champion';
-      const from = ev.seller && !isMine(ev.seller) ? ` from ${who(ev.seller)}` : '';
+      const from = ev.seller ? ` from ${isMine(ev.seller) ? 'you' : who(ev.seller)}` : '';
       return `${name} bought ${what}${from} for ${fmtHtr(ev.price || 0)}`;
     }
     case 'swap_offer': return ev.card && ev.want
@@ -587,7 +587,10 @@ async function maybeAutoClaim() {
     fromMarket ? { target: MKT } : {});
   autoClaimBusy = false;
   if (h) crashLand(next.uid, next.tier);
-  maybeAutoClaim();
+  // a claim that failed (a node hiccup mid-sign, most often) must not stay
+  // marked as attempted: unmark it so the next pass tries again
+  else autoClaimed.delete(next.uid);
+  if (h) maybeAutoClaim();
 }
 
 /* ---------------- rendering ---------------- */
@@ -1671,6 +1674,9 @@ async function doTx(label, method, args, actions, { target } = {}) {
     let msg = e.message || String(e);
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
       msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
+    } else if (/did not match the expected pattern|network error|load failed/i.test(msg)) {
+      msg = 'Your wallet could not reach the node just then. Nothing was lost — '
+        + 'it retries on its own, or press the action again in a moment.';
     } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
       msg = 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
         + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
