@@ -1165,14 +1165,14 @@ body.land-flash::before {
 /* Bosses: a boss, then its three tiers with the spread each one fights.
    The row stacks (name above tiers) because side-by-side the tier block has
    no natural width and squeezed the name to one word per line. */
-#writList { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px; }
+#writList { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; }
 .writ-row {
-  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 7px;
   overflow: hidden;
 }
 .writ-row .duel-info { width: 100%; min-width: 0; flex: 0 0 auto; }
 .writ-row .duel-info b { font-family: var(--display); font-size: 14.5px; }
-.writ-tiers { display: grid; grid-template-columns: 1fr; gap: 4px; width: 100%; }
+.writ-tiers { display: grid; grid-template-columns: 1fr; gap: 3px; width: 100%; }
 .writ-tier {
   display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center;
   gap: 10px; padding: 3px 0;
@@ -1658,3 +1658,20 @@ body.theme-light .cf-menu {
   box-shadow: 0 18px 40px -12px rgba(63, 46, 14, .5);
 }
 body.theme-light .cf-ovf[open] > summary { background: #e6d3a2; }
+/* gold chips with baked-in dark text keep the night golds */
+body.theme-light .trial-done, body.theme-light .cf-primary {
+  background: linear-gradient(180deg, #e8be55, #c79430);
+}
+body.theme-light .toast {
+  background: #f3e6c0;
+  box-shadow: 0 14px 40px -12px rgba(63, 46, 14, .45);
+}
+/* always-dark islands (the brazier, every overlay dialog) get the night
+   tokens back wholesale, so their contents need no per-element fixes */
+body.theme-light .brazier, body.theme-light .overlay {
+  --ink: #f4efe6; --ink-muted: #b5ab99; --ink-dim: #a89d89; --ink-faint: #8a8172;
+  --acid: #d4a843; --acid-hot: #e8be55; --acid-lo: #c79430;
+  --panel: rgba(255, 250, 240, .035); --panel-solid: #15130f; --raised: #1e1a14;
+  --line: rgba(255, 245, 230, .09); --line-hi: #3a3125;
+  color: var(--ink);
+}
