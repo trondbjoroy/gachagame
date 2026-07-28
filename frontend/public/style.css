@@ -1649,7 +1649,12 @@ body.theme-light::after { opacity: .04; }
 /* chips and buttons that hard-code the night palette */
 body.theme-light .hdr-chips .stat { background: rgba(255, 250, 235, .45); }
 body.theme-light .mini-btn.alt { color: var(--ink); }
-body.theme-light header.top { background: rgba(240, 220, 158, .92); }
+/* the page is centered, so the sticky header ends at main's edge; solid
+   side shadows carry the band across the whole viewport */
+body.theme-light header.top {
+  background: #f0dc9e;
+  box-shadow: -100vw 0 0 #f0dc9e, 100vw 0 0 #f0dc9e;
+}
 body.theme-light .brand .mark { filter: drop-shadow(0 4px 12px rgba(95, 62, 11, .35)); }
 /* text that sits on the always-dark art keeps night ink */
 body.theme-light .cf-med b { color: #f4efe6; }
