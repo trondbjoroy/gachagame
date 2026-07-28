@@ -21,9 +21,13 @@ const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
 
 const WALLET_ID = 'player';
-// v4 ids on testnet-india (launched 2026-07-24; see scripts/v4_ids.json)
-const NC = process.env.NC || '00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd';
-const MKT_NC = process.env.MARKET_NC || '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb';
+// v5 ids on testnet-india (launched 2026-07-28; see scripts/v5_ids.json)
+const NC = process.env.NC || '0061589e138059dcc670e392442c55bd6a55487adaa0b519ad41cf09bb0129b4';
+const MKT_NC = process.env.MARKET_NC || '000000004c077094120091a3f333efcae1fc8cdc98f758bc07b519aeed788627';
+// the v4 realms still hold a balance entry for every card they minted;
+// adopted cards keep those uids, so legacy balances stay a discovery source
+const LEGACY_NCS = ['00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd',
+                    '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb'];
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
@@ -733,11 +737,10 @@ async function sweepCards() {
   // still resolve its metadata, and refreshCards only caches uids the gacha
   // actually minted (get_card_tier != null), so counterfeit tokens deposited
   // into the market never enter the cache and the client can drop their listings
-  const [g, m] = await Promise.all([
-    fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`).then(r => r.json()),
-    fetch(`${NODE}/nano_contract/state?id=${MKT_NC}&balances[]=__all__`).then(r => r.json()).catch(() => ({})),
-  ]);
-  const uids = [...new Set([...Object.keys(g.balances || {}), ...Object.keys(m.balances || {})])]
+  const sources = await Promise.all([NC, MKT_NC, ...LEGACY_NCS].map(nc =>
+    fetch(`${NODE}/nano_contract/state?id=${nc}&balances[]=__all__`)
+      .then(r => r.json()).catch(() => ({}))));
+  const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
     .filter(u => HEX64.test(u));
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
