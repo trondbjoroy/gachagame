@@ -1266,7 +1266,7 @@ function render() {
     <div class="duel ${wb.hp > 0 ? 'open' : ''}">
       <span class="duel-emoji">${glyph('boss', 'gl')}</span>
       <div class="duel-info"><b>${esc(wb.name)}</b>
-        <div class="duel-meta">⚔ ${wb.valor} · 🛡 ${wb.bulwark} · 🗡 ${wb.guile} · bounty ${fmtEmber(wb.pool)}</div>
+        <div class="duel-meta">${glyph('attack')} ${wb.valor} · ${glyph('defense')} ${wb.bulwark} · ${glyph('cunning')} ${wb.guile} · bounty ${fmtEmber(wb.pool)}</div>
         <div class="duel-meta">HP ${wb.hp} / ${wb.hp0} (${hpPct}%)${wb.myDamage
           ? ` · your damage ${wb.myDamage}` : ''}</div>
       </div>
