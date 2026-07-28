@@ -3205,7 +3205,10 @@ async function startSession() {
         });
         waitRounds = 600; // half an hour for a human-driven approval
         showOfferWaitUI(addr, reusing ? 'Reusing your earlier session key. ' : '');
-        sessionNote('Waiting for the approval\u2026 safe to switch apps or even reload this page.');
+        const why = String((e && e.message) || e).slice(0, 140);
+        sessionNote('The wallet did not take the request (' + why + '). '
+          + 'Open MetaMask yourself if nothing popped up \u2014 the game watches '
+          + 'the chain and finishes the moment the approval lands.');
       }
       const offered = await awaitOffer(addr, waitRounds, ECON.sessionFund);
       if (!offered) {
