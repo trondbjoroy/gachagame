@@ -16,6 +16,29 @@ const crypto = require('crypto');
 
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
 const NODE = process.env.NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
+const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node1.testnet.hathor.network/v1a';
+// The partner node's balancer answers "no healthy upstream" in bursts. Every
+// read here used to take that at face value: the card sweep died, the cache
+// went stale, and players opened a collection missing the champions they own
+// (it only healed when someone summoned and forced a discovery pass). Reads
+// retry, then fall through to the public node.
+async function nodeGet(pathAndQuery, tries = 4) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    const base = i < tries - 1 ? NODE : FALLBACK_NODE;
+    try {
+      const r = await fetch(base + pathAndQuery);
+      if (!r.ok) throw new Error(`node ${r.status}`);
+      const text = await r.text();
+      try { return JSON.parse(text); }
+      catch { throw new Error('node returned ' + text.slice(0, 40)); }
+    } catch (e) {
+      last = e;
+      if (i < tries - 1) await new Promise(r => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw last;
+}
 const PUB = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 8090);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -261,7 +284,7 @@ const shardsCache = new Map();  // identity -> shards
 
 async function feedViews(calls) {
   const qs = calls.map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
-  const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+  const d = await nodeGet(`/nano_contract/state?id=${NC}&${qs}`);
   const out = {};
   for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
   return out;
@@ -420,7 +443,7 @@ async function loadWritNames() {
   try {
     const qs = [...Array(10).keys()]
       .map(i => 'calls[]=' + encodeURIComponent(`get_writ(${i})`)).join('&');
-    const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+    const d = await nodeGet(`/nano_contract/state?id=${NC}&${qs}`);
     writNames = {};
     for (let i = 0; i < 10; i++) {
       const v = d.calls && d.calls[`get_writ(${i})`] && d.calls[`get_writ(${i})`].value;
@@ -534,7 +557,7 @@ async function cardName(uid) {
 
 async function pollMarketFeed() {
   if (!MKT_NC) return;
-  const d = await (await fetch(`${NODE}/nano_contract/history?id=${MKT_NC}&count=20`)).json();
+  const d = await nodeGet(`/nano_contract/history?id=${MKT_NC}&count=20`);
   const fresh = [];
   for (const tx of d.history || []) {
     if (feedSeen.has(tx.hash) || tx.is_voided) continue;
@@ -573,7 +596,7 @@ async function pollMarketFeed() {
 
 let knownUids = null; // contract token set, for spotting freshly minted cards
 async function contractUids() {
-  const d = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
+  const d = await nodeGet(`/nano_contract/state?id=${NC}&balances[]=__all__`);
   return new Set(Object.keys(d.balances || {}));
 }
 
@@ -593,7 +616,7 @@ async function pollFeed() {
       } catch { if (++q.tries > 8) enrichQueue.splice(i, 1); }
     }
     if (lateEnriched) saveFeed();
-    const d = await (await fetch(`${NODE}/nano_contract/history?id=${NC}&count=30`)).json();
+    const d = await nodeGet(`/nano_contract/history?id=${NC}&count=30`);
     const fresh = [];
     const touched = new Set();
     for (const tx of d.history || []) {
@@ -621,7 +644,7 @@ async function pollFeed() {
         .map(u => 'calls[]=' + encodeURIComponent(`get_card_name("${u}")`)).join('&');
       let named = {};
       if (qs) {
-        const st = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&${qs}`)).json();
+        const st = await nodeGet(`/nano_contract/state?id=${NC}&${qs}`);
         named = st.calls || {};
       }
       const queue = newUids
@@ -715,7 +738,7 @@ async function ncCalls(ncId, calls, concurrency = 8) {
       const mine = idx++;
       if (mine >= chunks.length) return;
       const qs = chunks[mine].map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
-      const d = await (await fetch(`${NODE}/nano_contract/state?id=${ncId}&${qs}`)).json();
+      const d = await nodeGet(`/nano_contract/state?id=${ncId}&${qs}`);
       for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
     }
   }));
@@ -745,8 +768,7 @@ async function sweepCards() {
   // actually minted (get_card_tier != null), so counterfeit tokens deposited
   // into the market never enter the cache and the client can drop their listings
   const sources = await Promise.all([NC, MKT_NC, ...LEGACY_NCS].map(nc =>
-    fetch(`${NODE}/nano_contract/state?id=${nc}&balances[]=__all__`)
-      .then(r => r.json()).catch(() => ({}))));
+    nodeGet(`/nano_contract/state?id=${nc}&balances[]=__all__`).catch(() => ({}))));
   const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
     .filter(u => HEX64.test(u) && !RETIRED_UIDS.has(u));
   for (const u of RETIRED_UIDS) delete cardCache.cards[u];
@@ -754,7 +776,15 @@ async function sweepCards() {
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
   fs.writeFile(CACHE_FILE, JSON.stringify(cardCache), () => {});
 }
-sweepCards().catch(e => console.error('card sweep failed:', e.message));
+// a failed sweep must not leave the cache stale for a full interval: come
+// back in 45s until one lands, then settle into the 10-minute cadence
+function sweepSoon(delay = 45_000) {
+  setTimeout(() => sweepCards().catch(e => {
+    console.error('card sweep failed:', e.message);
+    sweepSoon();
+  }), delay);
+}
+sweepCards().catch(e => { console.error('card sweep failed:', e.message); sweepSoon(); });
 setInterval(() => sweepCards().catch(() => {}), 10 * 60_000); // drift safety net
 
 // the feed poller calls this with uids seen in fresh transactions
@@ -806,7 +836,7 @@ function dataFromScript(b64) {
 // its name is free for the taking. Active addresses always hold something.
 async function addressAbandoned(addr) {
   try {
-    const d = await (await fetch(`${NODE}/thin_wallet/address_balance?address=${addr}`)).json();
+    const d = await nodeGet(`/thin_wallet/address_balance?address=${addr}`);
     for (const t of Object.values(d.tokens_data || {})) {
       if ((t.received || 0) - (t.spent || 0) > 0) return false;
     }
@@ -818,7 +848,7 @@ async function addressAbandoned(addr) {
 // address before its funding, so whoever signed this tx created the address
 async function firstFundingTx(addr) {
   try {
-    const d = await (await fetch(`${NODE}/thin_wallet/address_history?addresses[]=${addr}`)).json();
+    const d = await nodeGet(`/thin_wallet/address_history?addresses[]=${addr}`);
     const txs = (d.history || []).filter(tx =>
       (tx.outputs || []).some(o => o.decoded && o.decoded.address === addr));
     if (!txs.length) return null;
@@ -833,7 +863,7 @@ async function handleNameClaim(res, body) {
   if (typeof txId !== 'string' || !HEX64.test(txId)) return deny(res, 400, 'bad tx id');
   if (typeof wanted !== 'string' || !ADDR_RE.test(wanted)) return deny(res, 400, 'bad address');
   let d;
-  try { d = await (await fetch(`${NODE}/transaction?id=${txId}`)).json(); }
+  try { d = await nodeGet(`/transaction?id=${txId}`); }
   catch { return deny(res, 502, 'node unreachable, try again'); }
   const tx = d && d.tx, meta = d && d.meta;
   if (!tx || !meta) return deny(res, 404, 'transaction not found');
@@ -1050,7 +1080,7 @@ async function handleApi(req, res, ip) {
     // token the cache does not know, so the reveal never races the poller
     if (url.searchParams.get('discover')) {
       try {
-        const cur = await (await fetch(`${NODE}/nano_contract/state?id=${NC}&balances[]=__all__`)).json();
+        const cur = await nodeGet(`/nano_contract/state?id=${NC}&balances[]=__all__`);
         const fresh = Object.keys(cur.balances || {})
           .filter(u => HEX64.test(u) && !cardCache.cards[u]);
         if (fresh.length) await refreshCards(fresh);
