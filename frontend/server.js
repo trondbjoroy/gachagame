@@ -680,6 +680,11 @@ setInterval(pollAll, 15_000); // our own node: no shared rate limit to respect
 // updating incrementally from the same tx stream the feed watches; clients
 // pass ?touch=<uids> after their own tx for instant freshness on those cards.
 const cardCache = { cards: {}, updatedAt: 0 };
+// the cache survives restarts: a deploy must not blank every player's
+// collection for the minute the first sweep takes
+const CACHE_FILE = path.join(__dirname, 'card-cache.json');
+try { Object.assign(cardCache, JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))); }
+catch { /* first boot: the sweep fills it */ }
 const realmCache = { at: 0, data: null };   // landing-page counters
 const tokenMeta = new Map();                // uid -> token info (immutable)
 /* What "something changed" looks like, refreshed by the feed poll. Clients
@@ -736,6 +741,7 @@ async function sweepCards() {
     .filter(u => HEX64.test(u));
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
+  fs.writeFile(CACHE_FILE, JSON.stringify(cardCache), () => {});
 }
 sweepCards().catch(e => console.error('card sweep failed:', e.message));
 setInterval(() => sweepCards().catch(() => {}), 10 * 60_000); // drift safety net
