@@ -28,6 +28,13 @@ const MKT_NC = process.env.MARKET_NC || '000000004c077094120091a3f333efcae1fc8cd
 // adopted cards keep those uids, so legacy balances stay a discovery source
 const LEGACY_NCS = ['00c7aaa25c90c5be834df9e99d731bb6024df68f5ef63dba0878cb7c0dfe4bdd',
                     '000000001bc502cf793a7343de99816f574b3b7839e4bd21d8d680afabc799fb'];
+// staked in v4 when the realm retired and abandoned there by their owner:
+// the tokens can never circulate again, so they do not exist to the game
+const RETIRED_UIDS = new Set([
+  '926c8555df55b82a9c4a2d255d17b50d7256b979603715292730cd5f5a9764f9', // Genesis Phoenix
+  'c6dc1b2b5bd9e21e1f36df2e081cec6a702005d2140ece329b5f7a78a5ebba34', // The Great Ledger
+  'f7fcb922e60ad28fd8607a07583c7c37ef8719e7854a92af04fe1dad0ccbe85a', // The Ember Tyrant
+]);
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
@@ -741,7 +748,8 @@ async function sweepCards() {
     fetch(`${NODE}/nano_contract/state?id=${nc}&balances[]=__all__`)
       .then(r => r.json()).catch(() => ({}))));
   const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
-    .filter(u => HEX64.test(u));
+    .filter(u => HEX64.test(u) && !RETIRED_UIDS.has(u));
+  for (const u of RETIRED_UIDS) delete cardCache.cards[u];
   await refreshCards(uids);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
   fs.writeFile(CACHE_FILE, JSON.stringify(cardCache), () => {});
