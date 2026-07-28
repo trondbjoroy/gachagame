@@ -863,10 +863,12 @@ function cardBox(c, buttonsHtml, selectable) {
    column. The JPEGs stay on disk for the share canvas and og:image. */
 function artImg(name, cls, sizes, eager) {
   const sl = slugOf(name);
+  // the art IS the champion, not decoration: a screen reader should hear who
+  // this is even where the name is drawn on the image rather than beside it
   return `<img class="${cls}" src="cards/${sl}-440.webp"`
     + ` srcset="cards/${sl}-440.webp 440w, cards/${sl}-880.webp 880w"`
     + ` sizes="${sizes}" width="440" height="440"`
-    + `${eager ? '' : ' loading="lazy"'} decoding="async" alt="">`;
+    + `${eager ? '' : ' loading="lazy"'} decoding="async" alt="${esc(name)}">`;
 }
 
 function rowArt(c) {
@@ -3716,7 +3718,10 @@ syncThemeBtn();
 
 document.querySelectorAll('.tab').forEach(el => el.onclick = () => {
   track('tab_view', { tab: el.dataset.tab });
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === el));
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t === el);
+    t.setAttribute('aria-selected', t === el ? 'true' : 'false');
+  });
   for (const p of ['collection', 'farm', 'arena', 'market', 'progress', 'learn']) $('pane-' + p).hidden = p !== el.dataset.tab;
 });
 document.addEventListener('click', async e => {

@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=166" />
+<link rel="stylesheet" href="style.css?b=167" />
 </head>
 <body>
 <script>try { if (localStorage.getItem('emberfall_theme') === 'light') { document.body.classList.add('theme-light'); document.querySelector('meta[name=theme-color]').setAttribute('content', '#f0dc9e'); } } catch (e) { }</script>
@@ -62,13 +62,13 @@
         <div class="net-flag">TESTNET</div>
       </div>
     </div>
-    <nav class="tabs" id="tabs">
-      <button data-tab="collection" class="tab active">Collection</button>
-      <button data-tab="farm" class="tab">Mining</button>
-      <button data-tab="arena" class="tab">Arena</button>
-      <button data-tab="market" class="tab">Market</button>
-      <button data-tab="progress" class="tab">Progress</button>
-      <button data-tab="learn" class="tab">Info</button>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Realm sections">
+      <button data-tab="collection" role="tab" aria-selected="true" class="tab active">Collection</button>
+      <button data-tab="farm" role="tab" aria-selected="false" class="tab">Mining</button>
+      <button data-tab="arena" role="tab" aria-selected="false" class="tab">Arena</button>
+      <button data-tab="market" role="tab" aria-selected="false" class="tab">Market</button>
+      <button data-tab="progress" role="tab" aria-selected="false" class="tab">Progress</button>
+      <button data-tab="learn" role="tab" aria-selected="false" class="tab">Info</button>
     </nav>
     <div class="hdr-chips" id="statsRow"></div>
     <div class="wallet-area">
@@ -467,9 +467,9 @@
   <footer class="site-foot">
     <span class="foot-label">Join the community:</span>
     <a href="https://x.com/emberfall_fun" target="_blank" rel="noopener"
-       title="Emberfall on X" onclick="window.track&&track('x_open',{where:'footer'})">𝕏</a>
+       title="Emberfall on X" aria-label="Emberfall on X" onclick="window.track&&track('x_open',{where:'footer'})">𝕏</a>
     <a href="https://t.me/emberfall_fun" target="_blank" rel="noopener"
-       title="Emberfall on Telegram" onclick="window.track&&track('tg_open',{where:'footer'})"><svg
+       title="Emberfall on Telegram" aria-label="Emberfall on Telegram" onclick="window.track&&track('tg_open',{where:'footer'})"><svg
        width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-label="Telegram"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></a>
   </footer>
 </main>
@@ -590,16 +590,16 @@
   </div>
 </div>
 
-<script>window.BUILD = 166;</script>
-<script src="analytics.js?b=166"></script>
-<script src="sha3.js?b=166"></script>
-<script src="config.js?b=166"></script>
-<script src="art.js?b=166"></script>
-<script src="catalog.js?b=166"></script>
-<script src="wallets.js?b=166"></script>
-<script src="app.js?b=166"></script>
-<script src="progress.js?b=166"></script>
-<script src="sounds.js?b=166"></script>
-<script src="tutorial.js?b=166"></script>
+<script>window.BUILD = 167;</script>
+<script src="analytics.js?b=167"></script>
+<script src="sha3.js?b=167"></script>
+<script src="config.js?b=167"></script>
+<script src="art.js?b=167"></script>
+<script src="catalog.js?b=167"></script>
+<script src="wallets.js?b=167"></script>
+<script src="app.js?b=167"></script>
+<script src="progress.js?b=167"></script>
+<script src="sounds.js?b=167"></script>
+<script src="tutorial.js?b=167"></script>
 </body>
 </html>

@@ -58,6 +58,9 @@ const RETIRED_UIDS = new Set([
   'c6dc1b2b5bd9e21e1f36df2e081cec6a702005d2140ece329b5f7a78a5ebba34', // The Great Ledger
   'f7fcb922e60ad28fd8607a07583c7c37ef8719e7854a92af04fe1dad0ccbe85a', // The Ember Tyrant
 ]);
+// all three were Sovereigns; the landing counters still credit the realm
+// with having bound them
+const RETIRED_SOVEREIGNS = 3;
 const CARD_AMT = Number(process.env.CARD_UNIT || 1); // base units per card (v4: 1)
 const MAX_DEPOSIT = 100;    // HTR cents; the contract enforces the exact pull price
 const MAX_EMBER = 100_000;  // Ember per single wager/fee arg
@@ -1052,15 +1055,25 @@ async function handleApi(req, res, ip) {
     const now = Date.now();
     if (!realmCache.at || now - realmCache.at > 60_000) {
       try {
-        const v = await ncCalls(NC, ['get_total_pulls()', 'get_duel_count()']);
+        // The realm's deeds outlive a contract: v5 is a fresh instance, so
+        // reading duels from it alone dropped the count from 8 to 0 the
+        // moment we cut over. Every realm the game has run counts.
+        const [v, legacy] = await Promise.all([
+          ncCalls(NC, ['get_total_pulls()', 'get_duel_count()']),
+          ncCalls(LEGACY_NCS[0], ['get_duel_count()']).catch(() => ({})),
+        ]);
         const cards = Object.values(cardCache.cards);
+        const duels = (v['get_duel_count()'] ?? 0) + (legacy['get_duel_count()'] ?? 0);
         realmCache.data = {
           summons: v['get_total_pulls()'] ?? null,
-          duels: v['get_duel_count()'] ?? null,
-          // Sovereigns are counted from the warm card cache, so it is the
-          // number the realm can actually show, not an estimate
-          sovereigns: cards.length ? cards.filter(c => c.tier === 3).length : null,
-          champions: cards.length || null,
+          duels: duels || null,
+          // Sovereigns ever bound, retired ones included: they were summoned,
+          // they are on the Ledger forever, and they are the rarest thing the
+          // realm has done. Only their playability was retired.
+          sovereigns: cards.length
+            ? cards.filter(c => c.tier === 3).length + RETIRED_SOVEREIGNS
+            : null,
+          champions: cards.length ? cards.length + RETIRED_UIDS.size : null,
         };
         realmCache.at = now;
       } catch { /* serve whatever we last had; the page shows dashes if empty */ }

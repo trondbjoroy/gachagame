@@ -1769,3 +1769,12 @@ body.hdr-compact .hdr-chips .v { font-size: 12px; }
 body.hdr-compact header.top .hdr-tools > .mini-btn { padding: 8px 9px; }
 body.hdr-compact .header-session .hs-l { display: none; }
 body.hdr-compact .header-session .hs-s { display: inline; }
+
+/* Touch targets: the header tools and tabs are ~34px tall, under the 44px
+   guideline. Fingers get the room; mice keep the compact header. */
+@media (pointer: coarse) {
+  header.top .hdr-tools > .mini-btn { min-height: 44px; min-width: 44px; }
+  header.top .tab { padding-top: 13px; padding-bottom: 13px; }
+  .site-foot a { display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; }
+}
