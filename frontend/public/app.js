@@ -3646,6 +3646,7 @@ async function importToSession(uid) {
   const sub = el.querySelector('.t-sub');
   try {
     const { hash } = await w.sendToken(S.addr, uid, CARD_AMT);
+    if (!hash) throw new Error('the wallet did not return a transaction');
     sub.textContent = 'confirming…';
     await waitForExecution(hash);
     el.classList.add('ok');

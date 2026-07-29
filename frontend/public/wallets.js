@@ -238,15 +238,33 @@ class SnapWallet {
     return { hash };
   }
 
-  // move one champion (a 1-unit token) to another address of the player's
+  /* Move one champion (a 1-unit custom token). The snap and the mobile wallet
+     have disagreed about how a token output is written — some builds want the
+     uid on the output, others a tokens[] table with token_data indexes — and a
+     shape they dislike comes back as an empty result, which surfaces as
+     "Unexpected end of JSON input" from somewhere deep in the wallet. Try the
+     documented shapes in turn and report what the wallet actually said. */
   async sendToken(toAddress, uid, amount) {
-    const res = await this.invoke('htr_sendTransaction', {
-      network: window.GAME.network,
-      outputs: [{ address: toAddress, value: String(amount), token: uid }],
-    });
-    const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the transaction');
-    return { hash };
+    const shapes = [
+      { outputs: [{ address: toAddress, value: String(amount), token: uid }] },
+      { outputs: [{ address: toAddress, value: amount, token: uid }] },
+      { outputs: [{ address: toAddress, value: String(amount), token_data: 1 }], tokens: [uid] },
+    ];
+    let last = null;
+    for (const shape of shapes) {
+      try {
+        const res = await this.invoke('htr_sendTransaction', { network: window.GAME.network, ...shape });
+        const hash = res?.hash ?? res?.response?.hash ?? res?.tx?.hash;
+        if (hash) return { hash };
+        last = new Error('the wallet returned no transaction');
+      } catch (e) {
+        last = e;
+        // a refusal is final; only a malformed-request error is worth retrying
+        if (/reject|denied|cancel/i.test(e?.message || '')) break;
+      }
+    }
+    throw new Error('your wallet would not send that champion'
+      + (last?.message ? ` (${last.message})` : ''));
   }
 
   async sendData(data) {
@@ -402,14 +420,33 @@ class WcWallet {
     return { hash };
   }
 
+  /* Move one champion (a 1-unit custom token). The snap and the mobile wallet
+     have disagreed about how a token output is written — some builds want the
+     uid on the output, others a tokens[] table with token_data indexes — and a
+     shape they dislike comes back as an empty result, which surfaces as
+     "Unexpected end of JSON input" from somewhere deep in the wallet. Try the
+     documented shapes in turn and report what the wallet actually said. */
   async sendToken(toAddress, uid, amount) {
-    const res = await this.request('htr_sendTransaction', {
-      network: window.GAME.network,
-      outputs: [{ address: toAddress, value: String(amount), token: uid }],
-    });
-    const hash = res?.hash ?? res?.response?.hash;
-    if (!hash) throw new Error('your wallet did not confirm the transaction');
-    return { hash };
+    const shapes = [
+      { outputs: [{ address: toAddress, value: String(amount), token: uid }] },
+      { outputs: [{ address: toAddress, value: amount, token: uid }] },
+      { outputs: [{ address: toAddress, value: String(amount), token_data: 1 }], tokens: [uid] },
+    ];
+    let last = null;
+    for (const shape of shapes) {
+      try {
+        const res = await this.request('htr_sendTransaction', { network: window.GAME.network, ...shape });
+        const hash = res?.hash ?? res?.response?.hash ?? res?.tx?.hash;
+        if (hash) return { hash };
+        last = new Error('the wallet returned no transaction');
+      } catch (e) {
+        last = e;
+        // a refusal is final; only a malformed-request error is worth retrying
+        if (/reject|denied|cancel/i.test(e?.message || '')) break;
+      }
+    }
+    throw new Error('your wallet would not send that champion'
+      + (last?.message ? ` (${last.message})` : ''));
   }
 
   async sendData(data) {
