@@ -241,8 +241,12 @@
     el.innerHTML = S.addr
       ? tile('Standing', standingLabel(done), `${done} of ${deeds.length} achievements`)
         + tile('Collection', `${ever.length}/${total}`, 'champions ever owned')
-        + tile('Season rank', rank >= 0 ? `#${rank + 1}` : '—',
-               sn ? `${rank >= 0 ? sn.standings[rank].seasonal + ' seasonal renown · ' : ''}${days} day${days === 1 ? '' : 's'} left`
+        // a fresh season starts everyone at nothing: say so, rather than
+        // showing a dash that reads as a broken tile
+        + tile('Season rank', rank >= 0 ? `#${rank + 1}` : 'unranked',
+               sn ? (rank >= 0
+                 ? `${sn.standings[rank].seasonal} seasonal renown · ${days} day${days === 1 ? '' : 's'} left`
+                 : `${sn.name}: earn renown to enter · ${days} day${days === 1 ? '' : 's'} left`)
                   : 'the first season is being prepared')
         + tile('Daily trial', trialDone() ? 'DONE' : 'OPEN', t.text.toLowerCase())
       : tile('Standing', '—', 'connect a wallet')
