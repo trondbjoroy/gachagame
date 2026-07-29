@@ -1709,6 +1709,9 @@ async function doTx(label, method, args, actions, { target } = {}) {
     let msg = e.message || String(e);
     if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
       msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
+    } else if (/not valid JSON|Unexpected token|no healthy upstream|not answering just now/i.test(msg)) {
+      msg = 'The Hathor node dropped that request. Nothing was spent — try again '
+        + 'in a moment; the game retries the read on another node automatically.';
     } else if (/did not match the expected pattern|network error|load failed/i.test(msg)) {
       msg = 'Your wallet could not reach the node just then. Nothing was lost — '
         + 'it retries on its own, or press the action again in a moment.';

@@ -1325,12 +1325,40 @@ async function handleApi(req, res, ip) {
 }
 
 const NODE_PREFIXES = ['/nano_contract/state', '/nano_contract/logs', '/transaction', '/thin_wallet/address_balance'];
+/* The client's own reads go through here, and they were the last path still
+   bound to a single node: when the partner node's balancer answered "no
+   healthy upstream", that text reached the browser and surfaced as
+   'Unexpected token o ... is not valid JSON' in the middle of a fusion. The
+   same retry-then-fallback the server uses internally now covers them. */
 async function handleNode(req, res, ip) {
   if (req.method !== 'GET') return deny(res, 403, 'forbidden');
   const rest = req.url.slice(5);
   if (!NODE_PREFIXES.some(p => rest.startsWith(p))) return deny(res, 403, 'forbidden');
   if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
-  return forward(res, NODE + rest);
+  let last = null;
+  for (let i = 0; i < 4; i++) {
+    const base = i < 3 ? NODE : FALLBACK_NODE;
+    try {
+      const r = await fetch(base + rest);
+      const buf = Buffer.from(await r.arrayBuffer());
+      const text = buf.toString('utf8', 0, 64);
+      // a 5xx, or a body that is plainly not JSON, is the balancer talking:
+      // never hand that to a wallet that is about to JSON.parse it
+      const bad = !r.ok || !/^\s*[[{]/.test(text);
+      if (!bad) {
+        res.writeHead(r.status, {
+          'content-type': r.headers.get('content-type') || 'application/json',
+        });
+        return res.end(buf);
+      }
+      last = `${r.status} ${text.trim().slice(0, 40)}`;
+    } catch (e) {
+      last = e.message;
+    }
+    if (i < 3) await new Promise(r2 => setTimeout(r2, 300 * (i + 1)));
+  }
+  console.error('node read failed:', rest.slice(0, 60), last);
+  return deny(res, 503, 'the node is not answering just now; try again in a moment');
 }
 
 // champion share pages: /c/<uid> serves the crawler meta X needs to show the
