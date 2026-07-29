@@ -1211,13 +1211,14 @@ function render() {
       : d.squad ? ` · ${glyph('attack')} 3v3 squad` : '';
     // backing a fight and then fighting it is a conflict of interest: this
     // realm's contract refuses it too, but the button should not offer it
-    const iBackedIt = !!S.addr && loadMyBets().some(b => b.id === d.id);
+    const myBet = S.addr ? loadMyBets().find(b => b.id === d.id) : null;
+    const iBackedIt = !!myBet;
     let act;
     if (d.status === 'open') {
       act = mineD
         ? `<button class="mini-btn alt" data-cancelduel="${d.id}">CANCEL</button>`
         : iBackedIt
-          ? `<span class="duel-done" title="You have Ember riding on this fight, so you cannot also fight it">your bet is in</span>`
+          ? `<span class="duel-done" title="You have Ember riding on this fight, so you cannot also fight it">YOUR BET IS IN</span>`
           : (S.addr
             ? `<button class="mini-btn" data-${d.squad ? 'acceptsquad' : 'acceptduel'}="${d.id}">FIGHT</button>`
             : '<span class="duel-done">awaiting a challenger</span>');
@@ -1237,13 +1238,17 @@ function render() {
           `<b>${S.cards.get(u)?.name ?? u.slice(0, 8)}</b>`).join(' · ')} — lane order sealed</div>`
       : '';
     // spectators can back either side while the duel is undecided
-    const canBet = S.addr && !mineD && !isMine(d.acceptor)
+    const canBet = S.addr && !mineD && !isMine(d.acceptor) && !myBet
       && (d.status === 'open' || d.status === 'reveal');
-    const pools = d.pools && (d.pools[0] || d.pools[1] || canBet)
+    const mineRides = myBet
+      ? ` <span class="bet-mine">${glyph('favor')} your ${fmtEmber(myBet.amt)} rides on the ${
+          myBet.side === 0 ? 'challenger' : 'defender'}</span>`
+      : '';
+    const pools = d.pools && (d.pools[0] || d.pools[1] || canBet || myBet)
       ? `<div class="duel-meta">bets: ${fmtEmber(d.pools[0] || 0)} on the challenger · ${
           fmtEmber(d.pools[1] || 0)} on the defender${canBet
           ? ` <span class="bet-btns"><button class="mini-btn alt" data-bet="${d.id}:0">BACK CHALLENGER</button>
-              <button class="mini-btn alt" data-bet="${d.id}:1">BACK DEFENDER</button></span>` : ''}</div>`
+              <button class="mini-btn alt" data-bet="${d.id}:1">BACK DEFENDER</button></span>` : mineRides}</div>`
       : '';
     return `<div class="duel ${d.status}">
       <span class="duel-emoji">${rowArt(c)}</span>
@@ -2008,7 +2013,7 @@ function showRevealNow(won, tierLabel) {
     ${aspectsRow(won)}`;
   pc.innerHTML = `
     <div class="flip-inner">
-      <div class="reveal-back"><img src="logo.png" alt=""></div>
+      <div class="reveal-back"><img src="crest-300.webp" alt="" width="300" height="300"></div>
       <div class="reveal-face${meta?.art ? '' : ' plain'}">${face}</div>
     </div>`;
   const sessionMode = S.wallet?.mode === 'session';
@@ -2226,6 +2231,14 @@ async function revealSquad(id) {
 }
 
 async function placeBet(id, side) {
+  // backing both sides is a guaranteed loss, since the rake bites your own
+  // stake on the way through: the ring takes one side per duel
+  const already = loadMyBets().find(b => b.id === id);
+  if (already) {
+    ribbon(`Your ${fmtEmber(already.amt)} already rides on the `
+      + `${already.side === 0 ? 'challenger' : 'defender'} in this fight.`);
+    return;
+  }
   const raw = prompt(`Back the ${side === 0 ? 'challenger' : 'defender'} with how much Ember? (you have ${S.ember})`, '10');
   if (raw === null) return;
   const amt = Math.floor(Number(raw));
@@ -2238,6 +2251,7 @@ async function placeBet(id, side) {
     const bets = loadMyBets();
     bets.push({ id, side, amt, ts: Date.now() });
     localStorage.setItem(BETS_LS, JSON.stringify(bets.slice(-30)));
+    render();   // FIGHT and the two BACK buttons give way to "your bet is in"
   }
 }
 
@@ -2746,16 +2760,30 @@ let pickSquad = [];    // uids picked for a 3v3, in lane order
 const byMight = cs => [...cs].sort((a, b) => (b.power - a.power)
   || a.name.localeCompare(b.name));
 
+// a squad deed is one transaction and a transaction has one signer, so all
+// three champions must answer to the same wallet
+const custodyOf = uid => (S.cards.get(uid)?.mine ? 'session' : 'main');
+
 function toggleSquadPick(el) {
   const uid = el.dataset.pick;
   const at = pickSquad.indexOf(uid);
   if (at >= 0) pickSquad.splice(at, 1);
+  else if (el.disabled) return;
   else pickSquad.push(uid);
+  // once the first champion is picked the other wallet's champions are out of
+  // reach: better a button that will not press than a duel that cannot sign
+  const locked = pickSquad.length ? custodyOf(pickSquad[0]) : null;
   // relabel every button with its lane slot so the order reads at a glance
   document.querySelectorAll('[data-pick]').forEach(b => {
     const i = pickSquad.indexOf(b.dataset.pick);
-    b.textContent = i >= 0 ? `LANE ${i + 1} ✓` : 'SELECT';
+    const off = !!locked && custodyOf(b.dataset.pick) !== locked;
+    b.disabled = off;
+    b.title = off ? (locked === 'session'
+      ? 'This squad is mustered from your session. Champions held by your main wallet cannot join it.'
+      : 'This squad is mustered from your main wallet. Champions in this session cannot join it.') : '';
+    b.textContent = i >= 0 ? `LANE ${i + 1} ✓` : off ? 'OTHER WALLET' : 'SELECT';
     b.classList.toggle('alt', i >= 0);
+    b.closest('.card')?.classList.toggle('pick-off', off);
   });
   if (pickSquad.length !== 3) {
     $('pickSquadGo').hidden = true;

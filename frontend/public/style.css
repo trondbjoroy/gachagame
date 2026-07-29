@@ -954,12 +954,17 @@ body::after {
 #stageReveal.revealed .flip-inner { transform: rotateY(180deg); }
 .reveal-back {
   display: grid; place-items: center;
-  background: radial-gradient(120% 120% at 50% 30%, #241d12, #0f0d0a 72%);
-  border: 1px solid rgba(212, 168, 67, .3);
+  background: none; border: 0;
+  overflow: visible;   /* nothing to clip now, and the crest falls in from above */
 }
 .reveal-back img {
-  width: 42%; opacity: .92;
-  animation: backPulse 1.1s ease-in-out infinite alternate;
+  width: 46%; opacity: .92;
+  animation: crestFall .7s cubic-bezier(.3, 1.2, .45, 1) both,
+             backPulse 1.1s ease-in-out .7s infinite alternate;
+}
+@keyframes crestFall {
+  from { transform: translateY(-46%) scale(1.32); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: .92; }
 }
 @keyframes backPulse {
   from { transform: scale(.97); filter: drop-shadow(0 0 10px var(--rc, #d4a843)); }
@@ -1076,11 +1081,17 @@ body.land-flash::before {
   border: 1px solid rgba(212, 168, 67, .5);
   box-shadow: 0 12px 44px -10px rgba(212, 168, 67, .4);
   transition: transform .45s cubic-bezier(.2, 1.25, .4, 1), opacity .45s;
-  white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+  max-width: min(92vw, 52ch); text-align: center; line-height: 1.5;
+  text-wrap: pretty;
 }
 .ribbon b { color: var(--acid); font-weight: 700; }
 .ribbon.show { transform: translate(-50%, 0); opacity: 1; }
 .ribbon.level { font-size: 16px; border-width: 2px; padding: 15px 34px; }
+
+/* a champion the current squad cannot sign for reads as unavailable */
+.card.pick-off { opacity: .42; filter: saturate(.5); }
+.card.pick-off .mini-btn { cursor: not-allowed; }
+.bet-mine { color: var(--acid); font-weight: 700; }
 
 /* button micro-feel */
 .pull-btn, .mini-btn, .claim-btn, .claim-mini, .ghost-btn { transition: transform .08s ease, filter .15s ease; }
@@ -1612,7 +1623,11 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
   .stat .v { font-size: 16px; }
 
   .duel { flex-wrap: wrap; padding: 12px 14px; gap: 12px; }
-  .duel .mini-btn, .duel .duel-done { margin-left: auto; }
+  /* the action used to hang off the right edge on a line of its own, out of
+     line with the full-width bet buttons above it: give it that width too.
+     (the old rule was a descendant selector, so it caught the BACK buttons.) */
+  .duel > .mini-btn, .duel > .duel-done { flex: 1 1 100%; margin-left: 0; }
+  .duel > .duel-done { text-align: center; }
 
   .toasts { left: 12px; right: 12px; max-width: none; }
 

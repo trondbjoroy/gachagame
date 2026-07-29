@@ -11,7 +11,10 @@ window.GAME = {
   },
   cardUnit: 1, // base units per card (v4 mints 1-unit NFTs; legacy realms used 100)
   // live economy (cents). Fusion fees are tiered by station in the contract.
-  economy: { sessionFund: 1000, fusionFees: [5, 10, 50, 100] },
+  // retuned on chain 2026-07-28: half a day of the child's mine rate.
+  // These MUST match set_fusion_fees or the app offers a rite the
+  // contract refuses, which is what "fusing fails repeatedly" was.
+  economy: { sessionFund: 1000, fusionFees: [2160, 7200, 28800, 28800] },
   // Reown Cloud project id (https://cloud.reown.com) — enables WalletConnect
   // pairing with the Hathor mobile/desktop wallet.
   wcProjectId: '7b19452a987a959c2e5a373331e6eb5b',

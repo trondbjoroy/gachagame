@@ -291,7 +291,7 @@ function loadWcLib() {
       el.onerror = () => {
         wcLibLoading = null; // a later attempt may retry the load
         el.remove();
-        reject(new Error('failed to load the WalletConnect client'));
+        reject(new Error('failed to load the Reown client'));
       };
       document.head.appendChild(el);
     });
@@ -301,7 +301,7 @@ function loadWcLib() {
 
 class WcWallet {
   constructor() {
-    this.mode = 'wc'; this.label = 'WalletConnect (Hathor wallet)';
+    this.mode = 'wc'; this.label = 'Reown (Hathor wallet)';
     this.address = null; this.client = null; this.session = null;
     this.chain = `hathor:${window.GAME.network}`;
   }
@@ -309,7 +309,7 @@ class WcWallet {
   async initClient() {
     if (this.client) return this.client;
     if (!window.GAME.wcProjectId) {
-      throw new Error('WalletConnect needs a (free) Reown Cloud project id; set wcProjectId in config.js');
+      throw new Error('Reown pairing needs a (free) Reown Cloud project id; set wcProjectId in config.js');
     }
     // self-hosted bundle first ("Importing a module script failed" on phones
     // was the on-demand esm.sh build timing out); the CDN is a last resort
