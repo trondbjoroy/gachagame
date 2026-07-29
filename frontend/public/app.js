@@ -1115,7 +1115,8 @@ function render() {
          MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '']))).join('');
 
   const selCount = S.selected.size;
-  $('fuseBar').hidden = mine.length < 2;
+  // main-held champions can fuse now, so they count toward the pair
+  $('fuseBar').hidden = (mine.length + mainHeld.length) < 2;
   const fuseReady = selCount === 2 && sameTierSelected();
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
@@ -2019,7 +2020,10 @@ async function fuse() {
   const before = new Set([...S.cards.values()].filter(c => isMine(c.pending)).map(c => c.uid));
   fuseBusy = true;
   try {
-    const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)]);
+    const wf = await walletForMany([a, b]);
+    if (wf === null) return;
+    const hash = await doTx('Fusing champions', 'fuse', [], [depAct(a, CARD_AMT), depAct(b, CARD_AMT)],
+      { wallet: wf });
     if (!hash) return;
     window.sfx?.('fuse');
     const won = await awaitNewCard(() =>
@@ -2769,12 +2773,16 @@ async function submitSquad() {
     const s = loadSquadSeals();
     (s.pending = s.pending || []).push({ perm, salt, ts: Date.now() });
     localStorage.setItem(SQUAD_SEALS_LS, JSON.stringify(s));
+    const ws = await walletForMany(cards);
+    if (ws === null) return;
     await doTx('Mustering the squad', 'create_squad_duel', [wager, commit],
-      cards.map(u => depAct(u, CARD_AMT)));
+      cards.map(u => depAct(u, CARD_AMT)), { wallet: ws });
     return;
   }
+  const wa = await walletForMany(cards);
+  if (wa === null) return;
   const hash = await doTx('Answering the 3v3', 'accept_squad_duel', [ref],
-    cards.map(u => depAct(u, CARD_AMT)));
+    cards.map(u => depAct(u, CARD_AMT)), { wallet: wa });
   if (!hash) return;
   const hours = Math.round((S.revealWindow || 21600) / 3600);
   $('duelResult').innerHTML = `<div class="duel-banner">${glyph('seal', 'gl')} THE LANES ARE SET</div>
@@ -2832,7 +2840,7 @@ function openPick(kind, ref) {
     return;
   }
   if (kind === 'squadCreate' || kind === 'squadAccept') {
-    const roster = [...S.cards.values()].filter(c => c.mine);
+    const roster = [...S.cards.values()].filter(c => c.mine || c.heldByMain);
     if (roster.length < 3) {
       $('errTitle').textContent = 'A squad needs three champions';
       $('errMsg').textContent = 'You hold ' + (roster.length === 1 ? 'one champion' : `${roster.length} champions`)
@@ -2889,7 +2897,7 @@ function openPick(kind, ref) {
       $('overlay').hidden = false;
       return;
     }
-    const roster = [...S.cards.values()].filter(c => c.mine);
+    const roster = [...S.cards.values()].filter(c => c.mine || c.heldByMain);
     if (!roster.length) {
       $('errTitle').textContent = 'No cards';
       $('errMsg').textContent = 'You hold no champion. Summon or claim one first.';
@@ -2936,7 +2944,7 @@ function openPick(kind, ref) {
       $('overlay').hidden = false;
       return;
     }
-    const roster = [...S.cards.values()].filter(c => c.mine);
+    const roster = [...S.cards.values()].filter(c => c.mine || c.heldByMain);
     if (!roster.length) {
       $('errTitle').textContent = 'No cards';
       $('errMsg').textContent = 'You hold no champion. Summon or claim one first.';
@@ -3613,6 +3621,30 @@ async function attachMainWallet() {
     S.mainWallet = w;
     return w;
   } catch { return null; }
+}
+
+// A deposit of several champions needs ONE signer: a transaction has a
+// single caller. All from the session, or all from the main wallet — a
+// mixed handful cannot be signed, and saying so beats a failed transaction.
+async function walletForMany(uids) {
+  const cs = uids.map(u => S.cards.get(u)).filter(Boolean);
+  if (!cs.length) return undefined;
+  const fromMain = cs.filter(c => !c.mine && c.heldByMain);
+  if (!fromMain.length) return undefined;              // the session signs
+  if (fromMain.length !== cs.length) {
+    const here = cs.filter(c => c.mine).map(c => c.name).join(', ');
+    ribbon(`Those champions live in two different wallets, and one deed needs one `
+      + `signer. Use champions from the same place: ${here} ${cs.length - fromMain.length > 1 ? 'are' : 'is'} `
+      + `in this session, the rest in your main wallet.`);
+    return null;
+  }
+  const w = await attachMainWallet();
+  if (!w) {
+    ribbon('Those champions are held by your main wallet. Connect it (or end the '
+      + 'session) to command them.');
+    return null;
+  }
+  return w;
 }
 
 // which wallet can actually sign for this champion
