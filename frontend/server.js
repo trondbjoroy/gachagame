@@ -307,6 +307,63 @@ async function feedViews(calls) {
 // who took the settled duel: whichever party's win count moved since the
 // last poll. Sequential per-event so one poll with several settles still
 // attributes each; ambiguity (no baseline, both moved) stays silent.
+/* The Ledger's own account of a fight.
+   Every settling method logs its outcome (duel_settled carries winner_side
+   and the three rounds; squad_settled, ranked_settled, delve_claimed and
+   world_boss_hit carry theirs), and the node serves those entries when the
+   logs endpoint is asked for the TRANSACTION — asking for the contract
+   returns only its instantiation, which is why this looked unavailable
+   before. Read the truth where we can; the state-diff inference below stays
+   as the fallback for txs whose logs the node has not kept. */
+const logCache = new Map();      // txHash -> {name -> {key: value}}
+async function txLogs(hash) {
+  if (!hash || !HEX64.test(hash)) return null;
+  if (logCache.has(hash)) return logCache.get(hash);
+  let out = null;
+  try {
+    const d = await nodeGet(`/nano_contract/logs?id=${hash}`);
+    if (d && d.nc_execution === 'success') {
+      out = {};
+      for (const entries of Object.values(d.logs || {})) {
+        for (const e of entries) {
+          for (const L of e.logs || []) {
+            if (L.type === 'LOG' && L.message) out[L.message] = L.key_values || {};
+          }
+        }
+      }
+    }
+  } catch { /* the fallback still speaks */ }
+  if (logCache.size > 2_000) logCache.clear();
+  logCache.set(hash, out);
+  return out;
+}
+
+// the verdict as the contract recorded it: which side won, and the rounds
+async function loggedVerdict(id, hash) {
+  const logs = await txLogs(hash);
+  const kv = logs && (logs.duel_settled || logs.squad_settled);
+  if (!kv || kv.duel_id === undefined ? false : Number(kv.duel_id) !== id) return null;
+  const side = Number(kv.winner_side);
+  if (side !== 0 && side !== 1) return null;
+  const pc = `get_duel_challenger(${id})`, pa = `get_duel_acceptor(${id})`;
+  const p = await feedViews([pc, pa]);
+  if (!p[pc] || !p[pa]) return null;
+  const winner = side === 0 ? p[pc] : p[pa];
+  const loser = side === 0 ? p[pa] : p[pc];
+  const rounds = [kv.r0, kv.r1, kv.r2].map(Number).filter(n => Number.isFinite(n));
+  return { winner, loser, ...(rounds.length === 3 ? { rounds } : {}),
+           ...(kv.hardened ? { hardened: Number(kv.hardened) } : {}), logged: true };
+}
+
+// the world boss reports what it took: exact damage, and whether it fell
+async function loggedWbHit(hash) {
+  const logs = await txLogs(hash);
+  if (!logs || !logs.world_boss_hit) return null;
+  const dmg = Number(logs.world_boss_hit.damage);
+  return { ...(Number.isFinite(dmg) ? { damage: dmg } : {}),
+           ...(logs.world_boss_slain ? { slain: true } : {}) };
+}
+
 async function duelVerdict(id) {
   const pc = `get_duel_challenger(${id})`, pa = `get_duel_acceptor(${id})`;
   const p = await feedViews([pc, pa]);
@@ -357,14 +414,14 @@ async function enrichEvent(ev, tries) {
       await seedWins((await feedViews([cc]))[cc]);
       return true;
     }
-    ev.verdict = await duelVerdict(ev.id);
+    ev.verdict = (await loggedVerdict(ev.id, ev.tx)) || await duelVerdict(ev.id);
     return true;
   }
   if (ev.kind === 'reveal') {
     const c = `get_duel(${ev.id})`;
     const status = ((await feedViews([c]))[c] || '').split('|')[0];
     if (status === 'reveal') return tries >= 6;    // reveal tx not confirmed yet
-    ev.verdict = await duelVerdict(ev.id);
+    ev.verdict = (await loggedVerdict(ev.id, ev.tx)) || await duelVerdict(ev.id);
     return true;
   }
   if (ev.kind === 'forfeit') {
@@ -409,8 +466,16 @@ async function enrichEvent(ev, tries) {
     const dHp = (wbHpCache.get(week) ?? hp) - hp;
     wbHpCache.set(week, hp);
     ev.boss = boss[0] || null;
-    if (had && dHp > 0 && ev.lone === true) ev.damage = dHp;
-    if (boss[0] && hp === 0) ev.slain = true;
+    // the contract's own entry beats the drawdown guess, and needs no
+    // "was this their only blow in the window" caveat
+    const logged = await loggedWbHit(ev.tx);
+    if (logged && logged.damage != null) {
+      ev.damage = logged.damage;
+      if (logged.slain) ev.slain = true;
+    } else {
+      if (had && dHp > 0 && ev.lone === true) ev.damage = dHp;
+      if (boss[0] && hp === 0) ev.slain = true;
+    }
     return true;
   }
   if (ev.kind === 'ranked') {
@@ -643,7 +708,9 @@ async function pollFeed() {
       feedSeen.add(tx.hash);
       for (const u of touchFromTx(tx)) touched.add(u);
       const ev = feedEventFor(tx);
-      if (ev) fresh.push(ev);
+      // carry the tx hash: the contract's own log for that tx is the
+      // authority on how a fight ended
+      if (ev) fresh.push(Object.assign(ev, { tx: tx.hash }));
     }
     if (touched.size) refreshCards([...touched]).catch(() => {});
     fresh.reverse(); // history is newest-first; process oldest first
