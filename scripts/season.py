@@ -27,9 +27,9 @@ ARENA = os.environ.get("ARENA_NC", "0061589e138059dcc670e392442c55bd6a55487adaa0
 STATE = os.environ.get("SEASON_STATE", "/opt/gacha/season-state.json")
 OUT = os.environ.get("SEASON_OUT", "/opt/gacha/frontend/public/season.json")
 
-SEASON = 2
-NAME = "The Ember Court"
-STARTS = 1785196800          # 2026-07-28T00:00:00Z
+SEASON = 1
+NAME = "The First Muster"
+STARTS = 1785196800          # 2026-07-28T00:00:00Z (restarted)
 ENDS = 1790035200            # 2026-09-22T00:00:00Z (8 weeks)
 TOP = 50
 
