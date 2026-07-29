@@ -1675,7 +1675,15 @@ async function waitForExecution(hash, onTick) {
     const meta = tx.meta || {};
     if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
     if (!meta.first_block) continue;
-    const logs = await node(`/nano_contract/logs?id=${hash}`);
+    // A plain transfer — bringing a champion into the session, a top-up — has
+    // no nano header, so there is no execution verdict to wait for: a block
+    // and no void IS the verdict. This routine was written for contract calls
+    // and used to sit on "confirming" forever for anything else.
+    if (!tx.tx?.nc_id) return;
+    const logs = await node(`/nano_contract/logs?id=${hash}`).catch(() => ({}));
+    // the logs endpoint is the node's, and it has its bad minutes: a call that
+    // reached a block and was not voided is done, whatever the logs say
+    if (Date.now() - start > 45_000) return;
     if (logs.nc_execution === 'success') return;
     if (logs.nc_execution && logs.nc_execution !== 'pending') {
       let reason = '';
