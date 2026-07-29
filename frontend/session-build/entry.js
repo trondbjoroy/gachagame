@@ -226,6 +226,14 @@ async function open(words) {
       return { hash: tx.hash };
     },
 
+    /* Pull the wallet's own index back in line with the chain. A freshly
+       claimed champion exists on chain before this wallet has indexed its
+       output, and until it does a deposit fails with "not enough utxos" —
+       which reads as an empty wallet and is nothing of the kind. */
+    async resync() {
+      try { await wallet.reloadStorage(); } catch { /* best effort */ }
+    },
+
     async balance(token) {
       const b = await wallet.getBalance(token || '00');
       return Number(b[0]?.balance?.unlocked ?? 0);

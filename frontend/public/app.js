@@ -1699,9 +1699,18 @@ async function doTx(label, method, args, actions, { target } = {}) {
       msg = 'Your wallet could not reach the node just then. Nothing was lost — '
         + 'it retries on its own, or press the action again in a moment.';
     } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
-      msg = 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
-        + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
-        + 'under Info.';
+      // a champion deposit that cannot find its coin is a STALE WALLET, not
+      // an empty one: the card is on chain, the wallet has not indexed it
+      // yet. Saying "not enough HTR" to someone holding 1000 HTR sent them
+      // to the faucet for a problem the faucet cannot fix.
+      const depositsCard = (actions || []).some(a => a.type === 'deposit' && a.token !== HTR);
+      msg = depositsCard
+        ? 'Your wallet has not caught up with that champion yet. It is resyncing — '
+          + 'give it a few seconds and try again.'
+        : 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
+          + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
+          + 'under Info.';
+      if (depositsCard) S.wallet?.resync?.().catch(() => {});
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });

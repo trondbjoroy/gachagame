@@ -409,7 +409,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=17';
+      el.src = 'session-lib.js?v=18';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
@@ -461,6 +461,7 @@ class SessionWallet {
   async htrBalance() { return this.handle.balance('00'); }
   async sendData(data) { return this.handle.sendData(data); }
   async sendHtr(to, amount) { return this.handle.sendHtr(to, amount); }
+  async resync() { return this.handle.resync?.(); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
 }
