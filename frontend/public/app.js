@@ -884,6 +884,19 @@ function rowArt(c) {
 /* Ember can be five figures and the level title can be long, so whether
    three chips fit is a question about content, not about viewport width.
    Drop chips from the right until the row fits its box. */
+/* "IN THE QUEUE" is a confirmation, not a state view: once the champion is
+   out of that queue — the player left, or a rival's join settled the fight —
+   it is describing something that is no longer happening. Retire it rather
+   than leave a stale dialog over the board. */
+function retireStaleDialogs() {
+  const q = $('duelResult')?.querySelector('[data-while-queued]');
+  if (!q || $('stageDuel').hidden || $('overlay').hidden) return;
+  const tier = Number(q.dataset.whileQueued);
+  if (S.ranked?.queued?.[tier]) return;
+  $('overlay').hidden = true;
+  $('duelResult').innerHTML = '';
+}
+
 function fitHeaderChips() {
   const sr = $('statsRow');
   if (!sr) return;
@@ -959,6 +972,7 @@ const CONNECTING = 'Connecting your wallet, please wait…';
 
 function render() {
   updateCues();
+  retireStaleDialogs();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('connectingNote').hidden = !S.restoring;
   $('staleNote').hidden = !(S.wallet?.mode === 'session' && S.wallet.unbound);
@@ -3019,7 +3033,7 @@ async function submitPick(uid) {
     // doTx refreshed state: either we now wait in the queue, or a waiting
     // rival was in band and the fight already settled
     if (S.ranked?.queued?.[ref]) {
-      $('duelResult').innerHTML = `<div class="duel-banner">${glyph('ladder', 'gl')} IN THE QUEUE</div>
+      $('duelResult').innerHTML = `<div class="duel-banner" data-while-queued="${ref}">${glyph('ladder', 'gl')} IN THE QUEUE</div>
         <div class="wait-sub">Your champion holds the line. When a rival within
         200 rating joins this tier, their move settles the fight on the spot:
         watch your rating and the World Feed. LEAVE in the Arena returns your
