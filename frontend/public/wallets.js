@@ -80,14 +80,26 @@ async function addrBalanceMap(address) {
   if (balCache.addr === address && Date.now() - balCache.at <= 5000) return balCache.data;
   if (!balInflight.has(address)) {
     balInflight.set(address, (async () => {
-      const r = await fetch(`/node/thin_wallet/address_balance?address=${address}`);
-      if (!r.ok) throw new Error(`address_balance ${r.status}`);
-      const d = await r.json();
-      if (!d || typeof d.tokens_data !== 'object' || d.tokens_data === null) {
-        throw new Error('address_balance: no tokens_data');
+      // On a cold load there is no previous answer to fall back on, so a
+      // single failed read empties the collection outright. One read serves
+      // every card, so it is cheap to insist on getting it.
+      let last;
+      for (let i = 0; i < 4; i++) {
+        try {
+          const r = await fetch(`/node/thin_wallet/address_balance?address=${address}`);
+          if (!r.ok) throw new Error(`address_balance ${r.status}`);
+          const d = await r.json();
+          if (!d || typeof d.tokens_data !== 'object' || d.tokens_data === null) {
+            throw new Error('address_balance: no tokens_data');
+          }
+          balCache = { addr: address, at: Date.now(), data: d.tokens_data };
+          return balCache.data;
+        } catch (e) {
+          last = e;
+          if (i < 3) await new Promise(r2 => setTimeout(r2, 500 * (i + 1)));
+        }
       }
-      balCache = { addr: address, at: Date.now(), data: d.tokens_data };
-      return balCache.data;
+      throw last;
     })().finally(() => balInflight.delete(address)));
   }
   return balInflight.get(address);

@@ -379,6 +379,13 @@ async function loadMine() {
   ]);
   S.htr = htr;
   loose.forEach((c, i) => { if (held[i] !== null) c.mine = held[i] > 0; });
+  // every read failed and nothing is known yet: that is a node hiccup on a
+  // cold load, not an empty collection. Come back for it rather than showing
+  // the player a realm where they own nothing.
+  if (loose.length && held.every(v => v === null) && !S.mineRetry) {
+    S.mineRetry = true;
+    setTimeout(() => { S.mineRetry = false; refresh().catch(() => {}); }, 3500);
+  }
   // v4 parity: champions still sitting in the MAIN wallet keep counting for
   // achievements while a session runs (the session key cannot spend them,
   // so they are not "mine" for actions — only for standing)
