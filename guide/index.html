@@ -451,10 +451,10 @@ earning Ember while it deepens.</p>
 every rarity has a hard cap on how many times it can be tempered:</p>
 <div class="tbl-scroll"><table>
   <tr><th>Rarity</th><th>First tempering</th><th>Cap</th><th>Max total gain</th></tr>
-  <tr><td>Footman</td><td>10 Ember</td><td>3 temperings</td><td>about +9</td></tr>
-  <tr><td>Knight</td><td>20 Ember</td><td>5</td><td>about +15</td></tr>
-  <tr><td>Highlord</td><td>80 Ember</td><td>8</td><td>about +24</td></tr>
-  <tr><td>Sovereign</td><td>150 Ember</td><td>12</td><td>about +36</td></tr>
+  <tr><td>Footman</td><td>100 Ember</td><td>3 temperings</td><td>about +9</td></tr>
+  <tr><td>Knight</td><td>200 Ember</td><td>5</td><td>about +15</td></tr>
+  <tr><td>Highlord</td><td>800 Ember</td><td>8</td><td>about +24</td></tr>
+  <tr><td>Sovereign</td><td>1,500 Ember</td><td>12</td><td>about +36</td></tr>
 </table></div>
 <p>The caps are chosen so tempering <b>deepens a champion without breaking the ladder</b>:
 a fully tempered Footman (~29 power) still loses to an average Knight (~37). Half of
@@ -472,12 +472,18 @@ fresh identity, fresh power, and fresh aspects for its new rarity, plus a bonus 
 through the forge: fuse for the power, not to smuggle bonuses upward.</p>
 <div class="tbl-scroll"><table>
   <tr><th>Fusing a pair of</th><th>Ember fee</th><th>Yields</th><th>Renown</th></tr>
-  <tr><td>Footmen</td><td>5 Ember</td><td>a Knight</td><td>20</td></tr>
-  <tr><td>Knights</td><td>10 Ember</td><td>a Highlord</td><td>40</td></tr>
-  <tr><td>Highlords</td><td>50 Ember</td><td>a Sovereign</td><td>80</td></tr>
+  <tr><td>Footmen</td><td>2,160 Ember</td><td>a Knight</td><td>20</td></tr>
+  <tr><td>Knights</td><td>7,200 Ember</td><td>a Highlord</td><td>40</td></tr>
+  <tr><td>Highlords</td><td>28,800 Ember</td><td>a Sovereign</td><td>80</td></tr>
 </table></div>
 <p>Every fusion permanently shrinks the supply of lesser champions: two cards become
 one, forever. Rarity comes from the summoning odds; <b>scarcity</b> comes from the forge.</p>
+<div class="note"><span class="tag">WHY SO STEEP</span>
+<p>Each fee is about <b>half a day of the child's own mining</b>: 720 minutes at the
+Knight, Highlord and Sovereign rates. Fusion used to cost a few Ember, which made a
+Sovereign roughly five summons' work and collapsed the ladder in an evening. Tempering
+is priced the same way, so the deepest work on a champion costs days of what that
+champion earns rather than hours.</p></div>
 
 <h2 id="pit"><span class="num">10</span>The Arena: duels</h2>
 <hr class="rule" />
@@ -589,7 +595,8 @@ is a puzzle: concede the round you cannot win and temper for the two you can.</p
   next. The last bosses at Black are beyond any single newborn champion: they are what
   tempering, hardening, and veterancy are for.</li>
   <li><b>Entry and bounty</b>: marching costs a fifth of your champion's fusion fee in
-  Ember (half destroyed, half to the Crown). Victory pays four entries; the first clear
+  Ember, so <b>432</b> for a Footman, <b>1,440</b> for a Knight and <b>5,760</b> for a
+  Highlord or Sovereign (half destroyed, half to the Crown). Victory pays four entries; the first clear
   of each stage pays ten more. Renown flows for every settled fight, less than the
   Pit's (fighting the realm's horrors is duty; fighting lords is glory).</li>
   <li><b>Achievements</b>: the first boss felled and the first Black clear are recorded
@@ -748,7 +755,15 @@ for your main wallet.</p>
   <li><b>Your wallet stays in charge.</b> The session purse holds only what you gave it.
   Your main wallet's keys are never shared, and nothing else in it can be touched.
   Champions sitting loose in your main wallet show under <b>In your main wallet</b>
-  during a session; the session cannot spend them until you end it.</li>
+  during a session. A session key cannot sign for those, so you have two ways to
+  command them: act on one where it stands and your wallet asks for a single
+  approval, or press <b>BRING TO SESSION</b> to move it to the session key once,
+  after which it plays promptlessly like the rest. Either way it comes home when
+  the session ends.</li>
+  <li><b>One deed, one signer.</b> A fusion takes two champions and a squad takes
+  three, and a transaction has a single caller: they must all be in the same place.
+  Mixing a session champion with one from your main wallet is refused before it is
+  signed, naming which sits where.</li>
   <li><b>Everything comes home.</b> Press <b>End session</b> and the game sweeps every
   champion and leftover coin in the session purse back to your main wallet in one
   motion. Champions in the mines, pending claims, and open challenges all belong to

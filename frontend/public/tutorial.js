@@ -55,7 +55,7 @@ const TOUR = [
   {
     target: '#headerSessionBtn', tab: 'collection',
     title: 'Quick play',
-    body: 'Fund a session once and everything after that signs instantly, with no wallet popups. END SESSION & RETURN ALL sends every champion, gem, and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
+    body: 'Fund a session once and everything after that signs instantly, with no wallet popups. Champions already in your main wallet appear under IN YOUR MAIN WALLET: command one there with a single approval, or BRING TO SESSION to move it in and play it promptlessly. END SESSION & RETURN ALL sends every champion, gem, and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
   },
   {
     target: '#walletBtn',
