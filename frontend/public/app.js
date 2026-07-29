@@ -2671,6 +2671,11 @@ let pickCtx = null;
 let pickStance = null; // -1 open (classic), 0..2 sealed/answering stance
 let pickSquad = [];    // uids picked for a 3v3, in lane order
 
+// every picker lists the mightiest first: a champion is chosen by strength,
+// so the strongest must not be somewhere down the grid
+const byMight = cs => [...cs].sort((a, b) => (b.power - a.power)
+  || a.name.localeCompare(b.name));
+
 function toggleSquadPick(el) {
   const uid = el.dataset.pick;
   const at = pickSquad.indexOf(uid);
@@ -2682,10 +2687,26 @@ function toggleSquadPick(el) {
     b.textContent = i >= 0 ? `LANE ${i + 1} ✓` : 'SELECT';
     b.classList.toggle('alt', i >= 0);
   });
-  if (pickSquad.length === 3) submitSquad();
+  if (pickSquad.length !== 3) {
+    $('pickSquadGo').hidden = true;
+    return;
+  }
+  // a squad is ready: submit only if the wager is named, otherwise say so and
+  // wait, rather than closing the view and losing three deliberate picks
+  if (pickCtx.kind === 'squadCreate' && $('pickWager').value.trim() === '') {
+    $('pickWagerHint').textContent = '⚠ Three champions are mustered. Name your wager '
+      + '(0 for a free duel), then MUSTER THE SQUAD.';
+    $('pickWagerHint').hidden = false;
+    $('pickSquadGo').hidden = false;
+    $('pickWager').focus();
+    return;
+  }
+  submitSquad();
 }
 
 async function submitSquad() {
+  pickLocked = false;
+  $('pickSquadGo').hidden = true;
   const { kind, ref } = pickCtx;
   const cards = pickSquad.slice();
   pickSquad = [];
@@ -2806,9 +2827,17 @@ function openPick(kind, ref) {
     const hint = kind === 'squadCreate'
       ? 'Your three champions are shown to any challenger, but which lane each fights in stays sealed in this browser until you reveal it after the duel is answered.'
       : 'Pick in the order you want the lanes: first pick fights lane 1, second lane 2, third lane 3. The challenger’s lane order is sealed, so place your champions blind.';
-    $('pickCards').innerHTML = `<div class="wait-sub">${hint}</div>`
-      + roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    $('pickHint').textContent = hint;
+    $('pickHint').hidden = false;
+    // (3) mightiest first: a squad is chosen by strength, so do not make the
+    // player hunt for it
+    $('pickCards').innerHTML = byMight(roster)
+      .map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => toggleSquadPick(el));
+    pickLocked = true;                     // Escape and outside clicks do not
+    $('pickCancel').hidden = false;        // let go of a half-built squad
+    $('pickCancel').onclick = () => { pickLocked = false; pickSquad = []; $('overlay').hidden = true; };
+    $('pickSquadGo').onclick = () => submitSquad();
     showStage('stagePick');
     $('overlay').hidden = false;
     return;
@@ -2833,7 +2862,7 @@ function openPick(kind, ref) {
     $('pickTitle').textContent = `Enter ${t ? t.name : 'the bracket'} (${fmtEmber(t?.fee || 0)} entry): choose your champion`;
     $('pickWagerRow').hidden = true;
     $('pickStanceRow').hidden = true;
-    $('pickCards').innerHTML = roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    $('pickCards').innerHTML = byMight(roster).map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
     $('overlay').hidden = false;
@@ -2881,15 +2910,20 @@ function openPick(kind, ref) {
     $('pickWagerRow').hidden = true;
     const sr = $('pickStanceRow');
     if (sr) sr.hidden = true;
-    $('pickCards').innerHTML = roster.map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
+    $('pickCards').innerHTML = byMight(roster).map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => submitPick(el.dataset.pick));
     showStage('stagePick');
     $('overlay').hidden = false;
     return;
   }
-  const mine = [...S.cards.values()].filter(c => c.mine);
+  const mine = byMight([...S.cards.values()].filter(c => c.mine));
   if (!mine.length) { $('errTitle').textContent = 'No cards'; $('errMsg').textContent = 'You hold no champion. Summon or claim one first.'; showStage('stageError'); $('overlay').hidden = false; return; }
   $('pickTitle').textContent = kind === 'create' ? 'Issue a challenge: choose your champion & wager' : `Answer challenge #${ref}: choose your champion`;
+  // the one-champion picker closes like any dialog; only a squad is locked
+  pickLocked = false;
+  $('pickHint').hidden = true;
+  $('pickCancel').hidden = true;
+  $('pickSquadGo').hidden = true;
   $('pickWagerRow').hidden = kind !== 'create';
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
   $('pickWagerHint').hidden = true;
@@ -3593,9 +3627,12 @@ $('nameClaimBtn').onclick = claimName;
    player has read, or a chooser they thought better of, should never need
    its one small button hunted down. The exception is stageWait: a
    transaction is in flight behind it and hiding that would lose the thread. */
+// a half-built squad is not dismissed by a stray click or key
+let pickLocked = false;
 const DISMISSABLE = ['stageCard', 'stageConnect', 'stageReveal', 'stageError',
   'stageDuel', 'stagePick', 'stageTemper', 'stageDress', 'stageName'];
-const dismissible = () => DISMISSABLE.some(id => $(id) && !$(id).hidden);
+const dismissible = () => !(pickLocked && !$('stagePick').hidden)
+  && DISMISSABLE.some(id => $(id) && !$(id).hidden);
 function dismissLightbox() {
   const wasReveal = !$('stageReveal').hidden;
   $('overlay').hidden = true;

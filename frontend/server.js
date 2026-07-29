@@ -711,6 +711,9 @@ async function pollFeed() {
       // carry the tx hash: the contract's own log for that tx is the
       // authority on how a fight ended
       if (ev) fresh.push(Object.assign(ev, { tx: tx.hash }));
+      if (CUSTODY_METHODS.has(tx.nc_method)) {
+        custodyCards(tx).then(us => us.length && refreshCards(us)).catch(() => {});
+      }
     }
     if (touched.size) refreshCards([...touched]).catch(() => {});
     fresh.reverse(); // history is newest-first; process oldest first
@@ -869,6 +872,44 @@ sweepCards().catch(e => { console.error('card sweep failed:', e.message); sweepS
 setInterval(() => sweepCards().catch(() => {}), 10 * 60_000); // drift safety net
 
 // the feed poller calls this with uids seen in fresh transactions
+/* Methods that move a champion between custodies without ever naming it.
+   cancel_duel takes a duel id, not the three cards it hands back, and its
+   actions list is empty — so the poller learned nothing and the cache went
+   on insisting those champions were still in the fight until the next full
+   sweep. A player who cancelled a 3v3 watched three champions sit in limbo
+   for as long as that took. These get their cards read out of the contract
+   instead of guessed from the transaction. */
+const CUSTODY_METHODS = new Set([
+  'cancel_duel', 'accept_duel', 'reveal_duel', 'claim_forfeit',
+  'accept_squad_duel', 'reveal_squad',
+  'leave_tournament', 'advance_tournament', 'leave_ranked',
+]);
+
+async function custodyCards(tx) {
+  const id = Number((tx.nc_args_decoded || [])[0]);
+  if (!Number.isInteger(id)) return [];
+  const uids = new Set();
+  try {
+    if (tx.nc_method === 'leave_tournament' || tx.nc_method === 'advance_tournament'
+        || tx.nc_method === 'leave_ranked') {
+      // no per-id card view to read: a short sweep catches these
+      sweepSoon(6_000);
+      return [];
+    }
+    const kindCall = `get_duel_kind(${id})`;
+    const kind = (await ncCalls(NC, [kindCall]))[kindCall];
+    const calls = kind === 1
+      ? [`get_squad_cards(${id}, 0)`, `get_squad_cards(${id}, 1)`]
+      : [`get_duel(${id})`, `get_duel_acceptor_card(${id})`];
+    const v = await ncCalls(NC, calls);
+    for (const raw of Object.values(v)) {
+      if (typeof raw !== 'string') continue;
+      for (const part of raw.split('|')) if (HEX64.test(part)) uids.add(part);
+    }
+  } catch { /* the periodic sweep remains the backstop */ }
+  return [...uids];
+}
+
 function touchFromTx(tx) {
   const uids = new Set();
   for (const a of tx.nc_args_decoded || []) {
