@@ -1122,6 +1122,29 @@ async function handleApi(req, res, ip) {
     return res.end(JSON.stringify(cardCache));
   }
 
+  /* The authoritative nano seqnum for a caller. wallet-lib takes it from the
+     wallet's own storage (addressInfo.seqnum + 1), so a session wallet whose
+     history sync has fallen behind signs every nano tx with a stale nonce and
+     the chain voids it: "invalid seqnum (diff=-28)". The chain knows the
+     truth — every nano tx carries nc_seqnum — so serve the max seen for the
+     address and let the client sign with max+1. */
+  if (req.method === 'GET' && url.pathname === '/seqnum') {
+    if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
+    const a = q.get('addr') || '';
+    if (!/^[A-HJ-NP-Za-km-z1-9]{25,45}$/.test(a)) return deny(res, 400, 'bad address');
+    let next = 0;
+    try {
+      const d = await nodeGet(`/thin_wallet/address_history?addresses[]=${a}`);
+      for (const tx of d.history || []) {
+        if (tx.nc_address === a && Number.isInteger(tx.nc_seqnum)) {
+          next = Math.max(next, tx.nc_seqnum + 1);
+        }
+      }
+    } catch { /* unknown: the client keeps its own count */ }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({ next }));
+  }
+
   if (req.method === 'GET' && url.pathname === '/lineage') {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     // every address the caller's banner name has lived on, newest first

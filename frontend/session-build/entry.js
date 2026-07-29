@@ -186,6 +186,28 @@ async function open(words) {
   }
   const address = await wallet.getAddressAtIndex(0);
 
+  /* Nano nonce, from the chain rather than from us.
+     wallet-lib reads seqnum out of its own storage (addressInfo.seqnum + 1).
+     A session wallet whose history sync has slipped — a dropped socket, a
+     tab restored from cache — then signs every nano tx with a stale nonce and
+     the chain accepts and voids it: "invalid seqnum (diff=-28)", which the
+     player sees as "transaction failed" on claim, guild join, ranked, over
+     and over, with nothing wrong on either side. The server reports the max
+     nc_seqnum the chain has seen for this caller, and we take the higher of
+     that and the local count. */
+  const libSeqnum = wallet.getNanoHeaderSeqnum.bind(wallet);
+  wallet.getNanoHeaderSeqnum = async addr => {
+    const local = await libSeqnum(addr).catch(() => 0);
+    try {
+      const r = await fetch(`/api/seqnum?addr=${addr}`);
+      if (r.ok) {
+        const { next } = await r.json();
+        if (Number.isInteger(next) && next > local) return next;
+      }
+    } catch { /* offline or blocked: the local count still stands */ }
+    return local;
+  };
+
   return {
     address,
 
