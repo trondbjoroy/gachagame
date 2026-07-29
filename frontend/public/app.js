@@ -2851,9 +2851,8 @@ function openPick(kind, ref) {
     $('pickCards').innerHTML = byMight(roster)
       .map(c => cardBox(c, `<button class="mini-btn" data-pick="${c.uid}">SELECT</button>`)).join('');
     document.querySelectorAll('[data-pick]').forEach(el => el.onclick = () => toggleSquadPick(el));
-    pickLocked = true;                     // Escape and outside clicks do not
-    $('pickCancel').hidden = false;        // let go of a half-built squad
-    $('pickCancel').onclick = () => { pickLocked = false; pickSquad = []; $('overlay').hidden = true; };
+    pickLocked = true;   // Escape and outside clicks do not let go of a
+                         // half-built squad; the view's own cancel does
     $('pickSquadGo').onclick = () => submitSquad();
     showStage('stagePick');
     $('overlay').hidden = false;
@@ -2939,7 +2938,6 @@ function openPick(kind, ref) {
   // the one-champion picker closes like any dialog; only a squad is locked
   pickLocked = false;
   $('pickHint').hidden = true;
-  $('pickCancel').hidden = true;
   $('pickSquadGo').hidden = true;
   $('pickWagerRow').hidden = kind !== 'create';
   if (kind === 'create') $('pickWager').value = ''; // the stake must be named, not defaulted
@@ -3636,7 +3634,12 @@ $('sessionTopupBtn').onclick = topUpSession;
 $('sessionEndBtn').onclick = endSession;
 document.querySelectorAll('.connect-opt').forEach(el => el.onclick = () => connectWallet(el.dataset.wallet));
 for (const id of ['errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBtn', 'temperCancel', 'dressCloseBtn', 'nameCancel', 'cardCloseBtn'])
-  $(id).onclick = () => { $('overlay').hidden = true; };
+  $(id).onclick = () => {
+    pickLocked = false;            // a cancelled muster lets go of its picks
+    pickSquad = [];
+    $('pickSquadGo').hidden = true;
+    $('overlay').hidden = true;
+  };
 $('nameClaimBtn').onclick = claimName;
 // the card, wallet, and reveal views close like any lightbox: Escape or a
 // click outside (a dismissed reveal keeps the champion under New champions)
