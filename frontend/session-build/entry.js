@@ -260,6 +260,13 @@ async function open(words) {
       return { hash: tx.hash };
     },
 
+    // hand one champion to another address of the player's (session -> main)
+    async sendToken(to, uid, amount) {
+      const tx = await wallet.sendTransaction(to, BigInt(amount),
+        { token: uid, pinCode: PIN, changeAddress: address });
+      return { hash: tx.hash };
+    },
+
     async sweep(toAddress) {
       const uids = await wallet.getTokens();
       const outputs = [];

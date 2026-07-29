@@ -1109,8 +1109,9 @@ function render() {
   $('mainHeldWrap').hidden = mainHeld.length === 0;
   $('mainHeldCards').innerHTML = mainHeld.map(c =>
     cardBox(c, `<div class="cf-state">${glyph('seal')}held by your main wallet</div>`
-      + cardActs(`<button class="cf-primary" data-stake="${c.uid}">SEND TO MINES</button>`,
-        [`<button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>`,
+      + cardActs(`<button class="cf-primary" data-import="${c.uid}">BRING TO SESSION</button>`,
+        [`<button class="mini-btn alt" data-stake="${c.uid}">SEND TO MINES</button>`,
+         `<button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>`,
          MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
          MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '']))).join('');
 
@@ -1525,6 +1526,7 @@ function bindListActions() {
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
     if (h) crashLand(u, tier);
   });
+  bind('[data-import]', u => importToSession(u));
   bind('[data-stake]', async u => {
     const w = await walletFor(u);
     if (w === null) return;
@@ -3621,6 +3623,46 @@ async function attachMainWallet() {
     S.mainWallet = w;
     return w;
   } catch { return null; }
+}
+
+/* Bring a champion into the session.
+   Signing for a main-held champion costs a wallet prompt every time. Moving
+   the token to the session key costs ONE prompt, after which that champion
+   plays like any other the session holds. Ending the session sweeps it home
+   again, so nothing is stranded by doing this. */
+async function importToSession(uid) {
+  const c = S.cards.get(uid);
+  if (!c || S.wallet?.mode !== 'session') return;
+  const w = await attachMainWallet();
+  if (!w) {
+    ribbon('Connect your main wallet to bring that champion in.');
+    return;
+  }
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>Bringing ${esc(c.name)} in</b>
+    <span class="t-sub">approve the transfer in your wallet…</span></div>`;
+  $('txToasts').appendChild(el);
+  const sub = el.querySelector('.t-sub');
+  try {
+    const { hash } = await w.sendToken(S.addr, uid, CARD_AMT);
+    sub.textContent = 'confirming…';
+    await waitForExecution(hash);
+    el.classList.add('ok');
+    sub.textContent = 'done';
+    window.sfx?.('coin', { volume: .5 });
+    ribbon(`<b>${esc(c.name)}</b> answers to this session now`, 'level', 'deed');
+    track('import_to_session', { ok: true });
+    setTimeout(() => el.remove(), 4000);
+    await refresh().catch(() => {});
+  } catch (e) {
+    el.classList.add('bad');
+    sub.textContent = (e && e.message) || 'the transfer did not go through';
+    track('import_to_session', { ok: false, reason: String(e && e.message).slice(0, 100) });
+    el.insertAdjacentHTML('beforeend', '<button class="t-x">✕</button>');
+    el.querySelector('.t-x').onclick = () => el.remove();
+    setTimeout(() => el.remove(), 20000);
+  }
 }
 
 // A deposit of several champions needs ONE signer: a transaction has a

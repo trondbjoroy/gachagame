@@ -238,6 +238,17 @@ class SnapWallet {
     return { hash };
   }
 
+  // move one champion (a 1-unit token) to another address of the player's
+  async sendToken(toAddress, uid, amount) {
+    const res = await this.invoke('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ address: toAddress, value: String(amount), token: uid }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
+    return { hash };
+  }
+
   async sendData(data) {
     const res = await this.invoke('htr_sendTransaction', {
       network: window.GAME.network,
@@ -391,6 +402,16 @@ class WcWallet {
     return { hash };
   }
 
+  async sendToken(toAddress, uid, amount) {
+    const res = await this.request('htr_sendTransaction', {
+      network: window.GAME.network,
+      outputs: [{ address: toAddress, value: String(amount), token: uid }],
+    });
+    const hash = res?.hash ?? res?.response?.hash;
+    if (!hash) throw new Error('your wallet did not confirm the transaction');
+    return { hash };
+  }
+
   async sendData(data) {
     const res = await this.request('htr_sendTransaction', {
       network: window.GAME.network,
@@ -421,7 +442,7 @@ function loadSessionLib() {
       const el = document.createElement('script');
       // versioned: phones pin heuristically-cached copies of this 3.7MB
       // bundle even after the server starts sending no-cache
-      el.src = 'session-lib.js?v=18';
+      el.src = 'session-lib.js?v=19';
       el.onload = resolve;
       el.onerror = () => reject(new Error('failed to load the session signer'));
       document.head.appendChild(el);
@@ -470,9 +491,12 @@ class SessionWallet {
   // answers 0 for every token it has not indexed yet, which read as 'you
   // own nothing' and emptied the collection on reload
   async tokenBalance(uid) { return addrBalance(this.address, uid); }
-  async htrBalance() { return this.handle.balance('00'); }
+  // the node, like tokenBalance: reading coin from the lib's own index and
+  // champions from the node made the header flip between 0 and the truth
+  async htrBalance() { return addrBalance(this.address, '00'); }
   async sendData(data) { return this.handle.sendData(data); }
   async sendHtr(to, amount) { return this.handle.sendHtr(to, amount); }
+  async sendToken(to, uid, amount) { return this.handle.sendToken(to, uid, amount); }
   async resync() { return this.handle.resync?.(); }
   async sweep() { return this.handle.sweep(this.mainAddr); }
   async disconnect() { await this.handle.stop().catch(() => {}); }
