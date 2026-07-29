@@ -163,6 +163,13 @@ async function loadContract(touch) {
         const bound = (await batchCalls([dc]))[dc];
         S.wallet.unbound = !bound;
         if (bound) S.wallet.mainAddr = bound;
+        // and is THAT address a real wallet, or another session key wearing
+        // the identity? A named banner or a delegate of its own gives it away
+        if (bound && !S.names[bound]) {
+          const bc = `get_player_pulls("${bound}")`;
+          const pulls = (await batchCalls([bc]))[bc] || 0;
+          S.fragmentIdentity = pulls < 3 ? bound : null;
+        } else S.fragmentIdentity = null;
       } catch { /* transient read: keep what we knew */ }
     }
     // v4 delegation: one identity, one read — a session's renown, Ember,
@@ -982,7 +989,10 @@ function render() {
   retireStaleDialogs();
   $('walletDot').className = 'dot' + (S.addr ? '' : ' off');
   $('connectingNote').hidden = !S.restoring;
-  $('staleNote').hidden = !(S.wallet?.mode === 'session' && S.wallet.unbound);
+  const boundToFragment = S.wallet?.mode === 'session' && !S.wallet.unbound
+    && S.wallet.mainAddr && S.fragmentIdentity === S.wallet.mainAddr;
+  $('staleNote').hidden = !(S.wallet?.mode === 'session'
+    && (S.wallet.unbound || boundToFragment));
   $('walletBtn').classList.toggle('beckon', !S.addr && !S.restoring);
   // a banner name stands alone in the chip (the hint span names the wallet
   // kind already); otherwise wallet kind + shortened address
@@ -1746,18 +1756,25 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
       msg = 'Your wallet could not reach the node just then. Nothing was lost — '
         + 'it retries on its own, or press the action again in a moment.';
     } else if (/not enough utxos|insufficient (funds|amount)|no utxos/i.test(msg)) {
-      // a champion deposit that cannot find its coin is a STALE WALLET, not
-      // an empty one: the card is on chain, the wallet has not indexed it
-      // yet. Saying "not enough HTR" to someone holding 1000 HTR sent them
-      // to the faucet for a problem the faucet cannot fix.
+      /* "cannot find the coin" means one of two very different things, and we
+         can tell them apart: the chain knows what this wallet holds. If the
+         balance covers what the deed needed, the wallet is simply behind its
+         own history — telling that player they are broke is a lie that sends
+         them to a faucet for a problem no faucet can fix. */
+      const needHtr = (actions || [])
+        .filter(a => a.type === 'deposit' && a.token === HTR)
+        .reduce((n, a) => n + a.amount, 0);
       const depositsCard = (actions || []).some(a => a.type === 'deposit' && a.token !== HTR);
-      msg = depositsCard
-        ? 'Your wallet has not caught up with that champion yet. It is resyncing — '
-          + 'give it a few seconds and try again.'
-        : 'Not enough HTR. Just made a move? Wait a few seconds for your change to '
-          + 'settle and try again. Empty? Get free testnet coin from the faucet linked '
-          + 'under Info.';
-      if (depositsCard) S.wallet?.resync?.().catch(() => {});
+      const reallyShort = needHtr > 0 && S.htr < needHtr;
+      msg = reallyShort
+        ? `Not enough HTR: this costs ${fmtHtr(needHtr)} and you hold ${fmtHtr(S.htr)}. `
+          + 'Get free testnet coin from the faucet linked under Info.'
+        : (depositsCard
+          ? 'Your wallet has not caught up with that champion yet. It is resyncing; '
+            + 'give it a few seconds and try again.'
+          : 'Your wallet has not caught up with its own coin yet (the chain says you '
+            + 'have enough). It is resyncing; give it a few seconds and try again.');
+      if (!reallyShort) S.wallet?.resync?.().catch(() => {});
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
