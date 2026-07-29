@@ -1108,7 +1108,11 @@ function render() {
   $('pendingWrap').hidden = pend.length === 0;
   $('mainHeldWrap').hidden = mainHeld.length === 0;
   $('mainHeldCards').innerHTML = mainHeld.map(c =>
-    cardBox(c, `<div class="cf-state">${glyph('seal')}held by your main wallet</div>`)).join('');
+    cardBox(c, `<div class="cf-state">${glyph('seal')}held by your main wallet</div>`
+      + cardActs(`<button class="cf-primary" data-stake="${c.uid}">SEND TO MINES</button>`,
+        [`<button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>`,
+         MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
+         MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '']))).join('');
 
   const selCount = S.selected.size;
   $('fuseBar').hidden = mine.length < 2;
@@ -1520,7 +1524,11 @@ function bindListActions() {
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
     if (h) crashLand(u, tier);
   });
-  bind('[data-stake]', u => doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)]));
+  bind('[data-stake]', async u => {
+    const w = await walletFor(u);
+    if (w === null) return;
+    doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)], { wallet: w });
+  });
   bind('[data-unstake]', async u => {
     const c = S.cards.get(u);
     // hours of toil approximated from accrued Ember and the station's rate
@@ -1594,8 +1602,11 @@ function bindListActions() {
     if (raw === null) return;
     const p = Math.floor(Number(raw));
     if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
-    doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT })
-      .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
+    walletFor(u).then(w => {
+      if (w === null) return;
+      doTx('Listing for sale', 'list_card', [p], [depAct(u, CARD_AMT)], { target: MKT, wallet: w })
+        .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
+    });
   });
   bind('[data-trade]', u => openPick('want', u));
   bind('[data-cancellisting]', id => doTx('Cancelling listing', 'cancel_listing', [Number(id)], [], { target: MKT }));
@@ -1685,8 +1696,9 @@ function walletKindOf(w) {
 function walletKind() { return walletKindOf(S.wallet); }
 
 let txSeq = 0;
-async function doTx(label, method, args, actions, { target } = {}) {
-  if (!S.wallet) return null;
+async function doTx(label, method, args, actions, { target, wallet } = {}) {
+  const signer = wallet || S.wallet;
+  if (!signer) return null;
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>${label}</b>
@@ -1695,7 +1707,7 @@ async function doTx(label, method, args, actions, { target } = {}) {
   const sub = el.querySelector('.t-sub');
   const tim = el.querySelector('.t-time');
   try {
-    const { hash } = await S.wallet.executeNano(method, args, actions, target);
+    const { hash } = await signer.executeNano(method, args, actions, target);
     sub.textContent = 'confirming\u2026';
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
@@ -2565,8 +2577,11 @@ function openCard(uid) {
       const p = Math.floor(Number(raw));
       if (!Number.isInteger(p) || p < 1) { alert('Price must be a whole number of HTR cents, 1 or more.'); return; }
       $('overlay').hidden = true;
-      doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT })
-        .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
+      walletFor(uid).then(w => {
+        if (w === null) return;
+        doTx('Listing for sale', 'list_card', [p], [depAct(uid, CARD_AMT)], { target: MKT, wallet: w })
+          .then(h => { if (h) window.sfx?.('coin', { volume: .45 }); });
+      });
     });
     const sb = $('cardShareBtn');
     if (sb) sb.onclick = () => cardDetailUid && shareCard(cardDetailUid);
@@ -3066,7 +3081,9 @@ async function submitPick(uid) {
     return;
   }
   if (kind === 'want') {
-    const swapped = await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT });
+    const wt = await walletFor(ref);
+    if (wt === null) return;
+    const swapped = await doTx('Proposing trade', 'offer_swap', [uid], [depAct(ref, CARD_AMT)], { target: MKT, wallet: wt });
     if (swapped) window.sfx?.('coin', { volume: .45 });
     return;
   }
@@ -3091,7 +3108,9 @@ async function submitPick(uid) {
       (s.pending = s.pending || []).push({ stance: pickStance, salt, ts: Date.now() });
       saveSeals(s);
     }
-    await doTx('Issuing challenge', 'create_duel', [wager, commit], [depAct(uid, CARD_AMT)]);
+    const wc = await walletFor(uid);
+    if (wc === null) return;
+    await doTx('Issuing challenge', 'create_duel', [wager, commit], [depAct(uid, CARD_AMT)], { wallet: wc });
   } else {
     const duel = S.duels.find(x => x.id === ref);
     if (loadMyBets().some(b => b.id === ref)) {
@@ -3570,6 +3589,45 @@ async function openSessionWallet(words, mainAddr) {
 
 // silently reconnect MetaMask Snap: an installed, already-approved snap
 // resolves without prompts, so this only runs when Snap was the last wallet
+/* Champions swept home by a previous session sit in the main wallet, and a
+   session key cannot sign for them — so a player who ended one session and
+   started another found their whole roster out of reach. The main wallet is
+   still theirs to sign with: attach it alongside the session (never in place
+   of it) and let those champions act, at the cost of one wallet prompt. */
+async function attachMainWallet() {
+  if (S.mainWallet) return S.mainWallet;
+  if (S.wallet?.mode !== 'session') return S.wallet;   // already the main one
+  const kind = localStorage.getItem('gacha_wallet');
+  try {
+    const w = kind === 'snap' ? new window.WALLETS.SnapWallet()
+      : kind === 'wc' ? new window.WALLETS.WcWallet() : null;
+    if (!w) return null;
+    const addr = await (kind === 'wc' ? w.connect(() => {}) : w.connect());
+    if (!addr) return null;
+    // the wallet that funded this session is the one that holds its champions
+    if (S.wallet.mainAddr && addr !== S.wallet.mainAddr) {
+      ribbon(`That wallet is ${short(addr)}; these champions belong to `
+        + `${short(S.wallet.mainAddr)}. Switch accounts and try again.`);
+      return null;
+    }
+    S.mainWallet = w;
+    return w;
+  } catch { return null; }
+}
+
+// which wallet can actually sign for this champion
+async function walletFor(uid) {
+  const c = S.cards.get(uid);
+  if (!c || c.mine || !c.heldByMain) return undefined;    // the session's own
+  const w = await attachMainWallet();
+  if (!w) {
+    ribbon('That champion is held by your main wallet. Connect it (or end the '
+      + 'session) to command them.');
+    return null;
+  }
+  return w;
+}
+
 async function restoreSnap() {
   if (localStorage.getItem('gacha_wallet') !== 'snap') return null;
   try {
