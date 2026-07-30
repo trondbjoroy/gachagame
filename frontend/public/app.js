@@ -1560,8 +1560,13 @@ function bindListActions() {
     el.onclick = () => fn(el.dataset[Object.keys(el.dataset)[0]]));
   bind('[data-claim]', async u => {
     const tier = S.cards.get(u)?.tier ?? 0;
+    // the walk home is two confirmations long; a live button through it
+    // invites a second claim the contract can only refuse
+    const btn = document.querySelector(`[data-claim="${u}"]`);
+    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'COMING HOME…'; }
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
     if (h) crashLand(u, tier);
+    else render(); // refused or dropped: give the button back
   });
   bind('[data-import]', u => importToSession(u));
   bind('[data-stake]', async u => {
@@ -1653,8 +1658,11 @@ function bindListActions() {
   bind('[data-cancelswap]', id => doTx('Cancelling trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
   bind('[data-mclaim]', async u => {
     const tier = S.cards.get(u)?.tier ?? 0;
+    const btn = document.querySelector(`[data-mclaim="${u}"]`);
+    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'COMING HOME…'; }
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT });
     if (h) crashLand(u, tier);
+    else render();
   });
   // buying spends real HTR, so it asks first: the name, the price and the
   // fact that the champion arrives in escrow
@@ -1774,7 +1782,12 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
   } catch (e) {
     el.classList.add('fail');
     let msg = e.message || String(e);
-    if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
+    if (/card not pending/i.test(msg)) {
+      // a re-click on a champion whose claim already went through: the first
+      // claim confirmed while this one was being signed. Nothing is wrong.
+      msg = 'That champion is already on the way home — the earlier claim went '
+        + 'through. They arrive with the next refresh.';
+    } else if (/invalid blueprint|blueprint not found|nano contract does not exist/i.test(msg)) {
       msg = 'Your wallet is on a different Hathor network. Switch it to testnet and try again.';
     } else if (/not valid JSON|Unexpected token|no healthy upstream|not answering just now/i.test(msg)) {
       msg = 'The Hathor node dropped that request. Nothing was spent — try again '
