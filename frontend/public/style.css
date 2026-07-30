@@ -444,10 +444,13 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 .fight-verdict.in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
 .fight-rounds { margin-bottom: 22px; }
 
-/* tab attention badge */
+/* tab attention badge: in the flow after the label, never over it — the
+   absolute corner spot sat on the text, and the scrolling mobile tab bar
+   clips anything hung outside the button */
 .tab { position: relative; }
 .tab .tab-badge {
-  position: absolute; top: 4px; right: 2px; min-width: 15px; height: 15px;
+  display: inline-block; vertical-align: 1px; margin-left: 5px;
+  min-width: 15px; height: 15px;
   border-radius: 8px; background: var(--acid); color: #1a1408;
   font-size: 10px; font-weight: 800; line-height: 15px; text-align: center;
   padding: 0 3px; pointer-events: none;

@@ -1027,7 +1027,7 @@ function render() {
   $('pullCost').textContent = S.pullPrice != null ? fmtHtr(S.pullPrice) : '…';
   $('pullNote').innerHTML = !S.addr ? 'Connect a wallet to play.' :
     S.htr < (S.pullPrice ?? 0) ? `Not enough HTR: <a href="https://faucet.testnet.hathor.network" target="_blank">claim free coin</a> → <span class="mono">${S.addr}</span>` :
-    'Speak, and the Weaver answers within moments.';
+    '';
 
   const me = v => S.addr ? v : '–';
   const deeds = computeDeeds();
