@@ -1670,8 +1670,11 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
 @media (max-width: 640px) {
   header.top .tabs { gap: 0; }
   /* 12px text costs the row ~16px over the old 11px; the padding pays for
-     it so six tabs still fit a 375px screen without scrolling */
-  header.top .tab { padding: 8px 2px; font-size: 12px; letter-spacing: 0; }
+     it so six tabs still fit a 375px screen without scrolling. Dim ink was
+     unreadable on the light gold, so the phone row gets full-strength ink
+     and a heavier underline instead of more size. */
+  header.top .tab { padding: 8px 2px; font-size: 12px; letter-spacing: 0; color: var(--ink-muted); font-weight: 600; }
+  header.top .tab.active { color: var(--acid); border-bottom-width: 3px; }
 }
 
 /* once today's trial is done it stops being a call to action: on the
