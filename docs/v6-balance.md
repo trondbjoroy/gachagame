@@ -58,6 +58,27 @@ left out:
   which cannot call the arena's `_trial_hit`; a market trial needs
   cross-contract calls or a merged contract first.
 
+## One-transaction recalls (user request, 2026-07-30)
+
+Recalling a champion from a fight or queue is two chained confirmations
+today: `cancel_duel` / `leave_ranked` / `leave_tournament` only mark the
+card `pending`, and a separate `claim_card` walks it home — a 2-3 minute
+wait that players read as a stuck transaction (and retry, buying voided
+"card not pending" txs; the client now guards against that, b=188).
+
+`unstake` already returns its card directly via a withdrawal action in
+the same transaction. Give the three recall methods the same shape: the
+caller attaches the withdrawal action(s) for the card(s) being freed
+(three for a squad cancel), the contract validates they match the duel /
+seat, and the champion is home in ONE confirmation. Client attaches the
+actions at the v6 cutover.
+
+Two-step `pending` must STAY wherever custody returns during someone
+else's transaction — duel settles, reveals, forfeits (the winner's cards
+free up in the opponent's tx, which cannot withdraw to them) — and for
+`pull` (the token does not exist when the tx is signed, so it cannot be
+named in a withdrawal action).
+
 ## Side-bet ring (user requests, 2026-07-30)
 
 6. **`cancel_bet(duel_id)`** — a spectator can withdraw their backing and
