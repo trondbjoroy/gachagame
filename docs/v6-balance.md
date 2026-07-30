@@ -26,6 +26,38 @@ publishing. v6 features may force a second contract.
    grows without bound; cap the claimable window at 24h of the card's
    rate so mining requires showing up.
 
+## Daily trials for every feature (user request, 2026-07-30)
+
+Today's trial table is kinds 0–7 (pull, stake, duel win, fuse, temper,
+claim Ember, recall 8h+, writ won), with rotation `(day*5+2) % 8` and the
+renown bonuses hardwired in `_trial_hit`. "Win a duel" already counts 1v1,
+3v3 squad, and ranked wins — all three resolve paths hit kind 2. But the
+v5 features have no trials of their own. Extend to twelve kinds:
+
+| kind | trial                        | hook                | renown |
+|------|------------------------------|---------------------|--------|
+| 8    | Send a champion on a delve   | `begin_delve`       | 3      |
+| 9    | Strike the world boss        | `fight_world_boss`  | 5      |
+| 10   | Join the ranked ladder       | `join_ranked`       | 3      |
+| 11   | Back a duelist with Ember    | `place_bet`         | 3      |
+
+Rotation becomes `(day*5+2) % 12` — 5 is coprime with 12, so every trial
+still comes around. The client's `TRIALS` list and `METHOD_KIND` map in
+`frontend/public/progress.js` must be extended in the SAME deploy as the
+v6 cutover; they mirror the contract's order and rotation exactly.
+
+Chosen for daily completability: each is an act any connected player can
+perform most days (the boss can die mid-week, but "win a duel" already
+depends on an opponent showing up, so that precedent stands). Deliberately
+left out:
+
+- **Tournaments and guilds** — entering a tournament is only possible
+  while registration is open, and joining a guild is a once-ish act, so
+  as daily trials they would land on days where they cannot be done.
+- **The Bazaar** — buys, sales, and trades settle on the market contract,
+  which cannot call the arena's `_trial_hit`; a market trial needs
+  cross-contract calls or a merged contract first.
+
 ## Side-bet ring (user requests, 2026-07-30)
 
 6. **`cancel_bet(duel_id)`** — a spectator can withdraw their backing and
