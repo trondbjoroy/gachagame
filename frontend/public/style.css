@@ -1669,7 +1669,9 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
    whole row fits a 375px screen without scrolling */
 @media (max-width: 640px) {
   header.top .tabs { gap: 0; }
-  header.top .tab { padding: 8px 4px; font-size: 12px; letter-spacing: .01em; }
+  /* 12px text costs the row ~16px over the old 11px; the padding pays for
+     it so six tabs still fit a 375px screen without scrolling */
+  header.top .tab { padding: 8px 2px; font-size: 12px; letter-spacing: 0; }
 }
 
 /* once today's trial is done it stops being a call to action: on the
