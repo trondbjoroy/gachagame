@@ -1561,12 +1561,16 @@ function bindListActions() {
   bind('[data-claim]', async u => {
     const tier = S.cards.get(u)?.tier ?? 0;
     // the walk home is two confirmations long; a live button through it
-    // invites a second claim the contract can only refuse
-    const btn = document.querySelector(`[data-claim="${u}"]`);
-    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'COMING HOME…'; }
+    // invites a second claim the contract can only refuse. Lock EVERY copy
+    // (the open-card dialog renders its own).
+    const btns = [...document.querySelectorAll(`[data-claim="${u}"]`)];
+    if (btns.some(b => b.disabled)) return;
+    btns.forEach(b => { b.disabled = true; b.textContent = 'COMING HOME…'; });
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)]);
     if (h) crashLand(u, tier);
-    else render(); // refused or dropped: give the button back
+    // refused or dropped: re-read the realm rather than resurrect a stale
+    // button — an already-claimed champion leaves the pending shelf here
+    else await refresh([u]).catch(() => render());
   });
   bind('[data-import]', u => importToSession(u));
   bind('[data-stake]', async u => {
@@ -1658,11 +1662,12 @@ function bindListActions() {
   bind('[data-cancelswap]', id => doTx('Cancelling trade', 'cancel_swap', [Number(id)], [], { target: MKT }));
   bind('[data-mclaim]', async u => {
     const tier = S.cards.get(u)?.tier ?? 0;
-    const btn = document.querySelector(`[data-mclaim="${u}"]`);
-    if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = 'COMING HOME…'; }
+    const btns = [...document.querySelectorAll(`[data-mclaim="${u}"]`)];
+    if (btns.some(b => b.disabled)) return;
+    btns.forEach(b => { b.disabled = true; b.textContent = 'COMING HOME…'; });
     const h = await doTx('Claiming champion', 'claim_card', [], [wdAct(u, CARD_AMT)], { target: MKT });
     if (h) crashLand(u, tier);
-    else render();
+    else await refresh([u]).catch(() => render());
   });
   // buying spends real HTR, so it asks first: the name, the price and the
   // fact that the champion arrives in escrow
@@ -1718,7 +1723,20 @@ async function waitForExecution(hash, onTick) {
     onTick?.(Math.round((Date.now() - start) / 1000));
     const tx = await node(`/transaction?id=${hash}`);
     const meta = tx.meta || {};
-    if ((meta.voided_by || []).length) throw new Error('transaction failed; nothing was spent. Try again');
+    if ((meta.voided_by || []).length) {
+      // say WHY the contract refused: the generic line sent players into
+      // retry loops against refusals like "card not pending" that actually
+      // meant the job was already done
+      const logs = await node(`/nano_contract/logs?id=${hash}`).catch(() => ({}));
+      let reason = '';
+      for (const entries of Object.values(logs.logs || {})) {
+        for (const e of entries) {
+          const m = (e.error_traceback || '').match(/NCFail: (.+?)\s*$/m);
+          if (m) reason = m[1];
+        }
+      }
+      throw new Error(reason || 'transaction failed; nothing was spent. Try again');
+    }
     if (!meta.first_block) continue;
     // A plain transfer — bringing a champion into the session, a top-up — has
     // no nano header, so there is no execution verdict to wait for: a block
@@ -1778,7 +1796,11 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
         // 503 is the balancer refusing to forward at all (upstream marked
         // unhealthy), so nothing reached the node — as safe to retry as a
         // dropped build read. 502/504 stay out: those may have executed.
-        if (attempt < 2 && /error getting nano contract|from the full node|status code 503/i.test(m)) {
+        // capped at three attempts total, then the mapped message surfaces —
+        // never an endless loop. Wallet HTTP timeouts are chain-safe to
+        // retry: a duplicate nano tx re-signs the same seqnum, which the
+        // contract rejects without effect.
+        if (attempt < 2 && /error getting nano contract|from the full node|status code 503|timeout of \d+ms exceeded/i.test(m)) {
           sub.textContent = 'the node dropped a read; retrying\u2026';
           await pause(1500 * (attempt + 1));
           continue;
