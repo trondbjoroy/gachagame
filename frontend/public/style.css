@@ -664,7 +664,11 @@ footer a { color: var(--acid); text-decoration: none; }
 .tabpane { margin-top: 26px; }
 .mt { margin-top: 34px !important; }
 
-.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+/* the row's clearance belongs to the row, not to the h2's own margin: the
+   FUSE button is taller than the heading text, and centered against that
+   margin its bottom edge crossed onto the first card */
+.pane-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.pane-head h2 { margin: 0; }
 .mini-btn {
   cursor: pointer; font-family: var(--display); letter-spacing: .08em; font-size: 12px;
   color: #241703; background: linear-gradient(135deg, #caa03f, #e6bd5e);
