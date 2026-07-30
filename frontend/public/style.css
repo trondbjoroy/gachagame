@@ -971,7 +971,9 @@ body::after {
   overflow: visible;   /* nothing to clip now, and the crest falls in from above */
 }
 .reveal-back img {
-  width: 46%; opacity: .92;
+  /* height must follow the CSS width: the img's width/height attributes
+     otherwise pin the height at 300px and stretch the shield */
+  width: 46%; height: auto; opacity: .92;
   animation: crestFall .7s cubic-bezier(.3, 1.2, .45, 1) both,
              backPulse 1.1s ease-in-out .7s infinite alternate;
 }
