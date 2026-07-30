@@ -1762,8 +1762,39 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
   $('txToasts').appendChild(el);
   const sub = el.querySelector('.t-sub');
   const tim = el.querySelector('.t-time');
+  const pause = ms => new Promise(r => setTimeout(r, ms));
   try {
-    const { hash } = await signer.executeNano(method, args, actions, target);
+    // two failures the player should never see: a node read dropped while
+    // BUILDING the tx (nothing signed or sent yet), and a session wallet
+    // whose local index lags the chain. Both are retried here instead of
+    // surfacing as a scary toast for the player to re-tap through.
+    let hash, staleRetried = false;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        ({ hash } = await signer.executeNano(method, args, actions, target));
+        break;
+      } catch (e) {
+        const m = String((e && e.message) || e);
+        if (attempt < 2 && /error getting nano contract|from the full node/i.test(m)) {
+          sub.textContent = 'the node dropped a read; retrying\u2026';
+          await pause(1500 * (attempt + 1));
+          continue;
+        }
+        if (!staleRetried && /not enough utxos|insufficient (funds|amount)|no utxos/i.test(m)) {
+          const needHtr = (actions || [])
+            .filter(a => a.type === 'deposit' && a.token === HTR)
+            .reduce((n, a) => n + a.amount, 0);
+          if (!(needHtr > 0 && S.htr < needHtr) && signer.resync) {
+            staleRetried = true;
+            sub.textContent = 'wallet catching up with the chain; retrying\u2026';
+            await signer.resync().catch(() => {});
+            await pause(3500);
+            continue;
+          }
+        }
+        throw e;
+      }
+    }
     sub.textContent = 'confirming\u2026';
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
@@ -1782,7 +1813,12 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
   } catch (e) {
     el.classList.add('fail');
     let msg = e.message || String(e);
-    if (/card not pending/i.test(msg)) {
+    if (/error getting nano contract|from the full node/i.test(msg)) {
+      // three build attempts all lost a node read: nothing was signed or
+      // sent, so say so instead of echoing wallet-lib's internals
+      msg = 'The node kept dropping reads while preparing that transaction. '
+        + 'Nothing was spent — try again in a moment.';
+    } else if (/card not pending/i.test(msg)) {
       // a re-click on a champion whose claim already went through: the first
       // claim confirmed while this one was being signed. Nothing is wrong.
       msg = 'That champion is already on the way home — the earlier claim went '
