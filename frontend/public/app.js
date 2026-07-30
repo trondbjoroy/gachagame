@@ -1530,11 +1530,12 @@ function bindListActions() {
   };
   document.querySelectorAll('[data-open]').forEach(el => {
     const uid = el.dataset.open;
-    let timer = null, held = false;
+    let timer = null, held = false, px0 = 0, py0 = 0;
     el.onpointerdown = e => {
       const c = S.cards.get(uid);
       if (e.target.closest('button, summary') || !(c?.mine || c?.heldByMain)) return;
       held = false;
+      px0 = e.clientX; py0 = e.clientY;
       timer = setTimeout(() => {
         held = true;
         window.haptic?.([20, 30, 20]);
@@ -1543,8 +1544,12 @@ function bindListActions() {
     };
     const cancel = () => { clearTimeout(timer); timer = null; };
     el.onpointerup = cancel;
-    el.onpointerleave = cancel;
     el.onpointercancel = cancel;
+    // a thumb is not a mouse: micro-drift used to fire pointerleave and
+    // silently kill the hold. Only a real drag (a scroll) cancels now.
+    el.onpointermove = e => {
+      if (timer && Math.hypot(e.clientX - px0, e.clientY - py0) > 12) cancel();
+    };
     el.oncontextmenu = e => {
       const c = S.cards.get(uid);
       if (c?.mine || c?.heldByMain) e.preventDefault();

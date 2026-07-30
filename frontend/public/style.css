@@ -1661,7 +1661,9 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     margin-left: -14px; margin-right: -14px;
-    padding: 4px 14px 8px;
+    /* overflow-x:auto clips vertically too: the frame ring and selection
+       outline need headroom or the card's top edge is shaved off */
+    padding: 10px 14px 12px;
   }
   .cards::-webkit-scrollbar { display: none; }
   .cards > * { flex: 0 0 min(240px, 72vw); scroll-snap-align: center; }
