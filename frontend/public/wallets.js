@@ -301,7 +301,7 @@ function loadWcLib() {
 
 class WcWallet {
   constructor() {
-    this.mode = 'wc'; this.label = 'Reown (Hathor wallet)';
+    this.mode = 'wc'; this.label = 'WalletConnect (Hathor wallet)';
     this.address = null; this.client = null; this.session = null;
     this.chain = `hathor:${window.GAME.network}`;
   }
