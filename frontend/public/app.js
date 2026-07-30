@@ -3264,6 +3264,11 @@ async function submitPick(uid) {
 
 async function connectWallet(kind) {
   $('connectMsg').textContent = 'connecting…';
+  // a fresh pairing takes as long as a restore, but only restores set
+  // S.restoring: the panes behind the dialog claimed "No champions yet"
+  // while WalletConnect was still shaking hands
+  S.restoring = true;
+  render();
   try {
     const w = kind === 'snap' ? new window.WALLETS.SnapWallet() : new window.WALLETS.WcWallet();
     const onUri = async uri => {
@@ -3293,6 +3298,11 @@ async function connectWallet(kind) {
     }
   } catch (e) {
     $('connectMsg').textContent = e.message || String(e);
+  } finally {
+    // an abandoned pairing must not leave every pane promising a
+    // connection that is no longer coming
+    S.restoring = false;
+    render();
   }
 }
 
