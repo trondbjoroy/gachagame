@@ -3519,6 +3519,22 @@ async function endSession() {
         + blockers.join(' · ') + '.');
       return;
     }
+    // the sweep returns everything to the bound identity — which for a few
+    // pre-cutover sessions is a lost fragment key, not a wallet anyone
+    // holds. Sweeping there strands champions forever (it has happened).
+    // Proof of ownership is cheap: the real owner can connect that wallet.
+    const fragSuspect = !S.wallet.unbound && S.wallet.mainAddr
+      && S.fragmentIdentity === S.wallet.mainAddr;
+    if (fragSuspect && S.mainWallet?.address !== S.wallet.mainAddr) {
+      sessionNote('Paused: this session is bound to ' + short(S.wallet.mainAddr)
+        + ', which looks like a lost fragment identity rather than a wallet. '
+        + 'Ending now would sweep your champions and coin to an address whose '
+        + 'key may be gone, so the sweep is blocked. Connect the wallet that '
+        + 'owns that address to prove it is yours, or keep playing here and '
+        + 'ask the realm keeper to migrate this session.');
+      const w = await attachMainWallet().catch(() => null);
+      if (!w || w.address !== S.wallet.mainAddr) return;
+    }
     // v4: the name never leaves the main address, so there is nothing to
     // bequeath \u2014 the sweep is all that remains
     sessionNote('Returning all champions and coin to your wallet\u2026');
@@ -3542,6 +3558,13 @@ async function endSession() {
       if (await restoreWcPairing() || await restoreSnap()) {
         sessionNote('Session ended; your wallet is connected again.');
         track('wallet_connect', { wallet: `${walletKind()}-restored-after-session` });
+      } else {
+        // the pairing did not survive (mobile relays rarely do): say so and
+        // hold the connect dialog open instead of a dead header
+        sessionNote('Session ended and everything is back in your wallet. The old '
+          + 'pairing could not be resumed on its own — connect again to keep playing.');
+        render();
+        $('walletBtn').click();
       }
     }
     await silentRefresh();
