@@ -1125,6 +1125,16 @@ function render() {
          MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
          MKT ? `<button class="mini-btn alt" data-trade="${c.uid}">TRADE</button>` : '']))).join('');
 
+  // once the first champion is picked for fusion, the other wallet's step
+  // back (as in the squad picker): the pair signs as one transaction
+  const firstSel = S.cards.get([...S.selected][0]);
+  if (firstSel) {
+    for (const el of document.querySelectorAll('#collectionCards [data-open], #mainHeldCards [data-open]')) {
+      const cc = S.cards.get(el.dataset.open);
+      if (cc && !S.selected.has(cc.uid) && !!cc.mine !== !!firstSel.mine) el.classList.add('fuse-off');
+    }
+  }
+
   const selCount = S.selected.size;
   // main-held champions can fuse now, so they count toward the pair
   $('fuseBar').hidden = (mine.length + mainHeld.length) < 2;
@@ -1499,13 +1509,22 @@ function bindListActions() {
   // tap opens the detail view; press-and-hold selects for fusion
   const toggleFusePick = uid => {
     const c = S.cards.get(uid);
-    if (!c?.mine) return false;
+    if (!c?.mine && !c?.heldByMain) return false;
     if (c.tier >= 3) {
       ribbon('Sovereigns are the top rarity; they cannot be fused');
       return true;
     }
     if (S.selected.has(uid)) S.selected.delete(uid);
-    else { if (S.selected.size >= 2) S.selected.clear(); S.selected.add(uid); }
+    else {
+      if (S.selected.size >= 2) S.selected.clear(); // a third pick starts a fresh pair
+      // one fusion, one signer: the pair must live in the same wallet
+      const first = S.cards.get([...S.selected][0]);
+      if (first && !!first.mine !== !!c.mine) {
+        ribbon('One fusion, one signer: pick both champions from the same wallet.');
+        return true;
+      }
+      S.selected.add(uid);
+    }
     render();
     return true;
   };
@@ -1514,7 +1533,7 @@ function bindListActions() {
     let timer = null, held = false;
     el.onpointerdown = e => {
       const c = S.cards.get(uid);
-      if (e.target.closest('button, summary') || !c?.mine) return;
+      if (e.target.closest('button, summary') || !(c?.mine || c?.heldByMain)) return;
       held = false;
       timer = setTimeout(() => {
         held = true;
@@ -1526,7 +1545,10 @@ function bindListActions() {
     el.onpointerup = cancel;
     el.onpointerleave = cancel;
     el.onpointercancel = cancel;
-    el.oncontextmenu = e => { if (S.cards.get(uid)?.mine) e.preventDefault(); };
+    el.oncontextmenu = e => {
+      const c = S.cards.get(uid);
+      if (c?.mine || c?.heldByMain) e.preventDefault();
+    };
     el.onclick = e => {
       if (e.target.closest('button, summary')) return;
       if (held) { held = false; return; } // the hold already did its work

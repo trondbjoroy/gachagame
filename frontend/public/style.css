@@ -674,6 +674,12 @@ footer a { color: var(--acid); text-decoration: none; }
 
 body.fuse-picking .card.cf[data-open] { cursor: copy; }
 body.fuse-picking .card.cf[data-open]:hover { border-color: var(--acid); }
+/* the other wallet's champions step back once the first is picked */
+.card.cf.fuse-off { opacity: .38; filter: saturate(.35); }
+body.fuse-picking .card.cf.fuse-off[data-open] { cursor: not-allowed; }
+body.fuse-picking .card.cf.fuse-off[data-open]:hover {
+  border-color: color-mix(in srgb, var(--rc) 38%, transparent);
+}
 /* Picked for fusion. The ring has to read against a dark card face AND
    whatever the page is standing on, so it is drawn twice: an ink ring
    against the gold ground, a gold halo against the art. */
