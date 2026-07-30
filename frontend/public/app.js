@@ -1775,7 +1775,10 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
         break;
       } catch (e) {
         const m = String((e && e.message) || e);
-        if (attempt < 2 && /error getting nano contract|from the full node/i.test(m)) {
+        // 503 is the balancer refusing to forward at all (upstream marked
+        // unhealthy), so nothing reached the node — as safe to retry as a
+        // dropped build read. 502/504 stay out: those may have executed.
+        if (attempt < 2 && /error getting nano contract|from the full node|status code 503/i.test(m)) {
           sub.textContent = 'the node dropped a read; retrying\u2026';
           await pause(1500 * (attempt + 1));
           continue;
@@ -1813,7 +1816,7 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
   } catch (e) {
     el.classList.add('fail');
     let msg = e.message || String(e);
-    if (/error getting nano contract|from the full node/i.test(msg)) {
+    if (/error getting nano contract|from the full node|status code 503/i.test(msg)) {
       // three build attempts all lost a node read: nothing was signed or
       // sent, so say so instead of echoing wallet-lib's internals
       msg = 'The node kept dropping reads while preparing that transaction. '
