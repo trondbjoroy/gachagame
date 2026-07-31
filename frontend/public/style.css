@@ -1673,11 +1673,13 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
    whole row fits a 375px screen without scrolling */
 @media (max-width: 640px) {
   header.top .tabs { gap: 0; }
-  /* 12px text costs the row ~16px over the old 11px; the padding pays for
-     it so six tabs still fit a 375px screen without scrolling. Dim ink was
-     unreadable on the light gold, so the phone row gets full-strength ink
-     and a heavier underline instead of more size. */
-  header.top .tab { padding: 8px 2px; font-size: 12px; letter-spacing: 0; color: var(--ink-muted); font-weight: 600; }
+  /* The six names at 12px measure ~323px plus 24px padding against a
+     100vw-28px row, so the biggest type that never scrolls is a function
+     of the screen: 3.7vw-1.9px lands on 12px at 375 (iPhone SE keeps
+     today's fit exactly) and ~12.6-14px on wider phones, spending the
+     free space the user sees there. Dim ink was unreadable on the light
+     gold, so the row also gets full-strength ink. */
+  header.top .tab { padding: 8px 2px; font-size: clamp(12px, 3.7vw - 1.9px, 15px); letter-spacing: 0; color: var(--ink-muted); font-weight: 600; }
   header.top .tab.active { color: var(--acid); border-bottom-width: 3px; }
 }
 
