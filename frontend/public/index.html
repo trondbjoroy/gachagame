@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=202" />
+<link rel="stylesheet" href="style.css?b=203" />
 </head>
 <body>
 <script>try { if (localStorage.getItem('emberfall_theme') === 'light') { document.body.classList.add('theme-light'); document.querySelector('meta[name=theme-color]').setAttribute('content', '#f0dc9e'); } } catch (e) { }</script>
@@ -323,18 +323,20 @@
     <div class="faq">
       <div class="qa"><h4>Why do actions take a few seconds to land?</h4>
         <p>Every move is a real blockchain transaction. It confirms when the next
-        Hathor block includes it. Blocks arrive roughly every 8 seconds, so
-        most actions settle in about 5&ndash;15 seconds. Nothing is simulated; the
+        Hathor block includes it. Blocks arrive roughly every 10 seconds, so
+        most actions settle in about 10&ndash;30 seconds; recalling a champion
+        from a fight or queue takes two steps, so up to a minute. Nothing is simulated; the
         toast in the corner shows the live status.</p></div>
       <div class="qa"><h4>Is the randomness fair?</h4>
         <p>Draws use Hathor&rsquo;s built-in ChaCha20 RNG inside the contract. The seed
         comes from consensus, every node computes the same result, and no server
         (including ours) can influence or predict a roll.</p></div>
       <div class="qa"><h4>What exactly is a card?</h4>
-        <p>A real Hathor token with a fixed supply of 100 base units (shown as
-        &ldquo;1.00&rdquo;), minted by the game contract with its name, tier, and power
-        recorded onchain. It sits in your wallet like any other token and always moves
-        as one indivisible piece.</p></div>
+        <p>A real Hathor token minted by the game contract as a <b>single
+        indivisible unit</b>, a true NFT, with its name, tier, and power recorded
+        onchain. It sits in your wallet like any other token; the Hathor wallet
+        shows it as &ldquo;0.01&rdquo;, its smallest display unit, and it always
+        moves whole.</p></div>
       <div class="qa"><h4>What is Ember?</h4>
         <p>Ember is the in-game points balance: earned by mining, delving, and
         winning, spent on fusion, tempering, boss entries, wagers, and cosmetics.
@@ -597,16 +599,16 @@
   </div>
 </div>
 
-<script>window.BUILD = 202;</script>
-<script src="analytics.js?b=202"></script>
-<script src="sha3.js?b=202"></script>
-<script src="config.js?b=202"></script>
-<script src="art.js?b=202"></script>
-<script src="catalog.js?b=202"></script>
-<script src="wallets.js?b=202"></script>
-<script src="app.js?b=202"></script>
-<script src="progress.js?b=202"></script>
-<script src="sounds.js?b=202"></script>
-<script src="tutorial.js?b=202"></script>
+<script>window.BUILD = 203;</script>
+<script src="analytics.js?b=203"></script>
+<script src="sha3.js?b=203"></script>
+<script src="config.js?b=203"></script>
+<script src="art.js?b=203"></script>
+<script src="catalog.js?b=203"></script>
+<script src="wallets.js?b=203"></script>
+<script src="app.js?b=203"></script>
+<script src="progress.js?b=203"></script>
+<script src="sounds.js?b=203"></script>
+<script src="tutorial.js?b=203"></script>
 </body>
 </html>

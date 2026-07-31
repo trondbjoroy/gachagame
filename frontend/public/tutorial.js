@@ -20,7 +20,7 @@ const TOUR = [
   {
     target: '#statsRow',
     title: 'Your measures',
-    body: 'The header keeps your count: Ember always, with renown and level beside it when the width allows — the full picture (standing, achievements, collection tracker, season rank, today’s trial) lives under PROGRESS. WORLD FEED, further down, shows what other players are doing right now, duel verdicts and delve hauls included; it starts folded, so click its title to open it. Everything is read straight from the chain; nothing is stored on our servers. Want a name instead of an address? Click your wallet chip and SET NAME.',
+    body: 'The header keeps your count: Ember always, with renown and level beside it when the width allows — the full picture (standing, achievements, collection tracker, season rank, today’s trial) lives under PROGRESS. WORLD FEED, further down, shows what other players are doing right now, duel verdicts and delve hauls included; it starts folded, so click its title to open it. Everything is read straight from the chain; nothing is stored on our servers. Prefer parchment to night? The sun button in the header switches between light and dark mode. Want a name instead of an address? Click your wallet chip and SET NAME.',
   },
   {
     target: '#pane-collection', tab: 'collection',
@@ -55,7 +55,7 @@ const TOUR = [
   {
     target: '#headerSessionBtn', tab: 'collection',
     title: 'Quick play',
-    body: 'Fund a session once and everything after that signs instantly, with no wallet popups. Champions already in your main wallet appear under IN YOUR MAIN WALLET: command one there with a single approval, or BRING TO SESSION to move it in and play it promptlessly. END SESSION & RETURN ALL sends every champion, gem, and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
+    body: 'Fund a session once and everything after that signs instantly, with no wallet popups. Champions already in your main wallet appear under IN YOUR MAIN WALLET: command one there with a single approval, or BRING TO SESSION to move it in and play it promptlessly. END SESSION & RETURN ALL sends every champion and coin back to your main wallet in one move. Sessions survive page reloads in this browser.',
   },
   {
     target: '#walletBtn',
