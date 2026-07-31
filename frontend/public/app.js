@@ -1792,7 +1792,7 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
     // BUILDING the tx (nothing signed or sent yet), and a session wallet
     // whose local index lags the chain. Both are retried here instead of
     // surfacing as a scary toast for the player to re-tap through.
-    let hash, staleRetried = false;
+    let hash, staleRetried = 0;
     for (let attempt = 0; ; attempt++) {
       try {
         ({ hash } = await signer.executeNano(method, args, actions, target));
@@ -1811,15 +1811,17 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
           await pause(1500 * (attempt + 1));
           continue;
         }
-        if (!staleRetried && /not enough utxos|insufficient (funds|amount)|no utxos/i.test(m)) {
+        if (staleRetried < 2 && /not enough utxos|insufficient (funds|amount)|no utxos/i.test(m)) {
           const needHtr = (actions || [])
             .filter(a => a.type === 'deposit' && a.token === HTR)
             .reduce((n, a) => n + a.amount, 0);
           if (!(needHtr > 0 && S.htr < needHtr) && signer.resync) {
-            staleRetried = true;
+            // a champion that came home seconds ago takes the index a
+            // moment to see: two tries, 3.5s then 7s, before giving up
+            staleRetried++;
             sub.textContent = 'wallet catching up with the chain; retrying\u2026';
             await signer.resync().catch(() => {});
-            await pause(3500);
+            await pause(3500 * staleRetried);
             continue;
           }
         }
@@ -1877,8 +1879,12 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
         ? `Not enough HTR: this costs ${fmtHtr(needHtr)} and you hold ${fmtHtr(S.htr)}. `
           + 'Get free testnet coin from the faucet linked under Info.'
         : (depositsCard
-          ? 'Your wallet has not caught up with that champion yet. It is resyncing; '
-            + 'give it a few seconds and try again.'
+          ? (signer.resync
+            ? 'Your wallet has not caught up with that champion yet even after '
+              + 'retries. Give it half a minute and try again.'
+            : 'Your Hathor wallet has not caught up with that champion yet, '
+              + 'usually because it just arrived. The wallet syncs on its own; '
+              + 'give it a minute and try again.')
           : 'Your wallet has not caught up with its own coin yet (the chain says you '
             + 'have enough). It is resyncing; give it a few seconds and try again.');
       if (!reallyShort) S.wallet?.resync?.().catch(() => {});
