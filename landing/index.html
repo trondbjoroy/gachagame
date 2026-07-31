@@ -282,6 +282,13 @@
 
   /* ---------- sections ---------- */
   section { padding: 90px 24px; max-width: 1080px; margin: 0 auto; }
+  /* the promo loop: ambient, controls-free, silent by design */
+  .sec-promo .promo-frame {
+    max-width: 960px; margin: 0 auto;
+    border: 1px solid rgba(212, 168, 67, .35); border-radius: 14px;
+    overflow: hidden; box-shadow: 0 24px 70px -30px rgba(212, 168, 67, .35);
+  }
+  .sec-promo video { width: 100%; height: auto; display: block; }
   .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s ease; }
   .reveal.in { opacity: 1; transform: none; }
   h2 {
@@ -391,6 +398,17 @@
   </div>
   <div class="scroll-hint">⌄</div>
 </div>
+
+<section class="reveal sec-promo">
+  <h2>Thirty seconds in the <span class="accent">realm</span>.</h2>
+  <div class="promo-frame">
+    <video autoplay muted loop playsinline preload="metadata"
+           poster="promo-poster.webp" width="1280" height="720"
+           aria-label="Emberfall gameplay in thirty seconds">
+      <source src="promo-30s.mp4" type="video/mp4" />
+    </video>
+  </div>
+</section>
 
 <section class="reveal sec-lore">
   <h2>The throne is <span class="accent">empty</span>.</h2>
@@ -638,6 +656,13 @@
       if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2600 });
       else addEventListener('load', function () { setTimeout(start, 1200); });
     }
+  })();
+  // an autoplaying loop is motion: reduced-motion visitors get the poster
+  (function () {
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('.sec-promo video').forEach(function (v) {
+      v.removeAttribute('autoplay'); v.pause();
+    });
   })();
 
   // drifting embers
