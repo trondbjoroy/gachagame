@@ -1398,7 +1398,7 @@ function render() {
   const cleared = S.cleared || 0;
   $('gauntletIntro').innerHTML = S.addr
     ? `<ul class="rulelist">
-        <li>Ten bosses, each with a public spread of aspects.</li>
+        <li>Twelve bosses, each with a public spread of aspects.</li>
         <li>Fought by <b>mining</b> champions, three fights each per day.</li>
         <li>An Ember entry fee; bounty and renown to the victor.</li>
         <li>Fell a boss at Grim to unlock its Dire, and the boss before it to reach the next.</li>
