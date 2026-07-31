@@ -1085,10 +1085,19 @@ function render() {
     } else rl.hidden = true;
   }
 
-  // collection, mightiest first
+  // collection, mightiest first; incoming champions ride the same grid,
+  // greyed, instead of a separate shelf below (user request) — outside a
+  // session CLAIM stays their one live control
   const mine = [...S.cards.values()].filter(c => c.mine)
     .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
-  $('collectionCards').innerHTML = mine.map(c => cardBox(c, cardActs(
+  const incoming = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
+  $('collectionCards').innerHTML = byMight([...mine, ...incoming]).map(c =>
+    incoming.includes(c)
+      ? cardBox(c, inSess
+          ? '<div class="cf-state">coming home…</div>'
+          : cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, []))
+          .replace('class="card cf ', 'class="card cf incoming ')
+      : cardBox(c, cardActs(
     `<button class="cf-primary" data-stake="${c.uid}">SEND TO MINES</button>`,
     [`<button class="mini-btn alt" data-duel="${c.uid}">FIGHT</button>`,
      MKT ? `<button class="mini-btn alt" data-sell="${c.uid}">SELL</button>` : '',
@@ -1097,7 +1106,7 @@ function render() {
   // a fresh summon lives in the pending bucket, so the empty line has to
   // account for it: telling a new player they own nothing while their first
   // champion waits above is the worst possible moment for that message
-  const pendingNow = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
+  const pendingNow = incoming;
   // champions parked in the main wallet while a session runs: visible,
   // counted for standing, but the session key cannot sign for them
   const mainHeld = [...S.cards.values()].filter(c =>
@@ -1105,7 +1114,7 @@ function render() {
     .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
   $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0 || mainHeld.length > 0;
   $('collectionEmpty').textContent = pendingNow.length
-    ? 'Your first champion is waiting below. Claim them and they muster here.'
+    ? 'Your first champion is arriving. Claim them and they muster here.'
     : fuseBusy
       // fusing your LAST two: both parents leave before the child arrives,
       // and "No champions yet" over an emptied shelf reads like loss
@@ -1113,13 +1122,9 @@ function render() {
       : (S.restoring ? CONNECTING
         : 'No champions yet. Summon your first.');
 
-  const inSession = S.wallet?.mode === 'session';
-  const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
-  $('pendingCards').innerHTML = pend.map(c =>
-    cardBox(c, inSession
-      ? '<div class="cf-state">coming home…</div>'
-      : cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, []))).join('');
-  $('pendingWrap').hidden = pend.length === 0;
+  // the "New champions" shelf retired: incoming cards render greyed in the
+  // main grid above
+  $('pendingWrap').hidden = true;
   $('mainHeldWrap').hidden = mainHeld.length === 0;
   $('mainHeldCards').innerHTML = mainHeld.map(c =>
     cardBox(c, `<div class="cf-state">${glyph('seal')}held by your main wallet</div>`
@@ -3998,7 +4003,7 @@ for (const id of ['errCloseBtn', 'duelCloseBtn', 'connectCloseBtn', 'pickCloseBt
   };
 $('nameClaimBtn').onclick = claimName;
 // the card, wallet, and reveal views close like any lightbox: Escape or a
-// click outside (a dismissed reveal keeps the champion under New champions)
+// click outside (a dismissed reveal keeps the champion dimmed in the grid)
 /* Every dialog closes on Escape or a click outside it — an explanation the
    player has read, or a chooser they thought better of, should never need
    its one small button hunted down. The exception is stageWait: a

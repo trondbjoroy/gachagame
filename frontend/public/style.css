@@ -681,6 +681,9 @@ footer a { color: var(--acid); text-decoration: none; }
 
 body.fuse-picking .card.cf[data-open] { cursor: copy; }
 body.fuse-picking .card.cf[data-open]:hover { border-color: var(--acid); }
+/* an incoming champion stands in the grid, dimmed until it arrives */
+.card.cf.incoming { opacity: .55; filter: saturate(.55); }
+.card.cf.incoming .cf-state { color: var(--ink-dim); }
 /* the other wallet's champions step back once the first is picked */
 .card.cf.fuse-off { opacity: .38; filter: saturate(.35); }
 body.fuse-picking .card.cf.fuse-off[data-open] { cursor: not-allowed; }

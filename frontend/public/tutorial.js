@@ -25,7 +25,7 @@ const TOUR = [
   {
     target: '#pane-collection', tab: 'collection',
     title: 'Collection',
-    body: 'Champions sworn to your banner live here. Tap any card to see it large and share it; press and hold to select it for fusion, then FUSE two of the same rarity into the next. New champions appear below until claimed; in a session they come home by themselves. Each card also offers MINE, FIGHT, SELL, and TRADE.',
+    body: 'Champions sworn to your banner live here. Tap any card to see it large and share it; press and hold to select it for fusion, then FUSE two of the same rarity into the next. Incoming champions stand dimmed in the grid until claimed; in a session they come home by themselves. Each card also offers MINE, FIGHT, SELL, and TRADE.',
   },
   {
     target: '#pane-farm', tab: 'farm',
