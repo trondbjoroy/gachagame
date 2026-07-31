@@ -1106,8 +1106,12 @@ function render() {
   $('collectionEmpty').hidden = mine.length > 0 || pendingNow.length > 0 || mainHeld.length > 0;
   $('collectionEmpty').textContent = pendingNow.length
     ? 'Your first champion is waiting below. Claim them and they muster here.'
-    : (S.restoring ? CONNECTING
-      : 'No champions yet. Summon your first.');
+    : fuseBusy
+      // fusing your LAST two: both parents leave before the child arrives,
+      // and "No champions yet" over an emptied shelf reads like loss
+      ? 'Fusing champions, please wait…'
+      : (S.restoring ? CONNECTING
+        : 'No champions yet. Summon your first.');
 
   const inSession = S.wallet?.mode === 'session';
   const pend = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
