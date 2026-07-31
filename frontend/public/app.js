@@ -1425,7 +1425,8 @@ function render() {
     }).join('');
     return `<div class="duel writ-row">
       <div class="duel-info"><b>${w.name}</b>
-        <div class="duel-meta">at least 45/80/115% of the champion you send</div></div>
+        <div class="duel-meta">scales to your champion: fights at no less than
+          45% / 80% / 115% of its power at Grim / Dire / Black</div></div>
       <div class="writ-tiers">${btns}</div>
     </div>`;
   }).join('');

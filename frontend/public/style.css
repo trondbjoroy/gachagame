@@ -1666,6 +1666,15 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
     padding: 10px 14px 12px;
   }
   .cards::-webkit-scrollbar { display: none; }
+  /* the picker dialog keeps its vertical grid: the swipe-row treatment
+     above gave it a sideways scrollbar inside the overlay */
+  .cards.pick-cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 196px));
+    justify-content: center;
+    overflow-x: hidden; scroll-snap-type: none;
+    margin: 16px auto; padding: 2px;
+  }
+  .cards.pick-cards > * { flex: none; }
   .cards > * { flex: 0 0 min(240px, 72vw); scroll-snap-align: center; }
 }
 
