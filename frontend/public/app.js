@@ -1780,6 +1780,10 @@ function walletKindOf(w) {
 function walletKind() { return walletKindOf(S.wallet); }
 
 let txSeq = 0;
+// stale-index failures on CONSECUTIVE transactions mean the session
+// wallet's index is stuck for this page-life (resync does not always cut
+// it); only a fresh boot does, and the player deserves to be told so
+let staleStreak = 0;
 async function doTx(label, method, args, actions, { target, wallet } = {}) {
   const signer = wallet || S.wallet;
   if (!signer) return null;
@@ -1820,10 +1824,13 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
             .filter(a => a.type === 'deposit' && a.token === HTR)
             .reduce((n, a) => n + a.amount, 0);
           if (!(needHtr > 0 && S.htr < needHtr) && signer.resync) {
-            // a champion that came home seconds ago takes the index a
-            // moment to see: two tries, 3.5s then 7s, before giving up
+            // the usual cause is rapid play: this tx spends the change of
+            // the last one, which the index sees once that tx confirms
+            // (~10s). Say "settling", not "retrying" \u2014 it is not a fault.
             staleRetried++;
-            sub.textContent = 'wallet catching up with the chain; retrying\u2026';
+            sub.textContent = staleRetried === 1
+              ? 'your last move is still settling; waiting for it\u2026'
+              : 'wallet catching up with the chain; retrying\u2026';
             await signer.resync().catch(() => {});
             await pause(3500 * staleRetried);
             continue;
@@ -1836,6 +1843,7 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
     await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
     el.classList.add('ok');
     sub.textContent = 'done';
+    staleStreak = 0;
     track(method, { ok: true, target: target || 'game', wallet: walletKind() });
     window.trialEvent?.(method);
     setTimeout(() => el.remove(), 6000);
@@ -1891,7 +1899,17 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
               + 'give it a minute and try again.')
           : 'Your wallet has not caught up with its own coin yet (the chain says you '
             + 'have enough). It is resyncing; give it a few seconds and try again.');
-      if (!reallyShort) S.wallet?.resync?.().catch(() => {});
+      if (!reallyShort) {
+        S.wallet?.resync?.().catch(() => {});
+        staleStreak++;
+        if (staleStreak >= 2) {
+          msg = 'The session wallet’s index looks stuck. Reloading the game '
+            + 'fixes this, and your session survives it.';
+          el.insertAdjacentHTML('beforeend',
+            '<button class="mini-btn alt t-reload">RELOAD</button>');
+          el.querySelector('.t-reload').onclick = () => location.reload();
+        }
+      }
     }
     sub.textContent = msg;
     track(method, { ok: false, reason: msg.slice(0, 120), target: target || 'game', wallet: walletKind() });
