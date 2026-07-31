@@ -1145,8 +1145,12 @@ function render() {
   }
 
   const selCount = S.selected.size;
-  // main-held champions can fuse now, so they count toward the pair
-  $('fuseBar').hidden = (mine.length + mainHeld.length) < 2;
+  // a pair must share a rarity, and Sovereigns never fuse: one Highlord
+  // beside one Footman is no pair, so the bar only shows when some rarity
+  // holds two (main-held champions count toward the pair)
+  const perTier = [0, 0, 0];
+  for (const c of [...mine, ...mainHeld]) if (c.tier >= 0 && c.tier < 3) perTier[c.tier]++;
+  $('fuseBar').hidden = !perTier.some(n => n >= 2);
   const fuseReady = selCount === 2 && sameTierSelected();
   const selTier = fuseReady ? S.cards.get([...S.selected][0]).tier : 0;
   const fuseFee = fuseFeeFor(selTier);
