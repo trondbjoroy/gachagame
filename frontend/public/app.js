@@ -1090,12 +1090,26 @@ function render() {
   // session CLAIM stays their one live control
   const mine = [...S.cards.values()].filter(c => c.mine)
     .sort((a, b) => (b.power - a.power) || a.name.localeCompare(b.name));
-  const incoming = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && isMine(c.pending));
+  // the handoff blind spot: the chain clears `pending` before the wallet's
+  // balance read marks the card held, and the champion used to vanish for
+  // those seconds. Once seen "coming home", a card stays dimmed in the
+  // grid until it is genuinely somewhere (or three minutes pass).
+  S.arriving = S.arriving || new Map();
+  const nowMs = Date.now();
+  for (const c of S.cards.values()) {
+    if (S.addr && c.tier >= 0 && isMine(c.pending)) S.arriving.set(c.uid, nowMs);
+    else if (c.mine || c.heldByMain || c.staker || c.marketPending) S.arriving.delete(c.uid);
+  }
+  const incoming = [...S.cards.values()].filter(c => S.addr && c.tier >= 0 && !c.mine
+    && (isMine(c.pending)
+      || (S.arriving.has(c.uid) && nowMs - S.arriving.get(c.uid) < 180_000)));
   $('collectionCards').innerHTML = byMight([...mine, ...incoming]).map(c =>
     incoming.includes(c)
-      ? cardBox(c, inSess
-          ? '<div class="cf-state">coming home…</div>'
-          : cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, []))
+      // in the limbo after pending clears there is nothing to claim, so
+      // only a still-pending card outside a session offers CLAIM
+      ? cardBox(c, (!inSess && isMine(c.pending))
+          ? cardActs(`<button class="cf-primary" data-claim="${c.uid}">CLAIM</button>`, [])
+          : '<div class="cf-state">coming home…</div>')
           .replace('class="card cf ', 'class="card cf incoming ')
       : cardBox(c, cardActs(
     `<button class="cf-primary" data-stake="${c.uid}">SEND TO MINES</button>`,
