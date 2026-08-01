@@ -1628,7 +1628,14 @@ function bindListActions() {
   bind('[data-claimember]', u => doTx('Claiming Ember', 'claim_ember', [u], []));
   bind('[data-temper]', u => openTemper(u));
   bind('[data-delve]', u => doTx('Starting the delve', 'begin_delve', [u])
-    .then(h => { if (h) window.sfx?.('fuse', { rate: .85, volume: .5 }); }));
+    .then(h => {
+      if (!h) return;
+      window.sfx?.('fuse', { rate: .85, volume: .5 });
+      // same optimism as the stake fix: the cached delve badge lags the
+      // confirmed tx by a poll; believe the chain and let the poll correct
+      const c = S.cards.get(u);
+      if (c && !(c.delveSince > 0)) { c.delveSince = Math.floor(Date.now() / 1000); render(); }
+    }));
   bind('[data-claimdelve]', claimDelve);
   bind('[data-dress]', openDress);
   document.querySelectorAll('[data-writ]').forEach(el => el.onclick = () => {
