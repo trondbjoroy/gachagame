@@ -1701,7 +1701,10 @@ button, .card, .tab { -webkit-tap-highlight-color: transparent; touch-action: ma
 /* six tabs since Progress joined: compress the header nav on phones so the
    whole row fits a 375px screen without scrolling */
 @media (max-width: 640px) {
-  header.top .tabs { gap: 0; }
+  /* space-between hands any leftover row width to the gaps: wider phones
+     get air between the names, 375 is unchanged, and one line survives
+     every width by construction */
+  header.top .tabs { gap: 0; justify-content: space-between; }
   /* The six names at 12px measure ~323px plus 24px padding against a
      100vw-28px row, so the biggest type that never scrolls is a function
      of the screen: 3.7vw-1.9px lands on 12px at 375 (iPhone SE keeps

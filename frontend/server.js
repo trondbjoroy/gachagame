@@ -634,11 +634,42 @@ async function cardName(uid) {
   } catch { return null; }
 }
 
+/* Live nano seqnums, fed by the pollers: the address_history endpoint the
+   /seqnum route used to walk paginates per token and buried the newest
+   nonces for busy sessions (a player signed 16 behind the chain). The
+   contract history is newest-first and the pollers read every tx anyway,
+   so the truth costs one map write. Voided txs count: their seqnum is
+   consumed regardless of the verdict. */
+const seqnums = new Map();
+function recordSeqnum(tx) {
+  if (tx && tx.nc_address && Number.isInteger(tx.nc_seqnum)) {
+    const next = tx.nc_seqnum + 1;
+    if (next > (seqnums.get(tx.nc_address) || 0)) seqnums.set(tx.nc_address, next);
+  }
+}
+// boot seed: recent pages of both realms' history, so a restart does not
+// forget the active players' nonces
+(async () => {
+  for (const nc of [NC, MKT_NC].filter(Boolean)) {
+    let after = '';
+    for (let page = 0; page < 5; page++) {
+      try {
+        const d = await nodeGet(`/nano_contract/history?id=${nc}&count=100` + (after ? `&after=${after}` : ''));
+        const h = d.history || [];
+        h.forEach(recordSeqnum);
+        if (!d.has_more || !h.length) break;
+        after = h[h.length - 1].hash;
+      } catch { break; } // best-effort: the pollers keep feeding the map
+    }
+  }
+})();
+
 async function pollMarketFeed() {
   if (!MKT_NC) return;
   const d = await nodeGet(`/nano_contract/history?id=${MKT_NC}&count=20`);
   const fresh = [];
   for (const tx of d.history || []) {
+    recordSeqnum(tx);
     if (feedSeen.has(tx.hash) || tx.is_voided) continue;
     if (!tx.first_block) continue;      // unconfirmed or failed: not news yet
     feedSeen.add(tx.hash);
@@ -699,6 +730,7 @@ async function pollFeed() {
     const fresh = [];
     const touched = new Set();
     for (const tx of d.history || []) {
+      recordSeqnum(tx); // voided txs consume their seqnum too: count them all
       if (feedSeen.has(tx.hash) || tx.is_voided) continue;
       // a tx appears in history before consensus settles it; ingesting then
       // lets soon-to-be-voided txs into the feed (a failed summon still read
@@ -1240,7 +1272,10 @@ async function handleApi(req, res, ip) {
     if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
     const a = q.get('addr') || '';
     if (!/^[A-HJ-NP-Za-km-z1-9]{25,45}$/.test(a)) return deny(res, 400, 'bad address');
-    let next = 0;
+    // the poller-fed map is the primary truth (address_history paginates
+    // per token and hid the newest nonces for busy sessions); the direct
+    // read remains as a supplement for addresses the pollers never saw
+    let next = seqnums.get(a) || 0;
     try {
       const d = await nodeGet(`/thin_wallet/address_history?addresses[]=${a}`);
       for (const tx of d.history || []) {
@@ -1248,7 +1283,7 @@ async function handleApi(req, res, ip) {
           next = Math.max(next, tx.nc_seqnum + 1);
         }
       }
-    } catch { /* unknown: the client keeps its own count */ }
+    } catch { /* unknown: the map and the client's own count stand */ }
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
     return res.end(JSON.stringify({ next }));
   }
