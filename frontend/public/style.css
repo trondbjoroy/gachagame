@@ -1843,6 +1843,12 @@ body.hdr-compact .header-session .hs-s { display: inline; }
   header.top .tab { padding-top: 13px; padding-bottom: 13px; }
   .site-foot a { display: inline-flex; align-items: center; justify-content: center;
     min-width: 44px; min-height: 44px; }
+  /* the policy applied per-complaint before; these were still finger-hostile */
+  .toast .t-x, .tour-x { min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .cf-ovf summary { min-width: 44px; min-height: 44px; }
+  .writ-tiers .mini-btn { padding-top: 10px; padding-bottom: 10px; }
+  .feed-panel > summary { min-height: 44px; display: flex; align-items: center; }
 }
 
 /* The layout is the frame, not a canvas to drag around. A phone could pinch
