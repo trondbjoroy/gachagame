@@ -54,7 +54,7 @@ body {
     radial-gradient(820px 520px at -8% 108%, rgba(212, 168, 67, .035), transparent 60%),
     var(--bg);
   color: var(--ink);
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: var(--body);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -739,7 +739,7 @@ body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65);
 .connect-opt {
   display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
   cursor: pointer; border: 1px solid var(--line); background: var(--panel);
-  border-radius: 12px; padding: 13px 16px; color: var(--ink); font-family: 'Outfit', sans-serif;
+  border-radius: 12px; padding: 13px 16px; color: var(--ink); font-family: var(--body);
 }
 .connect-opt:hover { border-color: var(--acid); }
 .connect-opt b { font-size: 15px; }
@@ -779,7 +779,7 @@ body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65);
   display: block; margin: 16px auto 6px; width: 240px; text-align: center;
   background: rgba(0,0,0,.4); border: 1px solid var(--line); border-radius: 7px;
   /* not Cinzel: it only has capital letterforms, which hides the typed case */
-  color: var(--ink); font-family: 'Outfit', sans-serif; font-size: 17px; padding: 9px 12px;
+  color: var(--ink); font-family: var(--body); font-size: 17px; padding: 9px 12px;
 }
 .prize-power { margin-top: 8px; font-family: var(--data); font-size: 15px; color: var(--ink); }
 .duel-banner { font-family: var(--display); font-size: 40px; letter-spacing: .1em; margin-bottom: 14px; }
@@ -1177,7 +1177,7 @@ body.land-flash::before {
 .stance-btn.active { border-color: var(--acid); color: var(--acid-hot); background: rgba(212, 168, 67, .08); }
 /* v5 keyword ability on the card face */
 .ac-ability {
-  font-family: 'Cinzel', serif; font-size: 10.5px; letter-spacing: .12em;
+  font-family: var(--display); font-size: 10.5px; letter-spacing: .12em;
   color: var(--acid-hot); margin: 1px 0;
 }
 .tint-btn { padding: 4px; line-height: 0; }
