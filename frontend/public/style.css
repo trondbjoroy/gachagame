@@ -888,7 +888,8 @@ body::after {
 /* whispers of the realm */
 .whisper {
   min-height: 22px; margin: 14px 0 4px;
-  font-style: italic; font-size: 13.5px; color: rgba(212, 168, 67, .75);
+  font-style: italic; font-size: 13.5px;
+  color: color-mix(in srgb, var(--acid) 78%, transparent); /* flips with the theme */
 }
 .whisper span { opacity: 0; transition: opacity .45s ease; }
 .whisper span.in { opacity: 1; }
@@ -1102,7 +1103,9 @@ body.land-flash::before {
   max-width: min(92vw, 52ch); text-align: center; line-height: 1.5;
   text-wrap: pretty;
 }
-.ribbon b { color: var(--acid); font-weight: 700; }
+/* the ribbon is a night island: its accent stays night-gold even in light
+   mode, where var(--acid) turns brown and vanished on the dark plate */
+.ribbon b { color: #d4a843; font-weight: 700; }
 .ribbon.show { transform: translate(-50%, 0); opacity: 1; }
 .ribbon.level { font-size: 16px; border-width: 2px; padding: 15px 34px; }
 
@@ -1273,7 +1276,7 @@ body.land-flash::before {
   flex: 1; height: 8px; border-radius: 4px; overflow: hidden;
   background: rgba(255, 255, 255, .05); border: 1px solid var(--line);
 }
-.m-fill { display: block; height: 100%; background: rgba(212, 168, 67, .55); }
+.m-fill { display: block; height: 100%; background: color-mix(in srgb, var(--acid) 60%, transparent); }
 .m-fill.full { background: var(--acid-hot); }
 .m-count { font-size: 12px; color: var(--ink-muted); min-width: 52px; text-align: right; }
 .m-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
@@ -1422,7 +1425,8 @@ body.land-flash::before {
 
 .cf-flavor {
   font-family: var(--flavor); font-style: italic; font-size: 13px; line-height: 1.42;
-  color: #9d9384;
+  /* tokenized: the old literal #9d9384 read at ~2:1 on light-theme card faces */
+  color: var(--ink-dim);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* every card reserves its action row, so a delving champion and one with
