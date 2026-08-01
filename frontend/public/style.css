@@ -9,7 +9,7 @@
 
   --ink: #f4efe6;
   --ink-muted: #b5ab99;
-  --ink-dim: #776f60;
+  --ink-dim: #8a8170;   /* 4.6:1 on panels — the old #776f60 sat at 3.95, under AA */
   --ink-faint: #5b5449;
 
   /* one accent: ember gold, three steps */
