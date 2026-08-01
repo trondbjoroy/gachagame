@@ -17,6 +17,7 @@
   --acid-hot: #e8be55;
   --acid-lo: #c79430;
   --ember: #e2733c;     /* wager/heat, never a rarity */
+  --danger: #ff6b8a;    /* loss and failure; was consumed but never defined */
 
   --r-lg: 18px; --r-md: 12px; --r-sm: 8px;
 
@@ -810,7 +811,7 @@ body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65);
 .toast.ok { border-color: rgba(212,168,67,.5); }
 .toast.ok .t-spin { animation: none; border-color: var(--acid); background: var(--acid); }
 .toast.fail { border-color: rgba(255,107,138,.6); }
-.toast.fail .t-spin { animation: none; border-color: #ff6b8a; background: #ff6b8a; }
+.toast.fail .t-spin { animation: none; border-color: var(--danger); background: var(--danger); }
 .toast .t-x { background: none; border: none; color: var(--ink-dim); cursor: pointer; font-size: 13px; }
 
 /* taste pass: states, texture, focus */
