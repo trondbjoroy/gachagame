@@ -284,6 +284,11 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 }
 @media (max-width: 600px) {
   header.top { padding: 8px 14px; margin: 0 -14px 16px; gap: 10px; }
+  /* one row for the session button and the chip: the long label plus the
+     address floor overran a 375px row by a hair and stacked them */
+  .header-session .hs-l { display: none; }
+  .header-session .hs-s { display: inline; }
+  .wallet-chip #walletAddr { min-width: 48px; }
   .hdr-chips .stat { padding: 4px 9px; gap: 5px; }
   .hdr-chips .k { font-size: 7.5px; letter-spacing: .12em; }
   .hdr-chips .v { font-size: 11px; }

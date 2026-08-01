@@ -169,7 +169,18 @@ function showTourStep() {
       const vw = window.innerWidth, vh = window.innerHeight;
       let top = r.bottom + pad + 14;
       if (top + th > vh - 10) top = r.top - pad - th - 14;
-      if (top < 10) top = Math.max(10, (vh - th) / 2);
+      if (top < 10) {
+        // neither side fits: the target is taller than the room around it
+        // (the brazier on a phone). Centering sat the tip ON the target;
+        // show the target's top instead and pin the tip to the bottom.
+        el.scrollIntoView({ block: 'start', behavior: 'instant' });
+        const r2 = el.getBoundingClientRect();
+        spot.style.left = (r2.left - pad) + 'px';
+        spot.style.top = (r2.top - pad) + 'px';
+        spot.style.width = (r2.width + 2 * pad) + 'px';
+        spot.style.height = (r2.height + 2 * pad) + 'px';
+        top = Math.max(10, vh - th - 10);
+      }
       const left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
       tip.style.left = left + 'px';
       tip.style.top = top + 'px';
