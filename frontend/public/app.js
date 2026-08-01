@@ -3458,6 +3458,13 @@ document.addEventListener('click', e => {
   const menu = btn.closest('details.cf-ovf');
   if (menu) menu.open = false;
 }, true);
+/* and clicking anywhere OUTSIDE an open menu lets it go: a tap on the page
+   used to leave the little action sheet hanging over the card */
+document.addEventListener('click', e => {
+  document.querySelectorAll('details.cf-ovf[open]').forEach(menu => {
+    if (!menu.contains(e.target)) menu.open = false;
+  });
+}, true);
 
 (function lockScrollWithOverlay() {
   const ov = $('overlay');
