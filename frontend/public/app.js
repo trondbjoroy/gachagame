@@ -1609,7 +1609,14 @@ function bindListActions() {
   bind('[data-stake]', async u => {
     const w = await walletFor(u);
     if (w === null) return;
-    doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)], { wallet: w });
+    const h = await doTx('Staking in the mines', 'stake', [], [depAct(u, CARD_AMT)], { wallet: w });
+    // the chain has confirmed but the server cache can lag it by a poll,
+    // which left the champion in neither Collection nor Mining for up to a
+    // minute: believe the confirmed tx and let the next poll correct us
+    if (h) {
+      const c = S.cards.get(u);
+      if (c && !c.staker) { c.staker = identity(); c.mine = false; render(); }
+    }
   });
   bind('[data-unstake]', async u => {
     const c = S.cards.get(u);
