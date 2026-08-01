@@ -817,7 +817,9 @@ body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65);
 /* taste pass: states, texture, focus */
 button { transition: transform .18s ease, filter .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
 button:active:not(:disabled) { transform: scale(.98); }
-:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; border-radius: 4px; }
+/* the outline follows each control's own radius; forcing 4px reshaped
+   pills (wallet chip, stat chips) while focused */
+:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
 html { scroll-behavior: smooth; }
 
 .mini-btn:hover:not(:disabled) { filter: brightness(1.1); }

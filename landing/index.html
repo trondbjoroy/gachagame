@@ -172,6 +172,8 @@
     min-height: 44px; display: inline-flex; align-items: center;
   }
   .foot-links a:hover { color: var(--gold-hi); }
+  /* keyboard focus was UA-default here while the app draws gold rings */
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   /* tap targets: 26px links were under the 44px minimum */
   .socials a {
     min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
