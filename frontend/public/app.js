@@ -1809,7 +1809,14 @@ let txSeq = 0;
 let staleStreak = 0;
 async function doTx(label, method, args, actions, { target, wallet } = {}) {
   const signer = wallet || S.wallet;
-  if (!signer) return null;
+  if (!signer) {
+    // an unguarded action while logged out used to vanish silently (BUY was
+    // one): offer the connect dialog instead of nothing
+    $('connectMsg').textContent = '';
+    syncSessionBox();
+    showStage('stageConnect');
+    return null;
+  }
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span class="t-spin"></span><div class="t-body"><b>${label}</b>
