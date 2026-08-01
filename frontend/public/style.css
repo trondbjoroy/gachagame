@@ -608,7 +608,7 @@ footer a { color: var(--acid); text-decoration: none; }
 .overlay {
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
   align-items: safe center; justify-items: safe center;
-  overflow-y: auto; background: rgba(2, 5, 18, .88); backdrop-filter: blur(8px);
+  overflow-y: auto; background: rgba(9, 7, 3, .88); backdrop-filter: blur(8px); /* warm, not the old navy */
 }
 .overlay[hidden], .stage[hidden] { display: none; }
 .overlay-inner { text-align: center; padding: 24px; }
@@ -792,7 +792,7 @@ body.theme-light .card.selected::after { border-color: rgba(244, 239, 230, .65);
 }
 .toast {
   display: flex; align-items: center; gap: 12px;
-  background: #0d1430; border: 1px solid var(--line); border-radius: 12px;
+  background: #17130c; border: 1px solid var(--line); border-radius: 12px;
   padding: 11px 14px; box-shadow: 0 14px 40px -12px rgba(0,0,0,.7);
   animation: toast-in .25s ease;
 }
@@ -833,8 +833,8 @@ body::after {
 }
 
 /* tinted shadows on primary actions (match background hue, not black) */
-.pull-btn { box-shadow: 0 14px 45px -12px rgba(212, 168, 67, .38), 0 4px 14px -6px rgba(5, 8, 23, .8); }
-.toast { box-shadow: 0 14px 40px -12px rgba(5, 8, 23, .85); }
+.pull-btn { box-shadow: 0 14px 45px -12px rgba(212, 168, 67, .38), 0 4px 14px -6px rgba(18, 14, 5, .8); }
+.toast { box-shadow: 0 14px 40px -12px rgba(18, 14, 5, .85); }
 
 /* learn page */
 .guide { list-style: none; margin: 0; padding: 0; counter-reset: step; max-width: 64ch; }
