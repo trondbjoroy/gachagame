@@ -617,8 +617,10 @@ footer a { color: var(--acid); text-decoration: none; }
 .capsule-drop { animation: drop-bounce 1.6s ease-in-out infinite; margin-bottom: 30px; }
 .capsule { width: 92px; height: 92px; margin: 0 auto; position: relative; }
 .capsule-top, .capsule-bottom { position: absolute; left: 0; width: 92px; height: 46px; }
-.capsule-top { top: 0; border-radius: 92px 92px 0 0; background: linear-gradient(180deg, #ff5977, #d63c5e); }
-.capsule-bottom { bottom: 0; border-radius: 0 0 92px 92px; background: linear-gradient(180deg, #eef2f7, #c6cede); }
+/* the capsule burns ember now — the pink/steel pair was the palette's last
+   cold survivor (owner's call, 2026-08-01) */
+.capsule-top { top: 0; border-radius: 92px 92px 0 0; background: linear-gradient(180deg, #f0894e, #cf5f2e); }
+.capsule-bottom { bottom: 0; border-radius: 0 0 92px 92px; background: linear-gradient(180deg, #f2e9d8, #cdc0a5); }
 @keyframes drop-bounce { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
 .wait-title { font-family: var(--display); font-size: 21px; letter-spacing: .05em; }
 .wait-sub { color: var(--ink-muted); font-size: 13.5px; margin-top: 8px; }
