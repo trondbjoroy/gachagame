@@ -1414,22 +1414,33 @@ function cardSharePage(req, res, uid) {
     ? `${origin}/cards/${slug}.jpg` : `${origin}/logo.png`;
   const title = c ? `${c.name} · ${STATIONS[c.tier] || 'Footman'} ⚡${c.power}` : 'A champion of Emberfall';
   const asp = c && c.aspects ? c.aspects.split('|') : null;
-  const desc = (asp ? `Attack ${asp[0]} · Defense ${asp[1]} · Cunning ${asp[2]} — ` : '')
+  const desc = (asp ? `Attack ${asp[0]} · Defense ${asp[1]} · Cunning ${asp[2]} · ` : '')
     + 'a champion bound in soulstone in Emberfall, the fully onchain TCG on Hathor. Free on testnet.';
+  // crawlers get a pure meta page: the instant meta-refresh let X's bot walk
+  // into the SPA (which carries no card image) and cache an imageless card.
+  // ?v=2 on the art dodges any imageless version X already cached.
+  const bot = /Twitterbot|facebookexternalhit|Slackbot|Discordbot|TelegramBot|LinkedInBot|WhatsApp/i
+    .test(req.headers['user-agent'] || '');
+  const artV = `${art}?v=2`;
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
   res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>${escHtml(title)} · Emberfall</title>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escHtml(title)}">
 <meta name="twitter:description" content="${escHtml(desc)}">
-<meta name="twitter:image" content="${escHtml(art)}">
+<meta name="twitter:image" content="${escHtml(artV)}">
+<meta name="twitter:image:alt" content="${escHtml(title)}">
 <meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(desc)}">
-<meta property="og:image" content="${escHtml(art)}">
+<meta property="og:image" content="${escHtml(artV)}">
+<meta property="og:image:secure_url" content="${escHtml(artV)}">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="1280">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${escHtml(`${origin}/c/${uid}`)}">
-<meta http-equiv="refresh" content="0;url=/?card=${uid}">
-</head><body></body></html>`);
+${bot ? '' : `<meta http-equiv="refresh" content="0;url=/?card=${uid}">`}
+<link rel="canonical" href="${escHtml(`${origin}/c/${uid}`)}">
+</head><body>${bot ? '' : ''}<a href="/?card=${uid}">Open in Emberfall</a></body></html>`);
 }
 
 http.createServer(async (req, res) => {
