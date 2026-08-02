@@ -2271,7 +2271,8 @@ async function fightWrit(uid, writ, tier) {
        <div class="wait-sub">${w.name} (${WRIT_TIERS[tier]}) falls. The bounty and the renown are yours.</div>`
     : `<div class="duel-banner lose">THE WRIT STANDS</div>
        <div class="wait-sub">${w.name} holds the field. The entry is spent; your champion learned from it.</div>`,
-    S.cards.get(uid)?.aspects, [w.valor * mult, w.bulwark * mult, w.guile * mult], won);
+    S.cards.get(uid)?.aspects, [w.valor * mult, w.bulwark * mult, w.guile * mult], won,
+    { left: S.cards.get(uid) });
   } finally {
     writBusy = false;
   }
@@ -2345,7 +2346,8 @@ async function revealDuel(id) {
     ? `<div class="duel-banner win">VICTORY</div><div class="wait-sub">Your ${STANCE_NAMES[seal.stance]} stance is unsealed and the pot is yours. ${home}</div>`
     : `<div class="duel-banner lose">DEFEAT</div><div class="wait-sub">The stance is unsealed, the pot is lost, but your champion lives. ${home}</div>`,
     d ? S.cards.get(d.card)?.aspects : null,
-    d ? S.cards.get(d.acceptorCard)?.aspects : null, won);
+    d ? S.cards.get(d.acceptorCard)?.aspects : null, won,
+    d ? { left: S.cards.get(d.card), right: S.cards.get(d.acceptorCard) } : undefined);
 }
 
 /* seats we hold in tournaments, so the UI can offer WITHDRAW without a
@@ -2505,11 +2507,20 @@ function matchupHtml(mine, theirs) {
     <div class="mu-note">three rounds, one per aspect · win two to take the fight</div></div>`;
 }
 
-/* the staged reveal: banner last, rounds one at a time before it */
-function showFight(bannerHtml, mine, theirs, won) {
+/* the staged reveal, cut like the trailer: the duelists lean toward each
+   other, every landed round nudges the frame, and a win slams the verdict
+   home with a flash and a burst of sparks */
+function showFight(bannerHtml, mine, theirs, won, faces) {
   const mu = matchupHtml(mine, theirs);
+  const face = (c, side) => (c && cardMeta(c.name)?.art)
+    ? `<div class="duel-face ${side}">${artImg(c.name, 'df-img', '150px')}
+        <div class="df-nm">${esc(c.name)}</div>
+        <div class="df-pw mono">${glyph('power')}<b>${c.power ?? '?'}</b></div></div>`
+    : '';
   $('duelResult').innerHTML = mu
-    ? `<div class="fight-rounds">${mu}</div><div class="fight-verdict">${bannerHtml}</div>`
+    ? `<div class="fight-arena">${face(faces?.left, 'l')}
+         <div class="fight-rounds">${mu}</div>${face(faces?.right, 'r')}</div>
+       <div class="fight-verdict">${bannerHtml}</div>`
     : bannerHtml;
   showStage('stageDuel');
   $('overlay').hidden = false;
@@ -2517,17 +2528,46 @@ function showFight(bannerHtml, mine, theirs, won) {
   const verdict = $('duelResult').querySelector('.fight-verdict');
   if (REDUCED || !rounds.length) {
     rounds.forEach(r => r.classList.add('in'));
+    document.querySelectorAll('#duelResult .duel-face').forEach(el => el.classList.add('in'));
     verdict?.classList.add('in');
     window.sfx?.('clash');
     setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 300);
     return;
   }
+  document.querySelectorAll('#duelResult .duel-face').forEach(el => el.classList.add('in'));
+  const result = $('duelResult');
   rounds.forEach((r, i) => setTimeout(() => {
     r.classList.add('in');
+    // the landed round jolts the frame, harder as the fight builds
+    result.classList.remove('nudge'); void result.offsetWidth;
+    result.classList.add('nudge');
     window.sfx?.('clash', { rate: 0.92 + i * 0.09, volume: 0.55 });
   }, ROUND_STAGGER * i));
   setTimeout(() => {
     verdict?.classList.add('in');
+    if (won) {
+      verdict?.classList.add('slammed');
+      result.classList.remove('nudge');
+      result.classList.add('slam');
+      const flash = document.createElement('div');
+      flash.className = 'fight-flash';
+      document.body.appendChild(flash);
+      requestAnimationFrame(() => flash.classList.add('go'));
+      setTimeout(() => flash.remove(), 600);
+      // sparks burst from the verdict
+      const host = verdict || result;
+      for (let i = 0; i < 20; i++) {
+        const s = document.createElement('span');
+        s.className = 'spark';
+        const a = (i / 20) * Math.PI * 2 + (i % 3) * 0.3;
+        const v = 70 + (i % 5) * 34;
+        s.style.setProperty('--dx', `${Math.cos(a) * v}px`);
+        s.style.setProperty('--dy', `${Math.sin(a) * v - 30}px`);
+        host.appendChild(s);
+        setTimeout(() => s.remove(), 900);
+      }
+      window.haptic?.([24, 40, 24]);
+    }
     window.sfx?.(won ? 'win' : 'lose');
   }, ROUND_STAGGER * rounds.length + 120);
 }
@@ -3395,7 +3435,8 @@ async function submitPick(uid) {
     showFight(won
       ? `<div class="duel-banner win">VICTORY</div><div class="wait-sub">The pot is yours. ${home}</div>`
       : `<div class="duel-banner lose">DEFEAT</div><div class="wait-sub">The pot is lost, but your champion lives. ${home}</div>`,
-      S.cards.get(uid)?.aspects, d ? S.cards.get(d.card)?.aspects : null, won);
+      S.cards.get(uid)?.aspects, d ? S.cards.get(d.card)?.aspects : null, won,
+      { left: S.cards.get(uid), right: d ? S.cards.get(d.card) : null });
   }
 }
 

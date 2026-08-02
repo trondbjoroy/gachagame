@@ -418,6 +418,61 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 /* the fight, round by round: a proportional bar per aspect with its own
    chance, arriving one at a time so the reveal has a beat */
 .matchup { max-width: 380px; margin: 4px auto 0; text-align: left; }
+/* the trailer's fight grammar, in the game: duelists lean in, rounds jolt
+   the frame, a win slams home with a flash and sparks */
+.fight-arena { display: flex; align-items: center; gap: 24px; }
+.fight-arena .fight-rounds { flex: 1 1 auto; min-width: 0; }
+.duel-face {
+  flex: 0 0 150px; perspective: 900px; opacity: 0; transition: opacity .5s ease, transform .55s cubic-bezier(.2, 1, .35, 1);
+}
+.duel-face.l { transform: translateX(-40px); }
+.duel-face.r { transform: translateX(40px); }
+.duel-face.in { opacity: 1; transform: none; }
+.duel-face .df-img {
+  width: 150px; height: 150px; object-fit: cover; border-radius: 11px; display: block;
+  border: 1px solid rgba(212, 168, 67, .4);
+  box-shadow: 0 16px 40px -14px #000;
+}
+.duel-face.l .df-img { transform: rotateY(13deg); }
+.duel-face.r .df-img { transform: rotateY(-13deg); }
+.df-nm { font-family: var(--display); font-weight: 700; font-size: 12.5px; margin-top: 8px; }
+.df-pw { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--acid); margin-top: 3px; }
+.df-pw .g { width: 11px; height: 11px; fill: currentColor; }
+@media (max-width: 640px) { .duel-face { display: none; } }
+#duelResult.nudge { animation: fightNudge .24s ease; }
+@keyframes fightNudge {
+  0% { transform: translate(0, 0); } 30% { transform: translate(5px, -3px); }
+  60% { transform: translate(-4px, 2px); } 100% { transform: translate(0, 0); }
+}
+#duelResult.slam { animation: fightSlam .5s cubic-bezier(.2, .9, .3, 1); }
+@keyframes fightSlam {
+  0% { transform: translate(0, 0); } 15% { transform: translate(-9px, 6px); }
+  32% { transform: translate(8px, -5px); } 50% { transform: translate(-5px, 3px); }
+  70% { transform: translate(3px, -2px); } 100% { transform: translate(0, 0); }
+}
+.fight-verdict.slammed .duel-banner { animation: verdictSlam .55s cubic-bezier(.16, 1.1, .3, 1) both; }
+@keyframes verdictSlam {
+  from { transform: scale(1.35); filter: blur(8px); opacity: 0; }
+  60% { filter: blur(0); }
+  to { transform: scale(1); opacity: 1; }
+}
+.fight-flash {
+  position: fixed; inset: 0; background: var(--acid-hot); opacity: 0;
+  pointer-events: none; z-index: 95;
+}
+.fight-flash.go { animation: fightFlash .45s ease-out both; }
+@keyframes fightFlash { from { opacity: .34; } to { opacity: 0; } }
+.fight-verdict { position: relative; }
+.spark {
+  position: absolute; left: 50%; top: 40%; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--acid-hot); pointer-events: none;
+  animation: sparkFly .7s ease-out both;
+}
+@keyframes sparkFly {
+  from { transform: translate(0, 0); opacity: 1; }
+  to { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+
 .rnd { margin-top: 14px; opacity: 0; transform: translateY(6px); }
 .rnd.in { opacity: 1; transform: none; transition: opacity .42s ease, transform .42s ease; }
 .rnd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }

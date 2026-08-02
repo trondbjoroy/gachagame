@@ -259,6 +259,130 @@
    "kind": "pull",
    "who": "WxnNKMpUzbEQdLYb1MjPWx1m61YKxEwQ9e",
    "card": "Straw Effigy"
+  },
+  {
+   "ts": 1785645876,
+   "kind": "delve_done",
+   "who": "WGYSa6BkKE9zvuktUGXYx66bm7DBgmUrEV",
+   "result": {
+    "haul": "relic",
+    "shards": 3,
+    "ember": 420
+   }
+  },
+  {
+   "ts": 1785647736,
+   "kind": "challenge",
+   "who": "WyAXV7vhwAejWpdXerNqy8Ror3AJGK8DG1",
+   "id": 44,
+   "squad": true,
+   "wager": 150
+  },
+  {
+   "ts": 1785648816,
+   "kind": "answer",
+   "who": "WxnNKMpUzbEQdLYb1MjPWx1m61YKxEwQ9e",
+   "id": 44,
+   "squad": true,
+   "sealed": true
+  },
+  {
+   "ts": 1785649896,
+   "kind": "reveal",
+   "who": "WyAXV7vhwAejWpdXerNqy8Ror3AJGK8DG1",
+   "id": 44,
+   "squad": true,
+   "verdict": {
+    "winner": "WyAXV7vhwAejWpdXerNqy8Ror3AJGK8DG1",
+    "loser": "WxnNKMpUzbEQdLYb1MjPWx1m61YKxEwQ9e"
+   }
+  },
+  {
+   "ts": 1785650976,
+   "kind": "listed",
+   "who": "W9GkrsA2MwXaSQE6DBLzLDnPbAbZAgFJBr",
+   "id": 47,
+   "card": "Tea-Leaf Aunt",
+   "price": 240
+  },
+  {
+   "ts": 1785653136,
+   "kind": "bought",
+   "who": "W7pKbbSC5pPj3vkdQGv3EW6uuU6mvtqBVE",
+   "id": 47,
+   "card": "Tea-Leaf Aunt",
+   "price": 240,
+   "seller": "W9GkrsA2MwXaSQE6DBLzLDnPbAbZAgFJBr"
+  },
+  {
+   "ts": 1785654216,
+   "kind": "ranked",
+   "who": "Wvpo7HKNA273Kb9akTFFZ9UehTf9fH3hSi",
+   "tier": 2,
+   "result": "won"
+  },
+  {
+   "ts": 1785654936,
+   "kind": "wb_fight",
+   "who": "WPBPhhVtb78XqSqPNNmvDd4GZXYzhmzKvj",
+   "damage": 415,
+   "boss": "The Unmourned King"
+  },
+  {
+   "ts": 1785655656,
+   "kind": "temper",
+   "who": "WxnNKMpUzbEQdLYb1MjPWx1m61YKxEwQ9e"
+  },
+  {
+   "ts": 1785656676,
+   "kind": "swap_offer",
+   "who": "WGYSa6BkKE9zvuktUGXYx66bm7DBgmUrEV",
+   "id": 9,
+   "card": "Grave Beetle",
+   "want": "Mirror Monk"
+  },
+  {
+   "ts": 1785657696,
+   "kind": "swap_done",
+   "who": "WFbj4RfgqvBDGfqPSxXiGCNxPNwXSGzzK4",
+   "id": 9,
+   "card": "Mirror Monk",
+   "want": "Grave Beetle",
+   "maker": "WGYSa6BkKE9zvuktUGXYx66bm7DBgmUrEV"
+  },
+  {
+   "ts": 1785658236,
+   "kind": "guild_new",
+   "who": "W9GkrsA2MwXaSQE6DBLzLDnPbAbZAgFJBr",
+   "name": "Kettle & Crown"
+  },
+  {
+   "ts": 1785658896,
+   "kind": "tour_enter",
+   "who": "W7pKbbSC5pPj3vkdQGv3EW6uuU6mvtqBVE",
+   "name": "Banner and Blade"
+  },
+  {
+   "ts": 1785659256,
+   "kind": "pull",
+   "who": "WFbj4RfgqvBDGfqPSxXiGCNxPNwXSGzzK4",
+   "card": "Candle Nun"
+  },
+  {
+   "ts": 1785659436,
+   "kind": "delve_done",
+   "who": "WyAXV7vhwAejWpdXerNqy8Ror3AJGK8DG1",
+   "result": {
+    "haul": "dust"
+   }
+  },
+  {
+   "ts": 1785659676,
+   "kind": "bet",
+   "who": "WPBPhhVtb78XqSqPNNmvDd4GZXYzhmzKvj",
+   "id": 44,
+   "side": 1,
+   "amount": 40
   }
  ]
 }
