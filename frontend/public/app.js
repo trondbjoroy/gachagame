@@ -2513,7 +2513,9 @@ function matchupHtml(mine, theirs) {
 function showFight(bannerHtml, mine, theirs, won, faces) {
   const mu = matchupHtml(mine, theirs);
   const face = (c, side) => (c && cardMeta(c.name)?.art)
-    ? `<div class="duel-face ${side}">${artImg(c.name, 'df-img', '150px')}
+    ? `<div class="duel-face" data-side="${side}" style="opacity:0;transform:translateX(${side === 'l' ? -40 : 40}px)">
+        ${artImg(c.name, 'df-img', '150px').replace('class="df-img"',
+          `class="df-img" style="transform: rotateY(${side === 'l' ? 13 : -13}deg)"`)}
         <div class="df-nm">${esc(c.name)}</div>
         <div class="df-pw mono">${glyph('power')}<b>${c.power ?? '?'}</b></div></div>`
     : '';
@@ -2528,13 +2530,20 @@ function showFight(bannerHtml, mine, theirs, won, faces) {
   const verdict = $('duelResult').querySelector('.fight-verdict');
   if (REDUCED || !rounds.length) {
     rounds.forEach(r => r.classList.add('in'));
-    document.querySelectorAll('#duelResult .duel-face').forEach(el => el.classList.add('in'));
+    document.querySelectorAll('#duelResult .duel-face').forEach(el => {
+      el.style.opacity = '1'; el.style.transform = 'none';
+    });
     verdict?.classList.add('in');
     window.sfx?.('clash');
     setTimeout(() => window.sfx?.(won ? 'win' : 'lose'), 300);
     return;
   }
-  document.querySelectorAll('#duelResult .duel-face').forEach(el => el.classList.add('in'));
+  document.querySelectorAll('#duelResult .duel-face').forEach(el => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transition = 'opacity .5s ease, transform .55s cubic-bezier(.2, 1, .35, 1)';
+      el.style.opacity = '1'; el.style.transform = 'none';
+    }));
+  });
   const result = $('duelResult');
   rounds.forEach((r, i) => setTimeout(() => {
     r.classList.add('in');
