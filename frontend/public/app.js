@@ -3516,6 +3516,20 @@ document.addEventListener('click', e => {
   });
 }, true);
 
+/* The layout is the frame (user decision): CSS touch-action holds Android,
+   but iOS Safari ignores it for page pinch-zoom — worst in the card detail
+   view, where a big image is the natural pinch target. The gesture events
+   must be refused directly. The browser's own accessibility zoom (Settings
+   → Accessibility) still works. */
+if (matchMedia('(pointer: coarse)').matches) {
+  for (const ev of ['gesturestart', 'gesturechange']) {
+    document.addEventListener(ev, e => e.preventDefault());
+  }
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+}
+
 (function lockScrollWithOverlay() {
   const ov = $('overlay');
   if (!ov) return;
