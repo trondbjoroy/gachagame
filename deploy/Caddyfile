@@ -21,7 +21,10 @@ app.emberfall.fun {
 	handle_path /hnode/* {
 		# partner node first; the public node catches the traffic while the
 		# partner is marked unhealthy (it 503s in bursts). GET reads retry
-		# onto the healthy upstream within the same request.
+		# onto the healthy upstream within the same request. ACTIVE health
+		# checks (2026-08-04) evict a flapping partner within seconds — the
+		# passive-only setup made every wallet sync pay for the discovery,
+		# which players felt as slow connects during the bursts.
 		reverse_proxy https://node-partners.testnet.hathor.network https://node1.testnet.hathor.network {
 			header_up Host {upstream_hostport}
 			lb_policy first
@@ -30,6 +33,9 @@ app.emberfall.fun {
 			fail_duration 45s
 			max_fails 2
 			unhealthy_status 5xx
+			health_uri /v1a/health
+			health_interval 10s
+			health_timeout 4s
 		}
 	}
 	handle {
