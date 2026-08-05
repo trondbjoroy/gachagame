@@ -639,7 +639,11 @@ footer a { color: var(--acid); text-decoration: none; }
    pedigree, the art and the action bar all make one screen. The token id
    keeps the full width because a hash does not abbreviate well. */
 @media (max-width: 899px) {
-  .ds-art { max-height: 34vh; }
+  /* aspect-ratio + max-height fought each other: the box kept its square
+     ratio for layout while the clamp squeezed the height, and the art read
+     as skewed. Height is stated outright and the art crops to fill it. */
+  .ds-art { aspect-ratio: auto; height: min(34vh, 92vw); max-height: none; }
+  .ds-art .ac-img { object-fit: cover; object-position: center 22%; }
   .ledger { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
   .lg-row { padding: 8px 0; }
   .lg-row:last-child { grid-column: 1 / -1; }

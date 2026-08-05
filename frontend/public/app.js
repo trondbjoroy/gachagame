@@ -2873,7 +2873,10 @@ async function cardShareImage(c) {
   if (meta?.art) {
     const img = new Image();
     img.src = `cards/${slugOf(c.name)}.jpg`;
-    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    await new Promise((res, rej) => {
+      img.onload = res; img.onerror = rej;
+      setTimeout(rej, 5000);   // a stalled load must not hang the share
+    });
     // cover-fit into the art area
     const AH = H - 180;
     const scale = Math.max(W / img.width, AH / img.height);
@@ -2949,15 +2952,35 @@ async function shareCard(uid) {
   try {
     // the native sheet is only useful where X lives as an app (touch devices)
     const touch = matchMedia('(pointer: coarse)').matches;
-    if (touch) {
+    if (touch && navigator.canShare) {
       msg.textContent = 'Forging the card image…';
-      const blob = await cardShareImage(c);
-      const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text });
+      // a stalled decode (or a missing art file) left this message forever:
+      // give the forge six seconds, then fall through to the link
+      const blob = await Promise.race([
+        cardShareImage(c),
+        new Promise(r => setTimeout(() => r(null), 6000)),
+      ]).catch(() => null);
+      if (blob) {
+        const file = new File([blob], `${slugOf(c.name)}.png`, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text });
+          msg.textContent = '';
+          track('share_card', { method: 'native' });
+          return;
+        }
+      }
+      // no file sheet available: share the link natively rather than opening
+      // a popup, which iOS blocks after an await breaks the gesture chain
+      const link = `${location.origin}/c/${uid}`;
+      try {
+        await navigator.share({ text: `${text}
+
+${link}` });
         msg.textContent = '';
-        track('share_card', { method: 'native' });
+        track('share_card', { method: 'native-link' });
         return;
+      } catch (e) {
+        if ((e && e.name) === 'AbortError') { msg.textContent = ''; return; }
       }
     }
     // desktop: the champion travels with a link — X reads /c/<uid> and shows

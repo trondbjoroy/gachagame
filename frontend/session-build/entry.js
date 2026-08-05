@@ -196,16 +196,25 @@ async function open(words) {
      nc_seqnum the chain has seen for this caller, and we take the higher of
      that and the local count. */
   const libSeqnum = wallet.getNanoHeaderSeqnum.bind(wallet);
+  /* A nonce is spent the moment it is SIGNED, not when it confirms. Both the
+     local count and the chain-derived one lag an in-flight tx, so a second
+     action started before the first confirmed reused a number and the chain
+     answered "invalid seqnum (diff=0)". Every value this wallet issues is
+     remembered for the page's life and never handed out twice. */
+  let issued = -1;
   wallet.getNanoHeaderSeqnum = async addr => {
     const local = await libSeqnum(addr).catch(() => 0);
+    let next = local;
     try {
       const r = await fetch(`/api/seqnum?addr=${addr}`);
       if (r.ok) {
-        const { next } = await r.json();
-        if (Number.isInteger(next) && next > local) return next;
+        const j = await r.json();
+        if (Number.isInteger(j.next) && j.next > next) next = j.next;
       }
     } catch { /* offline or blocked: the local count still stands */ }
-    return local;
+    if (next <= issued) next = issued + 1;
+    issued = next;
+    return next;
   };
 
   return {
