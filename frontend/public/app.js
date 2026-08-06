@@ -1884,7 +1884,18 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
       }
     }
     sub.textContent = 'confirming\u2026';
-    await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
+    try {
+      await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
+    } catch (e) {
+      // a nonce clash voids the tx with nothing spent, and re-signing gets
+      // a fresh number by construction: one silent retry, then surface it
+      if (/invalid seqnum/i.test(String((e && e.message) || e))) {
+        sub.textContent = 'the nonce was taken; signing again\u2026';
+        ({ hash } = await signer.executeNano(method, args, actions, target));
+        sub.textContent = 'confirming\u2026';
+        await waitForExecution(hash, sec => { tim.textContent = sec + 's'; });
+      } else throw e;
+    }
     el.classList.add('ok');
     sub.textContent = 'done';
     staleStreak = 0;

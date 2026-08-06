@@ -201,7 +201,9 @@ async function open(words) {
      action started before the first confirmed reused a number and the chain
      answered "invalid seqnum (diff=0)". Every value this wallet issues is
      remembered for the page's life and never handed out twice. */
-  let issued = -1;
+  /* survives reloads: a nonce signed just before a refresh is still spent */
+  const seqKey = 'emberfall_issued_seq_' + address;
+  let issued = Number(localStorage.getItem(seqKey) || -1);
   wallet.getNanoHeaderSeqnum = async addr => {
     const local = await libSeqnum(addr).catch(() => 0);
     let next = local;
@@ -214,6 +216,7 @@ async function open(words) {
     } catch { /* offline or blocked: the local count still stands */ }
     if (next <= issued) next = issued + 1;
     issued = next;
+    try { localStorage.setItem(seqKey, String(next)); } catch { /* private mode */ }
     return next;
   };
 
