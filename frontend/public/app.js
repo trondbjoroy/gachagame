@@ -4396,13 +4396,24 @@ const STATION_TIER = { Footman: 0, Knight: 1, Highlord: 2, Sovereign: 3 };
   // a shared champion link (/c/<uid>) lands here with ?card=: open the card
   const sharedCard = new URLSearchParams(location.search).get('card');
   if (sharedCard && S.cards.has(sharedCard)) openCard(sharedCard);
-  await sessionP;
-  // silently resume a prior pairing: WalletConnect first (persists for
-  // days), else MetaMask Snap when it was the last wallet used here
-  if (!S.wallet && (await restoreWcPairing() || await restoreSnap())) {
-    window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
-    track('wallet_connect', { wallet: `${walletKind()}-restored` });
-    await silentRefresh();
+  // every restore step is time-boxed: a stalled wallet sync or a silent
+  // WalletConnect relay left the chip saying "Connecting…" forever. On
+  // timeout the restore keeps running in the background — if it lands
+  // later the wallet appears; meanwhile the player can connect manually.
+  const bounded = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+  await bounded(sessionP, 30_000);
+  if (!S.wallet) {
+    const w = await bounded(restoreWcPairing(), 12_000).catch(() => null)
+      || await bounded(restoreSnap(), 8_000).catch(() => null);
+    if (w) {
+      window.WALLETS.prefetchSession();  // warm the session bundle for ⚡
+      track('wallet_connect', { wallet: `${walletKind()}-restored` });
+      await bounded(silentRefresh(), 20_000);
+    }
+  }
+  if (S.restoring && !S.addr) {
+    track('session_sync_failed', { reason: 'restore timed out; manual connect offered' });
+    ribbon('Your saved wallet could not be restored in time. Connect it manually — nothing is lost.');
   }
   S.restoring = false;
   render();

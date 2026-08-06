@@ -15,8 +15,10 @@ const path = require('path');
 const crypto = require('crypto');
 
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
-const NODE = process.env.NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
-const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node1.testnet.hathor.network/v1a';
+// node1 primary (2026-08-05): the partner node flaps and every read paid
+// the retry tax before falling through; the steady public node leads now
+const NODE = process.env.NODE_URL || 'https://node1.testnet.hathor.network/v1a';
+const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
 // The partner node's balancer answers "no healthy upstream" in bursts. Every
 // read here used to take that at face value: the card sweep died, the cache
 // went stale, and players opened a collection missing the champions they own

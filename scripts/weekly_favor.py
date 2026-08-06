@@ -25,7 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
+NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
 # v4 arena (testnet-india, 2026-07-24)
 ARENA = os.environ.get("ARENA_NC", "0061589e138059dcc670e392442c55bd6a55487adaa0b519ad41cf09bb0129b4")
 WALLET = os.environ.get("WALLET_URL", "http://localhost:8000")
