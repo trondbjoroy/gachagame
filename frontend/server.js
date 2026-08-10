@@ -39,7 +39,7 @@ async function nodeGet(pathAndQuery, tries = 4) {
     // one while a healthy one stands
     const base = order[0];
     try {
-      const r = await fetch(base + pathAndQuery);
+      const r = await fetch(base + pathAndQuery, { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error(`node ${r.status}`);
       const text = await r.text();
       try { return JSON.parse(text); }
@@ -1389,7 +1389,7 @@ async function handleNode(req, res, ip) {
     const base = [NODE, FALLBACK_NODE]
       .sort((a, b) => (sickUntil[a] > now) - (sickUntil[b] > now))[0];
     try {
-      const r = await fetch(base + rest);
+      const r = await fetch(base + rest, { signal: AbortSignal.timeout(6000) });
       const buf = Buffer.from(await r.arrayBuffer());
       const text = buf.toString('utf8', 0, 64);
       // a 5xx, or a body that is plainly not JSON, is the balancer talking:
