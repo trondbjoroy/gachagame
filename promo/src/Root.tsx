@@ -12,4 +12,5 @@ export const RemotionRoot: React.FC = () => (<>
     height={1080}
   />
   <Composition id="Graphic" component={Graphic} durationInFrames={1} fps={30} width={1600} height={900} />
+  <Composition id="GraphicLight" component={Graphic} defaultProps={{ theme: 'light' as const }} durationInFrames={1} fps={30} width={1600} height={900} />
 </>);
