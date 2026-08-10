@@ -24,10 +24,17 @@ const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node-partners.te
 // went stale, and players opened a collection missing the champions they own
 // (it only healed when someone summoned and forced a discovery pass). Reads
 // retry, then fall through to the public node.
+/* the two testnet nodes take turns being sick (2026-08-06: node1 503s
+   while the partner serves, the exact reverse of the day before). A fixed
+   primary pays the flap every time, so a failed primary sits in a 30s
+   doghouse and every read starts from whichever node answered last. */
+let sickUntil = { [NODE]: 0, [FALLBACK_NODE]: 0 };
 async function nodeGet(pathAndQuery, tries = 4) {
   let last;
   for (let i = 0; i < tries; i++) {
-    const base = i < tries - 1 ? NODE : FALLBACK_NODE;
+    const now = Date.now();
+    const order = [NODE, FALLBACK_NODE].sort((a, b) => (sickUntil[a] > now) - (sickUntil[b] > now));
+    const base = order[i % 2];
     try {
       const r = await fetch(base + pathAndQuery);
       if (!r.ok) throw new Error(`node ${r.status}`);
@@ -36,7 +43,8 @@ async function nodeGet(pathAndQuery, tries = 4) {
       catch { throw new Error('node returned ' + text.slice(0, 40)); }
     } catch (e) {
       last = e;
-      if (i < tries - 1) await new Promise(r => setTimeout(r, 400 * (i + 1)));
+      sickUntil[base] = Date.now() + 30_000;
+      if (i < tries - 1) await new Promise(r => setTimeout(r, 300 * (i + 1)));
     }
   }
   throw last;

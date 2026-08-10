@@ -19,15 +19,13 @@ app.emberfall.fun {
 	# (some phones refuse direct connections to the node's host); this
 	# also carries the wallet's websocket
 	handle_path /hnode/* {
-		# node1 first (2026-08-05): the partner node has been behind every
-		# slow-connect incident this week — it flaps, passes a health probe,
-		# rejoins, and the next wallets pay the rediscovery. The public node
-		# has been steady; the partner is the fallback now, active health
-		# checks still evict whichever is sick, and the retry window is 2s
-		# so a flap costs at most that.
+		# no fixed primary (2026-08-06): the two nodes take turns being sick
+		# — node1 503s today, the partner did yesterday. least_conn spreads
+		# across whichever the active health checks leave standing, so a
+		# flap on either costs nobody a rediscovery.
 		reverse_proxy https://node1.testnet.hathor.network https://node-partners.testnet.hathor.network {
 			header_up Host {upstream_hostport}
-			lb_policy first
+			lb_policy least_conn
 			lb_retries 2
 			lb_try_duration 2s
 			fail_duration 45s
