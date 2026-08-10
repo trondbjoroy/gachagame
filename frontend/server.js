@@ -34,7 +34,10 @@ async function nodeGet(pathAndQuery, tries = 4) {
   for (let i = 0; i < tries; i++) {
     const now = Date.now();
     const order = [NODE, FALLBACK_NODE].sort((a, b) => (sickUntil[a] > now) - (sickUntil[b] > now));
-    const base = order[i % 2];
+    // always the healthiest: a failure marks it sick, so the next lap
+    // naturally leads with the other node — never walk back into the sick
+    // one while a healthy one stands
+    const base = order[0];
     try {
       const r = await fetch(base + pathAndQuery);
       if (!r.ok) throw new Error(`node ${r.status}`);
@@ -1382,7 +1385,9 @@ async function handleNode(req, res, ip) {
   if (rateLimited(ip, 'read')) return deny(res, 429, 'rate limited');
   let last = null;
   for (let i = 0; i < 4; i++) {
-    const base = i < 3 ? NODE : FALLBACK_NODE;
+    const now = Date.now();
+    const base = [NODE, FALLBACK_NODE]
+      .sort((a, b) => (sickUntil[a] > now) - (sickUntil[b] > now))[0];
     try {
       const r = await fetch(base + rest);
       const buf = Buffer.from(await r.arrayBuffer());
@@ -1397,8 +1402,10 @@ async function handleNode(req, res, ip) {
         return res.end(buf);
       }
       last = `${r.status} ${text.trim().slice(0, 40)}`;
+      sickUntil[base] = Date.now() + 30_000;
     } catch (e) {
       last = e.message;
+      sickUntil[base] = Date.now() + 30_000;
     }
     if (i < 3) await new Promise(r2 => setTimeout(r2, 300 * (i + 1)));
   }
