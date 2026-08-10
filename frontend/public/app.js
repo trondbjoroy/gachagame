@@ -1648,6 +1648,22 @@ function bindListActions() {
   bind('[data-revealsquad]', id => revealSquad(Number(id)));
   bind('[data-rankedjoin]', t => openPick('ranked', Number(t)));
   bind('[data-wbfight]', () => openPick('wbfight', null));
+  // the contract allows three world-boss strikes per champion per UTC day
+  // and exposes no view for the count, so this device remembers its own:
+  // the picker then refuses a spent champion instead of buying a refusal
+  window.wbStrikes = uid => {
+    try {
+      const d = JSON.parse(localStorage.getItem('emberfall_wb_strikes')) || {};
+      return d.day === Math.floor(Date.now() / 86400000) ? (d.n?.[uid] || 0) : 0;
+    } catch { return 0; }
+  };
+  window.noteWbStrike = uid => {
+    let d; try { d = JSON.parse(localStorage.getItem('emberfall_wb_strikes')) || {}; } catch { d = {}; }
+    const day = Math.floor(Date.now() / 86400000);
+    if (d.day !== day) d = { day, n: {} };
+    d.n[uid] = (d.n[uid] || 0) + 1;
+    localStorage.setItem('emberfall_wb_strikes', JSON.stringify(d));
+  };
   bind('[data-tourenter]', id => openPick('tourEnter', Number(id)));
   bind('[data-tourleave]', async id => {
     const h = await doTx('Giving up the seat', 'leave_tournament', [Number(id)], []);
@@ -1913,7 +1929,19 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
   } catch (e) {
     el.classList.add('fail');
     let msg = e.message || String(e);
-    if (/error getting nano contract|from the full node|status code 503/i.test(msg)) {
+    if (/fought enough for one day/i.test(msg) && method === 'fight_world_boss' && args?.[0]) {
+      // the chain knows better than this device (a strike from another
+      // browser): mark the champion spent so the picker stops offering it
+      try {
+        const day = Math.floor(Date.now() / 86400000);
+        let d; try { d = JSON.parse(localStorage.getItem('emberfall_wb_strikes')) || {}; } catch { d = {}; }
+        if (d.day !== day) d = { day, n: {} };
+        d.n[args[0]] = 3;
+        localStorage.setItem('emberfall_wb_strikes', JSON.stringify(d));
+      } catch { /* private mode */ }
+      msg = 'This champion has struck the world boss three times today; the '
+        + 'count resets at midnight UTC. Send another champion.';
+    } else if (/error getting nano contract|from the full node|status code 503/i.test(msg)) {
       // three build attempts all lost a node read: nothing was signed or
       // sent, so say so instead of echoing wallet-lib's internals
       msg = 'The node kept dropping reads while preparing that transaction. '
@@ -3227,12 +3255,16 @@ function openPick(kind, ref) {
     return;
   }
   if (kind === 'wbfight') {
-    const marchers = [...S.cards.values()].filter(c =>
+    const able = [...S.cards.values()].filter(c =>
       isMine(c.staker) && !(c.delveSince > 0));
+    const marchers = able.filter(c => window.wbStrikes(c.uid) < 3);
     if (!marchers.length) {
-      $('errTitle').textContent = 'No champion available';
-      $('errMsg').textContent = 'The world boss is struck by staked champions. '
-        + 'Stake one in The Mines (not delving) and try again.';
+      $('errTitle').textContent = able.length ? 'Every champion is spent' : 'No champion available';
+      $('errMsg').textContent = able.length
+        ? 'Each champion strikes the world boss three times a day, and yours have '
+          + 'all struck theirs. The count resets at midnight UTC.'
+        : 'The world boss is struck by staked champions. '
+          + 'Stake one in The Mines (not delving) and try again.';
       showStage('stageError');
       $('overlay').hidden = false;
       return;
@@ -3349,6 +3381,7 @@ async function submitPick(uid) {
     const hpBefore = S.worldBoss?.hp ?? 0;
     const hash = await doTx('Striking the colossus', 'fight_world_boss', [uid], []);
     if (!hash) return;
+    window.noteWbStrike(uid);
     const dmg = hpBefore - (S.worldBoss?.hp ?? hpBefore);
     const slain = (S.worldBoss?.hp ?? 1) === 0;
     $('duelResult').innerHTML = slain

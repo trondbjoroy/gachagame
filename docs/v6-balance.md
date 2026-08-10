@@ -79,6 +79,14 @@ free up in the opponent's tx, which cannot withdraw to them) — and for
 `pull` (the token does not exist when the tx is signed, so it cannot be
 named in a withdrawal action).
 
+## Missing view: get_wb_attempts (2026-08-06)
+
+`wb_attempts` is internal-only, so the client cannot know a champion's
+world-boss strikes for the day (the picker tracks its own device's
+strikes and learns from refusals — see app.js). v6 adds
+`get_wb_attempts(card, now)` mirroring `get_writ_attempts`, and the
+picker filters on chain truth like the writ picker already does.
+
 ## Side-bet ring (user requests, 2026-07-30)
 
 6. **`cancel_bet(duel_id)`** — a spectator can withdraw their backing and
