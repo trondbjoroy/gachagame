@@ -1570,10 +1570,9 @@ body.land-flash::before {
 .wallet-chip.as-btn { flex-shrink: 0; }
 .wallet-chip #walletAddr { max-width: 150px; }
 .header-session .hs-s { display: none; }
-@media (max-width: 1240px) {
-  .header-session .hs-l { display: none; }
-  .header-session .hs-s { display: inline; }
-}
+/* (the old 1240px blanket that forced the short label is gone: the header
+   measures itself now, and body.hdr-compact trims the label only when the
+   chips genuinely do not fit) */
 .header-session { white-space: nowrap; flex-shrink: 0; position: relative; }
 .header-session.active { background: none; color: var(--acid); border: 1px solid rgba(212, 168, 67, .4); }
 
