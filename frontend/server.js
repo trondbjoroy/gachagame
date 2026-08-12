@@ -860,35 +860,49 @@ const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
 
 // concurrency 3: at 8 the full sweep's ~190 chunk requests plus retries
 // trip the nodes' rate limits (429/503) and one exhausted chunk fails it all
-async function ncCalls(ncId, calls, concurrency = 3) {
+async function ncCalls(ncId, calls, concurrency = 3, tolerant = false) {
   const chunks = [];
   for (let i = 0; i < calls.length; i += 30) chunks.push(calls.slice(i, i + 30));
   const out = {};
-  let idx = 0;
+  let idx = 0, failed = 0;
   await Promise.all([...Array(Math.min(concurrency, chunks.length))].map(async () => {
     for (;;) {
       const mine = idx++;
       if (mine >= chunks.length) return;
       const qs = chunks[mine].map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
-      // 15s, not the interactive 4s: a 30-view chunk takes ~4s on a healthy
-      // node, so the tight cap starved every sweep during the node troubles
-      const d = await nodeGet(`/nano_contract/state?id=${ncId}&${qs}`, 4, 15_000);
-      for (const [k, v] of Object.entries(d.calls || {})) {
-        // a per-call error has errmsg and no value; zero-filling it would
-        // overwrite good cache entries with wrong defaults — fail instead
-        if (!v || !('value' in v)) throw new Error('view call failed: ' + k.slice(0, 48));
-        out[k] = v.value;
+      try {
+        // 15s, not the interactive 4s: a 30-view chunk takes ~4s on a healthy
+        // node, so the tight cap starved every sweep during the node troubles
+        const d = await nodeGet(`/nano_contract/state?id=${ncId}&${qs}`, 4, 15_000);
+        for (const [k, v] of Object.entries(d.calls || {})) {
+          // a per-call error has errmsg and no value; zero-filling it would
+          // overwrite good cache entries with wrong defaults — fail instead
+          if (!v || !('value' in v)) throw new Error('view call failed: ' + k.slice(0, 48));
+          out[k] = v.value;
+        }
+      } catch (e) {
+        // tolerant: a sick node fails a chunk, the sweep keeps the rest.
+        // Cards in the failed chunk keep their old cache values and the
+        // next sweep tries them again — progress instead of all-or-nothing
+        if (!tolerant) throw e;
+        failed++;
       }
+      // ease off the shared rate limit on long tolerant runs
+      if (tolerant) await new Promise(r => setTimeout(r, 120));
     }
   }));
+  if (tolerant && failed) console.error(`card views: ${failed}/${chunks.length} chunks failed, kept old values`);
   return out;
 }
 
-async function refreshCards(uids) {
+async function refreshCards(uids, tolerant = false) {
   if (!uids.length) return;
-  const v = await ncCalls(NC, uids.flatMap(u => CARD_VIEWS.map(f => `${f}("${u}")`)));
+  const v = await ncCalls(NC, uids.flatMap(u => CARD_VIEWS.map(f => `${f}("${u}")`)), 3, tolerant);
   for (const u of uids) {
     const g = f => v[`${f}("${u}")`];
+    // a card's views can straddle two chunks: write it only when every view
+    // arrived, or a half-read card zero-fills the missing fields
+    if (CARD_VIEWS.some(f => !(`${f}("${u}")` in v))) continue;
     if (g('get_card_tier') == null) continue; // unknown to the contract
     cardCache.cards[u] = {
       name: g('get_card_name'), tier: g('get_card_tier'), power: g('get_card_power'),
@@ -911,7 +925,7 @@ async function sweepCards() {
   const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
     .filter(u => HEX64.test(u) && !RETIRED_UIDS.has(u));
   for (const u of RETIRED_UIDS) delete cardCache.cards[u];
-  await refreshCards(uids);
+  await refreshCards(uids, true);
   console.log(`card cache: ${Object.keys(cardCache.cards).length} cards`);
   fs.writeFile(CACHE_FILE, JSON.stringify(cardCache), () => {});
 }
