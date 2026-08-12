@@ -116,8 +116,9 @@ setInterval(refreshPlayerAddress, 30_000);
 // ---- naive per-IP rate limiting (fixed 60s window) ----
 const buckets = new Map();
 function rateLimited(ip, kind) {
-  // reads run in parallel bursts since b=56, and the node behind us is ours
-  const limit = kind === 'tx' ? 6 : 240;
+  // reads run in parallel bursts since b=56; 240/min starved three delve
+  // claims confirming at once (each polls every 1.5s plus refreshes)
+  const limit = kind === 'tx' ? 6 : 480;
   const now = Date.now();
   const key = `${ip}:${kind}`;
   let b = buckets.get(key);

@@ -1784,7 +1784,17 @@ async function waitForExecution(hash, onTick) {
     await new Promise(r => setTimeout(r, wait));
     wait = 1500;
     onTick?.(Math.round((Date.now() - start) / 1000));
-    const tx = await node(`/transaction?id=${hash}`);
+    // a dropped poll read is not a verdict: the tx is already on the chain,
+    // so keep asking until a real answer or the deadline
+    let tx;
+    try { tx = await node(`/transaction?id=${hash}`); }
+    catch (e) {
+      if (Date.now() - start > 90_000) {
+        throw new Error('the chain stopped answering while this confirmed; '
+          + 'the move likely landed. Check your collection in a moment');
+      }
+      continue;
+    }
     const meta = tx.meta || {};
     if ((meta.voided_by || []).length) {
       // say WHY the contract refused: the generic line sent players into
@@ -1874,7 +1884,9 @@ async function doTx(label, method, args, actions, { target, wallet } = {}) {
         // never an endless loop. Wallet HTTP timeouts are chain-safe to
         // retry: a duplicate nano tx re-signs the same seqnum, which the
         // contract rejects without effect.
-        if (attempt < 2 && /error getting nano contract|from the full node|status code 503|timeout of \d+ms exceeded/i.test(m)) {
+        // 429 and an aborted read are as chain-safe as the rest: nothing
+        // executed, and a duplicate would re-sign the same seqnum harmlessly
+        if (attempt < 2 && /error getting nano contract|from the full node|status code (429|503)|timeout of \d+ms exceeded|signal timed out|rate limited/i.test(m)) {
           sub.textContent = 'the node dropped a read; retrying\u2026';
           await pause(1500 * (attempt + 1));
           continue;
