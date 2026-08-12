@@ -857,7 +857,9 @@ const CARD_VIEWS = ['get_card_name', 'get_card_tier', 'get_card_power',
   'get_card_aspects', 'get_card_wins', 'get_card_cosmetics', 'get_card_ability',
   'get_pending_owner', 'get_staker', 'get_delve_since', 'get_temper_cost'];
 
-async function ncCalls(ncId, calls, concurrency = 8) {
+// concurrency 3: at 8 the full sweep's ~190 chunk requests plus retries
+// trip the nodes' rate limits (429/503) and one exhausted chunk fails it all
+async function ncCalls(ncId, calls, concurrency = 3) {
   const chunks = [];
   for (let i = 0; i < calls.length; i += 30) chunks.push(calls.slice(i, i + 30));
   const out = {};
