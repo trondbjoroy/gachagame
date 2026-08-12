@@ -325,6 +325,82 @@ export const PedigreeGraphic: React.FC = () => {
   );
 };
 
+/* ---------------- showcase: real UI captures, framed ---------------- */
+
+const ShotPanel: React.FC<{
+  src: string; w: number; h: number; tilt?: number; cropBottom?: number;
+}> = ({ src, w, h, tilt = 0, cropBottom = 0 }) => (
+  <div style={{ perspective: 1500 }}>
+    <div style={{
+      width: w, height: h * (1 - cropBottom), overflow: 'hidden',
+      borderRadius: 16, border: `1.5px solid rgba(212,168,67,.55)`,
+      boxShadow: '0 50px 120px -30px rgba(0,0,0,.9), 0 0 80px -20px rgba(212,168,67,.45)',
+      transform: `rotateY(${tilt}deg) rotateX(1.5deg)`,
+      background: '#0b0a08',
+    }}>
+      <Img src={staticFile(src)} style={{ width: w, display: 'block' }} />
+    </div>
+  </div>
+);
+
+export const ShotCollection: React.FC = () => (
+  <AbsoluteFill>
+    <Ground glow={1.3} />
+    <Embers count={30} heat={1.1} />
+    <Vignette />
+    <Grain />
+    <AbsoluteFill style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 90, paddingBottom: 30,
+    }}>
+      <div style={{ width: 520 }}>
+        <div style={{
+          fontFamily: CINZEL, fontWeight: 700, fontSize: 21, letterSpacing: '.42em',
+          color: GOLD, textTransform: 'uppercase',
+        }}>The collection</div>
+        <div style={{
+          fontFamily: CINZEL, fontWeight: 700, fontSize: 58, color: INK,
+          marginTop: 20, lineHeight: 1.15,
+        }}>
+          SIX SOVEREIGNS, <span style={{ color: GOLD_HOT }}>ALL REAL.</span>
+        </div>
+        <div style={{
+          fontFamily: OUTFIT, fontSize: 21, color: MUTED, marginTop: 22, lineHeight: 1.55,
+        }}>
+          Every champion is a token struck at birth, with its aspects, ability,
+          and record written on the chain. This screen is a wallet, not a database.
+        </div>
+      </div>
+      <ShotPanel src="shots/collection.png" w={620} h={715} tilt={-8} />
+    </AbsoluteFill>
+    <Footer still />
+  </AbsoluteFill>
+);
+
+export const ShotFight: React.FC = () => (
+  <AbsoluteFill>
+    <Ground glow={1.35} />
+    <Embers count={34} heat={1.3} />
+    <Vignette />
+    <Grain />
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 34 }}>
+      <div style={{
+        fontFamily: CINZEL, fontWeight: 700, fontSize: 21, letterSpacing: '.42em',
+        color: GOLD, textTransform: 'uppercase',
+      }}>Trial by combat</div>
+      <div style={{ marginTop: 28 }}>
+        <ShotPanel src="shots/fight.png" w={1130} h={657} tilt={0} cropBottom={0.085} />
+      </div>
+      <div style={{
+        fontFamily: OUTFIT, fontSize: 20, color: MUTED, marginTop: 26,
+      }}>
+        A real duel between two minted Sovereigns, settled on the chain, caught mid-spark.
+      </div>
+    </AbsoluteFill>
+    <Footer still />
+  </AbsoluteFill>
+);
+
 /* ---------------- tweet 7 · the Midnight Court ---------------- */
 
 export const MidnightGraphic: React.FC = () => (

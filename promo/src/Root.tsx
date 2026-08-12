@@ -4,6 +4,7 @@ import { Graphic } from './Graphic';
 import {
   ForgeClip, WorldBossClip, StanceGraphic, DelveGraphic,
   BetsGraphic, PedigreeGraphic, MidnightGraphic,
+  ShotCollection, ShotFight,
 } from './Spotlights';
 
 export const RemotionRoot: React.FC = () => (<>
@@ -25,4 +26,6 @@ export const RemotionRoot: React.FC = () => (<>
   <Composition id="BetsGraphic" component={BetsGraphic} durationInFrames={120} fps={30} width={1600} height={900} />
   <Composition id="PedigreeGraphic" component={PedigreeGraphic} durationInFrames={120} fps={30} width={1600} height={900} />
   <Composition id="MidnightGraphic" component={MidnightGraphic} durationInFrames={120} fps={30} width={1600} height={900} />
+  <Composition id="ShotCollection" component={ShotCollection} durationInFrames={120} fps={30} width={1600} height={900} />
+  <Composition id="ShotFight" component={ShotFight} durationInFrames={120} fps={30} width={1600} height={900} />
 </>);
