@@ -29,7 +29,7 @@ const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node-partners.te
    primary pays the flap every time, so a failed primary sits in a 30s
    doghouse and every read starts from whichever node answered last. */
 let sickUntil = { [NODE]: 0, [FALLBACK_NODE]: 0 };
-async function nodeGet(pathAndQuery, tries = 4) {
+async function nodeGet(pathAndQuery, tries = 4, timeoutMs = 4000) {
   let last;
   for (let i = 0; i < tries; i++) {
     const now = Date.now();
@@ -39,7 +39,7 @@ async function nodeGet(pathAndQuery, tries = 4) {
     // one while a healthy one stands
     const base = order[0];
     try {
-      const r = await fetch(base + pathAndQuery, { signal: AbortSignal.timeout(4000) });
+      const r = await fetch(base + pathAndQuery, { signal: AbortSignal.timeout(timeoutMs) });
       if (!r.ok) throw new Error(`node ${r.status}`);
       const text = await r.text();
       try { return JSON.parse(text); }
@@ -867,8 +867,15 @@ async function ncCalls(ncId, calls, concurrency = 8) {
       const mine = idx++;
       if (mine >= chunks.length) return;
       const qs = chunks[mine].map(c => 'calls[]=' + encodeURIComponent(c)).join('&');
-      const d = await nodeGet(`/nano_contract/state?id=${ncId}&${qs}`);
-      for (const [k, v] of Object.entries(d.calls || {})) out[k] = v.value;
+      // 15s, not the interactive 4s: a 30-view chunk takes ~4s on a healthy
+      // node, so the tight cap starved every sweep during the node troubles
+      const d = await nodeGet(`/nano_contract/state?id=${ncId}&${qs}`, 4, 15_000);
+      for (const [k, v] of Object.entries(d.calls || {})) {
+        // a per-call error has errmsg and no value; zero-filling it would
+        // overwrite good cache entries with wrong defaults — fail instead
+        if (!v || !('value' in v)) throw new Error('view call failed: ' + k.slice(0, 48));
+        out[k] = v.value;
+      }
     }
   }));
   return out;
@@ -897,7 +904,7 @@ async function sweepCards() {
   // actually minted (get_card_tier != null), so counterfeit tokens deposited
   // into the market never enter the cache and the client can drop their listings
   const sources = await Promise.all([NC, MKT_NC, ...LEGACY_NCS].map(nc =>
-    nodeGet(`/nano_contract/state?id=${nc}&balances[]=__all__`).catch(() => ({}))));
+    nodeGet(`/nano_contract/state?id=${nc}&balances[]=__all__`, 4, 15_000).catch(() => ({}))));
   const uids = [...new Set(sources.flatMap(s => Object.keys(s.balances || {})))]
     .filter(u => HEX64.test(u) && !RETIRED_UIDS.has(u));
   for (const u of RETIRED_UIDS) delete cardCache.cards[u];
@@ -914,7 +921,8 @@ function sweepSoon(delay = 45_000) {
   }), delay);
 }
 sweepCards().catch(e => { console.error('card sweep failed:', e.message); sweepSoon(); });
-setInterval(() => sweepCards().catch(() => {}), 10 * 60_000); // drift safety net
+// the interval must not fail silently: it once hid two days of dead sweeps
+setInterval(() => sweepCards().catch(e => console.error('card sweep failed:', e.message)), 10 * 60_000);
 
 // the feed poller calls this with uids seen in fresh transactions
 /* Methods that move a champion between custodies without ever naming it.
