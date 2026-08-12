@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   AbsoluteFill, Img, Sequence, interpolate, spring, staticFile,
   useCurrentFrame, useVideoConfig, Easing,
@@ -21,7 +21,7 @@ const card = (slug: string) => staticFile(`cards/${slug}.jpg`);
 
 /* ---------------- cinematic furniture ---------------- */
 
-const Ground: React.FC<{ glow?: number }> = ({ glow = 1 }) => {
+export const Ground: React.FC<{ glow?: number }> = ({ glow = 1 }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: BG }}>
@@ -35,7 +35,7 @@ const Ground: React.FC<{ glow?: number }> = ({ glow = 1 }) => {
   );
 };
 
-const Vignette: React.FC<{ amount?: number }> = ({ amount = 0.62 }) => (
+export const Vignette: React.FC<{ amount?: number }> = ({ amount = 0.62 }) => (
   <AbsoluteFill style={{
     pointerEvents: 'none',
     background: `radial-gradient(120% 90% at 50% 45%, transparent 52%, rgba(4,3,1,${amount}) 100%)`,
@@ -43,7 +43,7 @@ const Vignette: React.FC<{ amount?: number }> = ({ amount = 0.62 }) => (
 );
 
 /* faint animated grain: reads as film, costs nothing */
-const Grain: React.FC = () => {
+export const Grain: React.FC = () => {
   const f = useCurrentFrame();
   const j = (f * 7) % 13;
   return (
@@ -55,7 +55,7 @@ const Grain: React.FC = () => {
   );
 };
 
-const Embers: React.FC<{ count?: number; heat?: number }> = ({ count = 30, heat = 1 }) => {
+export const Embers: React.FC<{ count?: number; heat?: number }> = ({ count = 30, heat = 1 }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill>
@@ -79,7 +79,7 @@ const Embers: React.FC<{ count?: number; heat?: number }> = ({ count = 30, heat 
 };
 
 /* a burst of sparks from a point — victory slams, the title landing */
-const Burst: React.FC<{ at: number; x?: number; y?: number; n?: number }> =
+export const Burst: React.FC<{ at: number; x?: number; y?: number; n?: number }> =
   ({ at, x = 960, y = 520, n = 26 }) => {
   const f = useCurrentFrame();
   const t = f - at;
@@ -104,7 +104,7 @@ const Burst: React.FC<{ at: number; x?: number; y?: number; n?: number }> =
 };
 
 /* one bright frame at a cut: the edit hits instead of dissolving */
-const Flash: React.FC<{ at: number; strength?: number }> = ({ at, strength = 0.5 }) => {
+export const Flash: React.FC<{ at: number; strength?: number }> = ({ at, strength = 0.5 }) => {
   const f = useCurrentFrame();
   const o = interpolate(f - at, [-2, 0, 7], [0, strength, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   if (o <= 0) return null;
@@ -121,14 +121,14 @@ const Camera: React.FC<{ children: React.ReactNode; from?: number; to?: number; 
 };
 
 /* impact shake, decaying */
-const shake = (f: number, at: number, power = 10) => {
+export const shake = (f: number, at: number, power = 10) => {
   const t = f - at;
   if (t < 0 || t > 16) return 'translate(0,0)';
   const d = power * (1 - t / 16);
   return `translate(${Math.sin(t * 2.6) * d}px, ${Math.cos(t * 3.4) * d * 0.6}px)`;
 };
 
-const Eyebrow: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => {
+export const Eyebrow: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => {
   const f = useCurrentFrame();
   const o = interpolate(f - delay, [0, 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const ls = interpolate(f - delay, [0, 26], [0.9, 0.42], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) });
@@ -141,7 +141,7 @@ const Eyebrow: React.FC<{ children: React.ReactNode; delay?: number }> = ({ chil
 };
 
 /* headline that arrives out of blur — the trailer move */
-const Slam: React.FC<{ children: React.ReactNode; delay?: number; size?: number; color?: string }> =
+export const Slam: React.FC<{ children: React.ReactNode; delay?: number; size?: number; color?: string }> =
   ({ children, delay = 0, size = 96, color = INK }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -157,7 +157,7 @@ const Slam: React.FC<{ children: React.ReactNode; delay?: number; size?: number;
   );
 };
 
-const Sub: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => {
+export const Sub: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => {
   const f = useCurrentFrame();
   const o = interpolate(f - delay, [0, 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
@@ -169,7 +169,7 @@ const Sub: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children
 };
 
 /* a real card face with 3D presence */
-const CardFace: React.FC<{
+export const CardFace: React.FC<{
   slug: string; name: string; rank: number; type: string; power: number;
   delay?: number; tilt?: number; w?: number;
 }> = ({ slug, name, rank, type, power, delay = 0, tilt = 0, w = 330 }) => {
