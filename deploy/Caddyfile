@@ -27,13 +27,19 @@ app.emberfall.fun {
 			header_up Host {upstream_hostport}
 			lb_policy first
 			lb_retries 2
-			lb_try_duration 2s
+			lb_try_duration 5s
 			fail_duration 45s
 			max_fails 2
 			unhealthy_status 5xx
 			health_uri /v1a/health
-			health_interval 10s
-			health_timeout 4s
+			health_interval 15s
+			# 10s, not 4s: both nodes answer anywhere between 0.2s and 15s,
+			# so a tight probe benched whichever was slow at that moment. It
+			# held the partner node down permanently and quietly sent every
+			# session wallet to node1. Refusing 5xx traffic (above) is what
+			# actually catches a sick node; the probe only needs to catch a
+			# dead one.
+			health_timeout 10s
 		}
 	}
 	handle {
