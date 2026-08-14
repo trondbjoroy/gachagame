@@ -264,6 +264,10 @@ header.top .wallet-chip.as-btn, header.top .brand { flex: 0 0 auto; }
 }
 #heroWrap[hidden] { display: none; }
 
+/* `.rail` sets display:flex, and an author rule beats the browser's own
+   [hidden] { display: none } — so the rail needs this to honour `hidden` */
+.rail[hidden] { display: none; }
+
 /* the feed has a column to live in now, so it stays open and scrolls */
 .rail-feed .feed-panel { margin: 0; }
 .rail-feed .feed-panel { display: flex; flex-direction: column; min-height: 0; }

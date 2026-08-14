@@ -18,3 +18,5 @@ frontend/feed-state.json
 
 # scratch from parallel sessions
 frontend/session-build/_*.js
+
+frontend/card-cache.json

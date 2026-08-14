@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=EB+Garamond:ital,wght@0,400;1,400;1,500&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?b=228" />
+<link rel="stylesheet" href="style.css?b=229" />
 </head>
 <body>
 <script>try { if (localStorage.getItem('emberfall_theme') === 'light') { document.body.classList.add('theme-light'); document.querySelector('meta[name=theme-color]').setAttribute('content', '#f0dc9e'); } } catch (e) { }</script>
@@ -397,7 +397,7 @@
         one). Anyone not in the fight can <b>bet Ember</b> on either side while a
         duel is open; when it settles, the winning backers split the losing pool
         minus a 5% cut, and the game tells you how your bet fared the next time
-        the verdict reaches the WORLD FEED.</p></div>
+        you open it.</p></div>
       <div class="qa"><h4>What are bosses?</h4>
         <p>Twelve bosses posted by the Crown, each with a public aspect spread,
         fought best-of-three by your <b>staked</b> champions: three fights per
@@ -475,7 +475,9 @@
      </div>
    </aside>
 
-   <aside class="rail rail-feed" id="railFeed">
+   <!-- the world feed rests until the realm is busier: drop the `hidden`
+        here and set SHOW_FEED = true in app.js to bring it back -->
+   <aside class="rail rail-feed" id="railFeed" hidden>
      <section class="feed-panel" id="feedPanel" hidden>
        <button class="feed-title as-toggle" id="feedToggle" aria-expanded="true">WORLD FEED
          <span class="feed-chev">&#9662;</span></button>
@@ -614,15 +616,15 @@
 </div>
 
 <script>window.BUILD = 227;</script>
-<script src="analytics.js?b=228"></script>
-<script src="sha3.js?b=228"></script>
-<script src="config.js?b=228"></script>
-<script src="art.js?b=228"></script>
-<script src="catalog.js?b=228"></script>
-<script src="wallets.js?b=228"></script>
-<script src="app.js?b=228"></script>
-<script src="progress.js?b=228"></script>
-<script src="sounds.js?b=228"></script>
-<script src="tutorial.js?b=228"></script>
+<script src="analytics.js?b=229"></script>
+<script src="sha3.js?b=229"></script>
+<script src="config.js?b=229"></script>
+<script src="art.js?b=229"></script>
+<script src="catalog.js?b=229"></script>
+<script src="wallets.js?b=229"></script>
+<script src="app.js?b=229"></script>
+<script src="progress.js?b=229"></script>
+<script src="sounds.js?b=229"></script>
+<script src="tutorial.js?b=229"></script>
 </body>
 </html>

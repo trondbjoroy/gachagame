@@ -17,8 +17,12 @@ const crypto = require('crypto');
 const WALLET = process.env.WALLET_URL || 'http://localhost:8000';
 // node1 primary (2026-08-05): the partner node flaps and every read paid
 // the retry tax before falling through; the steady public node leads now
-const NODE = process.env.NODE_URL || 'https://node1.testnet.hathor.network/v1a';
-const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
+// the partner node is the primary: it serves nano view calls that the public
+// node refuses under load (it 503s bulk `calls[]` reads while still answering
+// balances). The public node stays as the fallback, and the doghouse below
+// still steps aside from whichever one is sick.
+const NODE = process.env.NODE_URL || 'https://node-partners.testnet.hathor.network/v1a';
+const FALLBACK_NODE = process.env.FALLBACK_NODE_URL || 'https://node1.testnet.hathor.network/v1a';
 // The partner node's balancer answers "no healthy upstream" in bursts. Every
 // read here used to take that at face value: the card sweep died, the cache
 // went stale, and players opened a collection missing the champions they own

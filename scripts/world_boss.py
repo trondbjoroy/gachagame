@@ -18,7 +18,7 @@ import time
 import urllib.parse
 import urllib.request
 
-NODE = os.environ.get("NODE_URL", "https://node1.testnet.hathor.network/v1a")
+NODE = os.environ.get("NODE_URL", "https://node-partners.testnet.hathor.network/v1a")
 WALLET = os.environ.get("WALLET_URL", "http://localhost:8000")
 WALLET_ID = os.environ.get("WALLET_ID", "operator")
 NC = os.environ.get("ARENA_NC")

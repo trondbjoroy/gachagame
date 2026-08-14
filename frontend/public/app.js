@@ -537,18 +537,26 @@ function feedLine(ev) {
   }
 }
 
+/* The world feed is off while the realm is quiet: a panel that shows the
+   same four deeds all day reads as an empty room, not a living world. The
+   fetch stays, because bet payouts are read from the same events. Set
+   SHOW_FEED back to true when there is enough traffic to fill it. */
+const SHOW_FEED = false;
+
 async function loadFeed() {
   try {
     const r = await fetch('/api/feed');
     if (!r.ok) return;
     const d = await r.json();
-    const rows = (d.events || []).slice(0, 8)
-      .map(ev => ({ ev, line: feedLine(ev) }))
-      .filter(x => x.line)
-      .map(x => `<div class="feed-row"><span class="feed-ago mono">${agoText(x.ev.ts)}</span>
-        <span>${x.line}</span></div>`);
-    $('feedPanel').hidden = rows.length === 0;
-    $('feedList').innerHTML = rows.join('');
+    if (SHOW_FEED) {
+      const rows = (d.events || []).slice(0, 8)
+        .map(ev => ({ ev, line: feedLine(ev) }))
+        .filter(x => x.line)
+        .map(x => `<div class="feed-row"><span class="feed-ago mono">${agoText(x.ev.ts)}</span>
+          <span>${x.line}</span></div>`);
+      $('feedPanel').hidden = rows.length === 0;
+      $('feedList').innerHTML = rows.join('');
+    }
     if (S.addr) checkBetOutcomes(d.events || []);
   } catch { /* the feed is decorative */ }
 }
@@ -1677,7 +1685,7 @@ function bindListActions() {
     const h = await doTx('Fighting the round', 'advance_tournament', [Number(id)], []);
     if (!h) return;
     const t = (S.tournaments || []).find(x => x.id === Number(id));
-    if (t?.state === 2) ribbon('The final is fought: the champion takes the pool — see the World Feed', 'level', 'win');
+    if (t?.state === 2) ribbon('The final is fought: the champion takes the pool', 'level', 'win');
     else if (t?.state === 3) ribbon('The bracket was called off: too few entrants, everyone refunded', '', 'coin');
     else ribbon('The round is fought: fallen champions return to their lords', '', 'clash');
   });
@@ -3424,7 +3432,7 @@ async function submitPick(uid) {
       $('duelResult').innerHTML = `<div class="duel-banner" data-while-queued="${ref}">${glyph('ladder', 'gl')} IN THE QUEUE</div>
         <div class="wait-sub">Your champion holds the line. When a rival within
         200 rating joins this tier, their move settles the fight on the spot:
-        watch your rating and the World Feed. LEAVE in the Arena returns your
+        watch your rating under Progress. LEAVE in the Arena returns your
         wager and champion.</div>`;
     } else {
       const won = S.wins > winsBefore;
