@@ -81,7 +81,9 @@ import JSONBigIntFactory from 'json-bigint';
 
 const NODE = (typeof window !== 'undefined' && window.GAME && window.GAME.sessionNode)
   || 'https://node-partners.testnet.hathor.network/v1a/';
-const NETWORK = 'testnet';
+// the network drives session address derivation (testnet 'W' / mainnet 'H'):
+// it must follow the realm config, or a mainnet game would mint testnet keys
+const NETWORK = (typeof window !== 'undefined' && window.GAME && window.GAME.network) || 'testnet';
 const PIN = 'emberfall-session';
 
 // dev realms (testnet-playground) have no public tx-mining service: let the
